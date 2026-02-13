@@ -1,0 +1,558 @@
+
+import React, { useMemo, useState, useEffect } from 'react';
+import type { CartItem, Rebate, Customer } from '../types';
+import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
+import { formatCurrency } from '../utils/formatters';
+import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+
+// Nhóm sản phẩm Telfast áp dụng KM theo doanh số đơn hàng
+const TELFAST_GROUP_IDS = [7, 8];
+// Nhóm sản phẩm Pharmaton áp dụng KM theo doanh số gộp
+const PHARMATON_GROUP_IDS = [18, 19];
+
+const formatRebateDate = (r: any): string => {
+    const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
+    if (dateValue === undefined || dateValue === null || dateValue === '') return 'N/A';
+    if (typeof dateValue === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateValue)) return dateValue;
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) return date.toLocaleDateString('vi-VN');
+    return String(dateValue);
+};
+
+interface CartItemRowProps {
+    item: CartItem;
+    lineTotal: number;
+    maxPayableFeeLine: number;
+    monthlyDiscountPercent: number;
+    isGrouped: boolean;
+    onUpdateQuantity: (id: number, q: number) => void;
+    onRemoveItem: (id: number) => void;
+}
+
+// Component con để xử lý từng dòng sản phẩm, cho phép nhập liệu số lượng
+const CartItemRow: React.FC<CartItemRowProps> = ({
+    item,
+    lineTotal,
+    maxPayableFeeLine,
+    monthlyDiscountPercent,
+    isGrouped,
+    onUpdateQuantity,
+    onRemoveItem
+}) => {
+    const [inputValue, setInputValue] = useState(item.quantity.toString());
+
+    // Sync state khi props thay đổi (ví dụ khi nhấn nút +/-)
+    useEffect(() => {
+        setInputValue(item.quantity.toString());
+    }, [item.quantity]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        // Chỉ cho phép nhập số
+        if (val === '' || /^[0-9]+$/.test(val)) {
+            setInputValue(val);
+            const num = parseInt(val, 10);
+            if (!isNaN(num) && num > 0) {
+                onUpdateQuantity(item.id, num);
+            }
+        }
+    };
+
+    const handleBlur = () => {
+        const num = parseInt(inputValue, 10);
+        if (isNaN(num) || num <= 0) {
+            // Nếu giá trị không hợp lệ khi blur, reset về giá trị cũ
+            setInputValue(item.quantity.toString());
+        } else {
+            if (num !== item.quantity) onUpdateQuantity(item.id, num);
+        }
+    };
+
+    return (
+        <tr className="text-xs hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+            <td className="px-3 py-2.5">
+                <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight uppercase text-[11px]">{item.name}</p>
+                {item.note && (
+                    <p className="text-[9px] text-red-600 dark:text-red-400 font-bold italic mt-0.5 leading-tight">{item.note}</p>
+                )}
+                <p className="text-[9px] text-slate-400 mt-0.5">{formatCurrency(item.price)} (VAT)</p>
+            </td>
+            <td className="px-2 py-2.5">
+                <div className="flex items-center justify-center bg-white dark:bg-slate-600 rounded-md overflow-hidden w-[100px] mx-auto border border-slate-200 dark:border-slate-500 shadow-sm">
+                    <button
+                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                        className="px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-500 text-slate-500 dark:text-slate-300 border-r border-slate-200 dark:border-slate-500 transition-colors"
+                    >
+                        <MinusIcon />
+                    </button>
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className="w-full text-center font-black text-slate-700 dark:text-white text-[11px] outline-none bg-transparent h-full py-1 min-w-0"
+                    />
+                    <button
+                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                        className="px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-500 text-slate-500 dark:text-slate-300 border-l border-slate-200 dark:border-slate-500 transition-colors"
+                    >
+                        <PlusIcon />
+                    </button>
+                </div>
+            </td>
+            <td className="px-2 py-2.5 text-right">
+                <p className="font-bold text-sky-600 dark:text-sky-400 text-[11px]">{formatCurrency(lineTotal)}</p>
+                {monthlyDiscountPercent > 0 && (
+                    <p className="text-[9px] text-red-500 dark:text-red-400 font-bold italic">
+                        CK -{(monthlyDiscountPercent * 100).toFixed(2)}%
+                        {isGrouped && <span className="block text-[8px]">(Gộp nhóm)</span>}
+                    </p>
+                )}
+            </td>
+            <td className="px-2 py-2.5 text-right font-bold text-green-600 dark:text-green-400 text-[11px]">{formatCurrency(maxPayableFeeLine)}</td>
+            <td className="px-3 py-2.5 text-right"><button onClick={() => onRemoveItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><TrashIcon /></button></td>
+        </tr>
+    );
+};
+
+interface CartProps {
+    items: CartItem[];
+    employeeName: string;
+    customerCode: string;
+    onCustomerCodeChange: (code: string) => void;
+    customerName: string;
+    onCustomerNameChange: (name: string) => void;
+    customerAddress: string;
+    onCustomerAddressChange: (address: string) => void;
+    note: string;
+    onNoteChange: (note: string) => void;
+    onUpdateQuantity: (productId: number, newQuantity: number) => void;
+    onRemoveItem: (productId: number) => void;
+    onClearCart: () => void;
+    onSaveDraft: () => void;
+    onSubmitOrder: () => void;
+    isLoading: boolean;
+    successMessage: string | null;
+    isOnTopLiXi: boolean;
+    onIsOnTopLiXiChange: (isChecked: boolean) => void;
+    isDummyBox?: boolean;
+    onIsDummyBoxChange?: (isChecked: boolean) => void;
+    activeDraftId: string | null;
+    rebates: Rebate[];
+    selectedRebateIds: string[];
+    onToggleRebate: (id: string) => void;
+    // New Prop
+    customers?: Customer[];
+    onQuickView?: (code: string) => void;
+}
+
+const Cart: React.FC<CartProps> = (props) => {
+    const {
+        items, customerCode, onCustomerCodeChange, customerName,
+        onCustomerNameChange, customerAddress, onCustomerAddressChange,
+        note, onNoteChange, onUpdateQuantity, onRemoveItem,
+        onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
+        isOnTopLiXi, onIsOnTopLiXiChange, isDummyBox, onIsDummyBoxChange,
+        activeDraftId, rebates, selectedRebateIds, onToggleRebate,
+        customers = [], // Default empty array
+        onQuickView
+    } = props;
+
+    // --- Search Logic ---
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    const filteredCustomers = useMemo(() => {
+        if (!customerName || customerName.trim() === '') return [];
+        const lower = customerName.toLowerCase();
+        // Tìm kiếm theo tên hoặc mã KH
+        return customers.filter(c =>
+            c.name.toLowerCase().includes(lower) ||
+            String(c.code).toLowerCase().includes(lower)
+        ).slice(0, 10); // Chỉ lấy 10 kết quả đầu tiên để tối ưu
+    }, [customerName, customers]);
+
+    const handleCustomerSelect = (customer: Customer) => {
+        // Khi chọn, cập nhật mã KH -> App sẽ tự động điền Tên & Địa chỉ
+        onCustomerCodeChange(customer.code);
+        setShowSuggestions(false);
+    };
+    // --------------------
+
+    // 1. Tính tổng doanh số (chưa VAT) của nhóm Telfast đặc biệt
+    const telfastGroupBaseTotal = useMemo(() => {
+        return items
+            .filter(item => TELFAST_GROUP_IDS.includes(item.id))
+            .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    }, [items]);
+
+    // 1b. Tính tổng doanh số (chưa VAT) của nhóm Pharmaton đặc biệt
+    const pharmatonGroupBaseTotal = useMemo(() => {
+        return items
+            .filter(item => PHARMATON_GROUP_IDS.includes(item.id))
+            .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    }, [items]);
+
+    // 2. Tính Tạm tính tổng (đã trừ chiết khấu bậc/nhóm của từng dòng)
+    const totalAmount = useMemo(() => {
+        return items.reduce((sum, item) => {
+            const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+            const isPharmatonGroup = PHARMATON_GROUP_IDS.includes(item.id);
+
+            let compareValue = undefined;
+            if (isTelfastGroup) compareValue = telfastGroupBaseTotal;
+            else if (isPharmatonGroup) compareValue = pharmatonGroupBaseTotal;
+
+            const lineTotal = calculateLineTotal(
+                item.price,
+                item.quantity,
+                item.promotion,
+                compareValue
+            );
+            return sum + lineTotal;
+        }, 0);
+    }, [items, telfastGroupBaseTotal, pharmatonGroupBaseTotal]);
+
+    const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
+
+    const dummyBoxDiscount = isDummyBox ? 150000 : 0;
+
+    const localRebates = rebates.filter(r => r.Group === 'LOCAL');
+    const importRebates = rebates.filter(r => r.Group === 'IMPORT');
+
+    const { totalMaxPayableFeeLocal, totalMaxPayableFeeImport } = useMemo(() => {
+        let localFee = 0;
+        let importFee = 0;
+        items.forEach(item => {
+            const basePriceLine = (item.basePrice ?? 0) * item.quantity;
+            if (basePriceLine > 0) {
+                const maxTotalDiscountLine = basePriceLine * 0.5;
+
+                const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+                const isPharmatonGroup = PHARMATON_GROUP_IDS.includes(item.id);
+
+                let compareValue = undefined;
+                if (isTelfastGroup) compareValue = telfastGroupBaseTotal;
+                else if (isPharmatonGroup) compareValue = pharmatonGroupBaseTotal;
+
+                const monthlyDiscountPercent = getDiscountPercent(
+                    item.promotion,
+                    item.quantity,
+                    compareValue
+                );
+                const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
+                const maxPayableFeeLine = maxTotalDiscountLine - monthlyDiscountAmount;
+
+                // Đảm bảo không âm
+                const finalFee = Math.max(0, maxPayableFeeLine);
+
+                if (item.type === 'Local') localFee += finalFee;
+                else importFee += finalFee;
+            }
+        });
+        return { totalMaxPayableFeeLocal: localFee, totalMaxPayableFeeImport: importFee };
+    }, [items, telfastGroupBaseTotal, pharmatonGroupBaseTotal]);
+
+    const rebateDiscount = useMemo(() => {
+        const selectedLocalRebateAmount = localRebates
+            .filter(r => selectedRebateIds.includes(r["PromotionID#program"]))
+            .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
+
+        const selectedImportRebateAmount = importRebates
+            .filter(r => selectedRebateIds.includes(r["PromotionID#program"]))
+            .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
+
+        const actualLocalRebate = Math.min(selectedLocalRebateAmount, totalMaxPayableFeeLocal);
+        const actualImportRebate = Math.min(selectedImportRebateAmount, totalMaxPayableFeeImport);
+
+        return actualLocalRebate + actualImportRebate;
+    }, [localRebates, importRebates, selectedRebateIds, totalMaxPayableFeeLocal, totalMaxPayableFeeImport]);
+
+    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount);
+
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col overflow-hidden h-[calc(100vh-190px)] transition-colors duration-200">
+            <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800 sticky top-0 z-10">
+                <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center">
+                    <CartIcon />
+                    <span className="ml-2 uppercase tracking-tight">Chi tiết đơn hàng</span>
+                    {activeDraftId && <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded-full uppercase font-bold">Bản nháp</span>}
+                </h2>
+                {items.length > 0 && (
+                    <button onClick={onClearCart} title="Xóa giỏ hàng" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-md transition-colors"><TrashIcon /></button>
+                )}
+            </div>
+
+            <div className="overflow-y-auto flex-1 no-scrollbar">
+                <div className="p-3 space-y-2.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                    <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-1">
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Mã KH</label>
+                            <div className="flex items-center gap-1 mt-0.5">
+                                <input
+                                    type="text"
+                                    value={customerCode}
+                                    onChange={(e) => onCustomerCodeChange(e.target.value)}
+                                    className="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none focus:ring-1 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-white font-mono font-bold"
+                                    placeholder="Mã..."
+                                />
+                                <button
+                                    onClick={() => onQuickView?.(customerCode)}
+                                    disabled={!customerCode}
+                                    type="button"
+                                    title="Xem chi tiết khách hàng"
+                                    className="flex-shrink-0 p-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded shadow-sm transition-all active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed"
+                                >
+                                    <InfoIcon />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="col-span-2 relative">
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tìm kiếm tên khách hàng</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={customerName}
+                                    onChange={(e) => {
+                                        onCustomerNameChange(e.target.value);
+                                        setShowSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    // Delayed blur để kịp bắt sự kiện click vào suggestion
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                    className="w-full mt-0.5 border border-slate-300 dark:border-slate-600 rounded p-1.5 pl-7 text-sm outline-none focus:ring-1 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-white"
+                                    placeholder="Nhập tên KH..."
+                                    autoComplete="off"
+                                />
+                                <div className="absolute top-2 left-2 text-slate-400 pointer-events-none">
+                                    <SearchIcon />
+                                </div>
+                            </div>
+
+                            {/* Dropdown gợi ý */}
+                            {showSuggestions && filteredCustomers.length > 0 && (
+                                <ul className="absolute z-50 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto animate-fade-in divide-y divide-slate-100 dark:divide-slate-700">
+                                    {filteredCustomers.map(c => (
+                                        <li
+                                            key={c.code}
+                                            onMouseDown={() => handleCustomerSelect(c)} // Dùng onMouseDown để chạy trước onBlur của input
+                                            className="px-3 py-2 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                        >
+                                            <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{c.name}</div>
+                                            <div className="flex justify-between items-center mt-0.5">
+                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{c.code}</span>
+                                                {c.address && <span className="text-[9px] text-slate-400 italic truncate ml-2 max-w-[60%]">{c.address}</span>}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Địa chỉ</label>
+                        <textarea value={customerAddress} onChange={(e) => onCustomerAddressChange(e.target.value)} className="w-full mt-0.5 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-[11px] outline-none italic text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 resize-none" rows={1} placeholder="Địa chỉ..."></textarea>
+                    </div>
+
+                    {rebates.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                            {localRebates.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="px-2 py-1 bg-green-50 dark:bg-green-900/20 text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-wide rounded border border-green-100 dark:border-green-800/50">
+                                        Phí Local (Max: {formatCurrency(totalMaxPayableFeeLocal)}):
+                                    </p>
+                                    {localRebates.map(r => (
+                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                            <div className="ml-2.5 flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
+                                                    <span className="text-xs font-black text-red-600 dark:text-red-400 ml-2">-{formatCurrency(r.RemainAmount)}</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Hạn: <span className="font-semibold">{formatRebateDate(r)}</span></div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
+                            {importRebates.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wide rounded border border-blue-100 dark:border-blue-800/50">
+                                        Phí Import (Max: {formatCurrency(totalMaxPayableFeeImport)}):
+                                    </p>
+                                    {importRebates.map(r => (
+                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                            <div className="ml-2.5 flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
+                                                    <span className="text-xs font-black text-red-600 dark:text-red-400 ml-2">-{formatCurrency(r.RemainAmount)}</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Hạn: <span className="font-semibold">{formatRebateDate(r)}</span></div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-0">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-100 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 sticky top-0 z-10 shadow-sm">
+                            <tr className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase">
+                                <th className="px-3 py-2 w-[35%]">Sản phẩm</th>
+                                <th className="px-2 py-2 text-center w-[15%]">SL</th>
+                                <th className="px-2 py-2 text-right w-[20%]">Thành tiền</th>
+                                <th className="px-2 py-2 text-right text-green-700 dark:text-green-400 w-[20%]">Phí Trả Max</th>
+                                <th className="px-3 py-2 w-[10%]"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {items.length === 0 ? (
+                                <tr><td colSpan={5} className="text-center py-16 text-slate-400 text-sm italic">Chưa có sản phẩm nào</td></tr>
+                            ) : (
+                                items.map(item => {
+                                    const basePriceLine = (item.basePrice ?? 0) * item.quantity;
+                                    const maxTotalDiscountLine = basePriceLine * 0.5;
+
+                                    const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+                                    const isPharmatonGroup = PHARMATON_GROUP_IDS.includes(item.id);
+
+                                    let compareValue = undefined;
+                                    if (isTelfastGroup) compareValue = telfastGroupBaseTotal;
+                                    else if (isPharmatonGroup) compareValue = pharmatonGroupBaseTotal;
+
+                                    const monthlyDiscountPercent = getDiscountPercent(
+                                        item.promotion,
+                                        item.quantity,
+                                        compareValue
+                                    );
+                                    const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
+                                    const maxPayableFeeLine = Math.max(0, maxTotalDiscountLine - monthlyDiscountAmount);
+
+                                    const lineTotal = calculateLineTotal(
+                                        item.price,
+                                        item.quantity,
+                                        item.promotion,
+                                        compareValue
+                                    );
+
+                                    return (
+                                        <CartItemRow
+                                            key={item.id}
+                                            item={item}
+                                            lineTotal={lineTotal}
+                                            maxPayableFeeLine={maxPayableFeeLine}
+                                            monthlyDiscountPercent={monthlyDiscountPercent}
+                                            isGrouped={isTelfastGroup || isPharmatonGroup}
+                                            onUpdateQuantity={onUpdateQuantity}
+                                            onRemoveItem={onRemoveItem}
+                                        />
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
+                <div className="space-y-1 mb-3">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tạm tính:</span>
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalAmount)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-1">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Doanh số:</span>
+                        <div className="text-right">
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalSales)}</span>
+                            <span className="text-[9px] text-slate-400 ml-1 font-normal uppercase">(ko VAT)</span>
+                        </div>
+                    </div>
+
+                    {telfastGroupBaseTotal > 0 && (
+                        <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-700 pb-1 italic">
+                            <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">DS Nhóm Telfast:</span>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{formatCurrency(telfastGroupBaseTotal)}</span>
+                        </div>
+                    )}
+
+                    {pharmatonGroupBaseTotal > 0 && (
+                        <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-700 pb-1 italic">
+                            <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">DS Nhóm Pharmaton:</span>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{formatCurrency(pharmatonGroupBaseTotal)}</span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center space-x-2 py-1">
+                        <input type="checkbox" id="ontop-lixi" checked={isOnTopLiXi} onChange={(e) => onIsOnTopLiXiChange(e.target.checked)} className="h-4 w-4 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
+                        <label htmlFor="ontop-lixi" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Đơn "Ontop lì xì" (-250k)</label>
+                    </div>
+                    {isOnTopLiXi && (
+                        <div className="flex justify-between text-xs font-bold text-red-500 dark:text-red-400">
+                            <span className="italic">Trừ Ontop lì xì:</span>
+                            <span>-{formatCurrency(250000)}</span>
+                        </div>
+                    )}
+
+                    {/* Dummy Box Toggle */}
+                    {onIsDummyBoxChange && (
+                        <div className="flex items-center space-x-2 py-1">
+                            <input type="checkbox" id="dummy-box" checked={isDummyBox} onChange={(e) => onIsDummyBoxChange(e.target.checked)} className="h-4 w-4 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
+                            <label htmlFor="dummy-box" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Đơn "DummyBox" (-150k)</label>
+                        </div>
+                    )}
+                    {isDummyBox && (
+                        <div className="flex justify-between text-xs font-bold text-red-500 dark:text-red-400">
+                            <span className="italic">Trừ DummyBox:</span>
+                            <span>-{formatCurrency(150000)}</span>
+                        </div>
+                    )}
+
+                    {rebateDiscount > 0 && (
+                        <div className="flex justify-between text-xs font-bold text-red-600 dark:text-red-400">
+                            <span>Khấu trừ Rebate (Max):</span>
+                            <span>-{formatCurrency(rebateDiscount)}</span>
+                        </div>
+                    )}
+
+                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex justify-between text-[10px] font-bold">
+                            <span className="text-slate-500 dark:text-slate-400 uppercase">Phí Local Max:</span>
+                            <span className="text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold">
+                            <span className="text-slate-500 dark:text-slate-400 uppercase">Phí Import Max:</span>
+                            <span className="text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between items-end pt-2 border-t-2 border-double border-slate-200 dark:border-slate-600">
+                        <span className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase">Tổng cộng:</span>
+                        <div className="text-right">
+                            <span className="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">{formatCurrency(finalAmount)}</span>
+                            <span className="text-[9px] font-bold text-slate-400 ml-1 uppercase">(VAT)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mb-3">
+                    <textarea value={note} onChange={(e) => onNoteChange(e.target.value)} placeholder="Ghi chú đơn hàng..." className="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-sky-500 min-h-[40px] bg-slate-50 dark:bg-slate-700 dark:text-white resize-none" rows={1}></textarea>
+                </div>
+
+                <div className="flex gap-2">
+                    <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2.5 rounded-lg font-bold text-[11px] transition-all uppercase border border-slate-200 dark:border-slate-600 shadow-sm"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
+                    <button onClick={onSubmitOrder} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                        {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
+                    </button>
+                </div>
+                {successMessage && <div className="mt-2 text-center text-[10px] font-bold text-green-600 dark:text-green-400 animate-bounce">{successMessage}</div>}
+            </div>
+        </div>
+    );
+};
+
+export default Cart;

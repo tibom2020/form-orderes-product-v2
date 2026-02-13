@@ -1,0 +1,5 @@
+{
+  "name": "FORM DAT HANG 2026 v2",
+  "description": "Một ứng dụng đặt hàng đơn giản giúp nhân viên tạo và gửi đơn hàng, với dữ liệu được tự động lưu vào Google Sheets.",
+  "requestFramePermissions": []
+}

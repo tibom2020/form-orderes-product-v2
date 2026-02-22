@@ -39,6 +39,32 @@ export interface Rebate {
   Rep?: string; // Added Rep field
 }
 
+export interface DashboardProps {
+  salesData: SalesRecord[];
+  currentEmployee: Employee;
+  onCustomerSelect: (customerCode: string) => void;
+  rebates: Rebate[];
+  purchaseHistory: PurchaseHistoryItem[];
+  initialCustomerCode?: string | null;
+  forecastData: ForecastItem[];
+  onUpdateForecast: (
+    customerCode: string,
+    importLevel: string,
+    localLevel: string,
+    importValue?: number,
+    localValue?: number,
+    extraFields?: {
+      expectedGigaT2: number;
+      expectedBMT2: number;
+      expectedTotalT2: number;
+      targetMonthly: number;
+      reasonNotAchieved?: string;
+      reason2?: string;
+    }
+  ) => void;
+  onBack?: () => void;
+}
+
 export interface SalesRecord {
   CustomerCode: string;       // Code moi
   CodeBuyMed?: string;        // Code BuyMed (MỚI)
@@ -53,6 +79,7 @@ export interface SalesRecord {
   GPP?: string | number;      // GPP
   Status?: string;            // Status
   FinalStoreType?: string;    // Final Store type T1
+  TargetMonthly?: number;     // TARGET THÁNG (MỚI)
 
   // Số liệu Import
   TargetImport: number;
@@ -114,6 +141,8 @@ export interface SalesRecord {
   // --- DỮ LIỆU TỶ TRỌNG KÊNH ---
   GIGAMED?: number | string;
   BM?: number | string;
+  GIGAMEDImport?: number | string;
+  BMImport?: number | string;
 
   // --- 12 NHÓM SẢN PHẨM KHÁC (KPI CHI TIẾT) ---
   "BUSCOPAN (B.I)"?: number;
@@ -137,6 +166,14 @@ export interface ForecastItem {
   CustomerCode: string;
   ImportLevel?: string;
   LocalLevel?: string;
+  ImportValue?: number;
+  LocalValue?: number;
+  ExpectedGigaT2?: number;
+  ExpectedBMT2?: number;
+  ExpectedTotalT2?: number;
+  TargetMonthly?: number;
+  ReasonNotAchieved?: string;
+  Reason2?: string;
 }
 
 // Interface cho Sheet DON HANG DUYET 2026
@@ -186,4 +223,13 @@ export interface PurchaseHistoryItem {
   Team?: string;            // Cũ
   Group?: string;           // Mới: Khớp với file Excel của bạn (LOCAL/IMPORT)
   Note?: string;            // Ghi chú (ví dụ: BuyMed)
+}
+
+// Interface cho kết quả Lì xì
+export interface LiXiResult {
+  Timestamp?: string;
+  EmployeeCode: string;
+  EmployeeName: string;
+  PrizeName: string;
+  PrizeValue: number;
 }

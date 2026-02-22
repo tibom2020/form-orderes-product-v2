@@ -97,3 +97,28 @@ export const submitMarketingData = async (
     return { status: 'error', message: 'Lỗi kết nối hoặc Script chưa được cập nhật bản mới.' };
   }
 };
+
+export const submitLiXiResult = async (
+  url: string,
+  payload: any
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors', // Dùng no-cors tương tự như gửi đơn hàng
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify({
+        action: 'submitLiXi',
+        ...payload
+      }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting LiXi result:', error);
+    return { status: 'error', message: 'Không thể lưu kết quả lì xì.' };
+  }
+};
+

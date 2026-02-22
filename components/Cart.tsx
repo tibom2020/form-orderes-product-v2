@@ -459,97 +459,117 @@ const Cart: React.FC<CartProps> = (props) => {
                 </div>
             </div>
 
-            <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
-                <div className="space-y-1 mb-3">
-                    <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tạm tính:</span>
-                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalAmount)}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-1">
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Doanh số:</span>
-                        <div className="text-right">
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalSales)}</span>
-                            <span className="text-[9px] text-slate-400 ml-1 font-normal uppercase">(ko VAT)</span>
+            <div className="p-2.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
+                <div className="space-y-0.5 mb-2.5">
+                    {/* Tạm tính & Doanh số - Gộp dòng */}
+                    <div className="flex justify-between items-baseline mb-1 pb-1 border-b border-slate-100 dark:border-slate-700">
+                        <div className="flex items-baseline space-x-2">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Tạm tính:</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(totalAmount)}</span>
+                        </div>
+                        <div className="flex items-baseline space-x-1.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Doanh số:</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(totalSales)}</span>
+                            <span className="text-[8px] text-slate-400 uppercase font-normal">(ko VAT)</span>
                         </div>
                     </div>
 
-                    {telfastGroupBaseTotal > 0 && (
-                        <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-700 pb-1 italic">
-                            <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">DS Nhóm Telfast:</span>
-                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{formatCurrency(telfastGroupBaseTotal)}</span>
+                    {/* DS Nhóm đặc biệt - Thu nhỏ tối đa */}
+                    {(telfastGroupBaseTotal > 0 || pharmatonGroupBaseTotal > 0) && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1 italic">
+                            {telfastGroupBaseTotal > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <span className="text-[8px] font-medium text-slate-400 uppercase">DS Telfast:</span>
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{formatCurrency(telfastGroupBaseTotal)}</span>
+                                </div>
+                            )}
+                            {pharmatonGroupBaseTotal > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <span className="text-[8px] font-medium text-slate-400 uppercase">DS Pharmaton:</span>
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{formatCurrency(pharmatonGroupBaseTotal)}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {pharmatonGroupBaseTotal > 0 && (
-                        <div className="flex justify-between items-center border-b border-slate-50 dark:border-slate-700 pb-1 italic">
-                            <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">DS Nhóm Pharmaton:</span>
-                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{formatCurrency(pharmatonGroupBaseTotal)}</span>
+                    {/* Toggles - Giảm chiều cao */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 py-0.5">
+                        <div className="flex items-center space-x-1.5">
+                            <input type="checkbox" id="ontop-lixi" checked={isOnTopLiXi} onChange={(e) => onIsOnTopLiXiChange(e.target.checked)} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
+                            <label htmlFor="ontop-lixi" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Ontop lì xì (-250k)</label>
                         </div>
-                    )}
-
-                    <div className="flex items-center space-x-2 py-1">
-                        <input type="checkbox" id="ontop-lixi" checked={isOnTopLiXi} onChange={(e) => onIsOnTopLiXiChange(e.target.checked)} className="h-4 w-4 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
-                        <label htmlFor="ontop-lixi" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Đơn "Ontop lì xì" (-250k)</label>
-                    </div>
-                    {isOnTopLiXi && (
-                        <div className="flex justify-between text-xs font-bold text-red-500 dark:text-red-400">
-                            <span className="italic">Trừ Ontop lì xì:</span>
-                            <span>-{formatCurrency(250000)}</span>
-                        </div>
-                    )}
-
-                    {/* Dummy Box Toggle */}
-                    {onIsDummyBoxChange && (
-                        <div className="flex items-center space-x-2 py-1">
-                            <input type="checkbox" id="dummy-box" checked={isDummyBox} onChange={(e) => onIsDummyBoxChange(e.target.checked)} className="h-4 w-4 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
-                            <label htmlFor="dummy-box" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Đơn "DummyBox" (-150k)</label>
-                        </div>
-                    )}
-                    {isDummyBox && (
-                        <div className="flex justify-between text-xs font-bold text-red-500 dark:text-red-400">
-                            <span className="italic">Trừ DummyBox:</span>
-                            <span>-{formatCurrency(150000)}</span>
-                        </div>
-                    )}
-
-                    {rebateDiscount > 0 && (
-                        <div className="flex justify-between text-xs font-bold text-red-600 dark:text-red-400">
-                            <span>Khấu trừ Rebate (Max):</span>
-                            <span>-{formatCurrency(rebateDiscount)}</span>
-                        </div>
-                    )}
-
-                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex justify-between text-[10px] font-bold">
-                            <span className="text-slate-500 dark:text-slate-400 uppercase">Phí Local Max:</span>
-                            <span className="text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-bold">
-                            <span className="text-slate-500 dark:text-slate-400 uppercase">Phí Import Max:</span>
-                            <span className="text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
-                        </div>
+                        {onIsDummyBoxChange && (
+                            <div className="flex items-center space-x-1.5">
+                                <input type="checkbox" id="dummy-box" checked={isDummyBox} onChange={(e) => onIsDummyBoxChange(e.target.checked)} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
+                                <label htmlFor="dummy-box" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">DummyBox (-150k)</label>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex justify-between items-end pt-2 border-t-2 border-double border-slate-200 dark:border-slate-600">
-                        <span className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase">Tổng cộng:</span>
-                        <div className="text-right">
-                            <span className="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">{formatCurrency(finalAmount)}</span>
-                            <span className="text-[9px] font-bold text-slate-400 ml-1 uppercase">(VAT)</span>
+                    {/* Deductions - Chỉ hiện khi có số */}
+                    {(isOnTopLiXi || isDummyBox || rebateDiscount > 0) && (
+                        <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
+                            {isOnTopLiXi && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ Ontop lì xì:</span>
+                                    <span>-{formatCurrency(250000)}</span>
+                                </div>
+                            )}
+                            {isDummyBox && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ DummyBox:</span>
+                                    <span>-{formatCurrency(150000)}</span>
+                                </div>
+                            )}
+                            {rebateDiscount > 0 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
+                                    <span>- Khấu trừ Rebate (Max):</span>
+                                    <span>-{formatCurrency(rebateDiscount)}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Phí Max - Hàng ngang */}
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex items-baseline space-x-1.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Local Max:</span>
+                            <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
+                        </div>
+                        <div className="flex items-baseline space-x-1.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Import Max:</span>
+                            <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
+                        </div>
+                    </div>
+
+                    {/* Tổng cộng - Nhấn mạnh */}
+                    <div className="flex justify-between items-end pt-1.5 border-t-2 border-double border-slate-200 dark:border-slate-600">
+                        <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-tighter">Tổng cộng:</span>
+                        <div className="text-right flex items-baseline leading-none">
+                            <span className="text-xl font-black text-sky-600 dark:text-sky-400">{formatCurrency(finalAmount)}</span>
+                            <span className="text-[8px] font-bold text-slate-400 ml-1 uppercase">(VAT)</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="mb-3">
-                    <textarea value={note} onChange={(e) => onNoteChange(e.target.value)} placeholder="Ghi chú đơn hàng..." className="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-sky-500 min-h-[40px] bg-slate-50 dark:bg-slate-700 dark:text-white resize-none" rows={1}></textarea>
-                </div>
+                {/* Ghi chú & Nút action - Tối ưu hàng ngang nếu có thể */}
+                <div className="space-y-2">
+                    <textarea
+                        value={note}
+                        onChange={(e) => onNoteChange(e.target.value)}
+                        placeholder="Ghi chú đơn hàng..."
+                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-sky-500 min-h-[36px] bg-slate-50 dark:bg-slate-700 dark:text-white resize-none leading-normal"
+                        rows={1}
+                    ></textarea>
 
-                <div className="flex gap-2">
-                    <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2.5 rounded-lg font-bold text-[11px] transition-all uppercase border border-slate-200 dark:border-slate-600 shadow-sm"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
-                    <button onClick={onSubmitOrder} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
-                        {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded-lg font-bold text-[10px] transition-all uppercase border border-slate-200 dark:border-slate-600"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
+                        <button onClick={onSubmitOrder} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                            {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
+                        </button>
+                    </div>
                 </div>
-                {successMessage && <div className="mt-2 text-center text-[10px] font-bold text-green-600 dark:text-green-400 animate-bounce">{successMessage}</div>}
+                {successMessage && <div className="mt-1 text-center text-[9px] font-bold text-green-600 dark:text-green-400 animate-bounce">{successMessage}</div>}
             </div>
         </div>
     );

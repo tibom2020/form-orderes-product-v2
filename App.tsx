@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem } from './types';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, LiXiResult } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login from './components/Login';
@@ -10,17 +10,19 @@ import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
 import ForecastTab from './components/ForecastTab'; // Import mới
 import RebateTab from './components/RebateTab'; // Import mới
+import LuckyWheelTab from './components/LuckyWheelTab'; // Import mới
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet } from './services/googleSheetService';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, GiftIcon } from './components/icons';
+import { postOrderToGoogleSheet, fetchDataFromSheet, submitLiXiResult } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 
 const TELFAST_GROUP_IDS = [7, 8];
 const PHARMATON_GROUP_IDS = [18, 19];
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
+const LIXI_ELIGIBLE_CODES = ['20045852', '20044677', '20044676', '20043742', '20043750', '20042514', '20043683', '20046380', '20043741'];
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'lixi';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -32,6 +34,7 @@ const App: React.FC = () => {
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
+  const [allLiXiResults, setAllLiXiResults] = useState<LiXiResult[]>([]); // State mới cho Lì xì
 
   const [viewMode, setViewMode] = useState<ViewMode>('order');
 
@@ -88,13 +91,14 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
 
     try {
-      const [customers, rebates, sales, history, marketing, forecasts] = await Promise.all([
+      const [customers, rebates, sales, history, marketing, forecasts, lixiResults] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
         fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY"),
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
-        fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord")
+        fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
+        fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL")
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
@@ -102,6 +106,7 @@ const App: React.FC = () => {
       setAllPurchaseHistory(history);
       setMarketingData(marketing);
       setForecastData(forecasts);
+      setAllLiXiResults(lixiResults);
     } catch (e) {
       console.error("Data load failed", e);
     }
@@ -412,13 +417,39 @@ const App: React.FC = () => {
   };
 
   // Hàm cập nhật Forecast cục bộ ngay lập tức
-  const handleUpdateForecast = (customerCode: string, importLevel: string, localLevel: string) => {
+  const handleUpdateForecast = (
+    customerCode: string,
+    importLevel: string,
+    localLevel: string,
+    importValue?: number,
+    localValue?: number,
+    extraFields?: {
+      expectedGigaT2: number;
+      expectedBMT2: number;
+      expectedTotalT2: number;
+      targetMonthly: number;
+      reasonNotAchieved?: string;
+      reason2?: string;
+    }
+  ) => {
     setForecastData(prev => {
       // Kiểm tra xem đã có record của KH này chưa
       const exists = prev.find(f => String(f.CustomerCode) === String(customerCode));
       if (exists) {
         return prev.map(f => String(f.CustomerCode) === String(customerCode)
-          ? { ...f, ImportLevel: importLevel, LocalLevel: localLevel }
+          ? {
+            ...f,
+            ImportLevel: importLevel,
+            LocalLevel: localLevel,
+            ImportValue: importValue,
+            LocalValue: localValue,
+            ExpectedGigaT2: extraFields?.expectedGigaT2,
+            ExpectedBMT2: extraFields?.expectedBMT2,
+            ExpectedTotalT2: extraFields?.expectedTotalT2,
+            TargetMonthly: extraFields?.targetMonthly,
+            ReasonNotAchieved: extraFields?.reasonNotAchieved,
+            Reason2: extraFields?.reason2
+          }
           : f
         );
       } else {
@@ -426,11 +457,33 @@ const App: React.FC = () => {
           CustomerCode: customerCode,
           ImportLevel: importLevel,
           LocalLevel: localLevel,
+          ImportValue: importValue,
+          LocalValue: localValue,
+          ExpectedGigaT2: extraFields?.expectedGigaT2,
+          ExpectedBMT2: extraFields?.expectedBMT2,
+          ExpectedTotalT2: extraFields?.expectedTotalT2,
+          TargetMonthly: extraFields?.targetMonthly,
+          ReasonNotAchieved: extraFields?.reasonNotAchieved,
+          Reason2: extraFields?.reason2,
           Timestamp: new Date().toISOString(),
           Employee: loggedInEmployee?.name
         }];
       }
     });
+  };
+
+  const handleSubmitLiXi = async (result: LiXiResult) => {
+    setIsLoading(true);
+    const res = await submitLiXiResult(GOOGLE_SCRIPT_URL, {
+      employeeName: result.EmployeeName,
+      employeeCode: result.EmployeeCode,
+      prizeName: result.PrizeName,
+      prizeValue: result.PrizeValue
+    });
+    setIsLoading(false);
+    if (res.status === 'success') {
+      setAllLiXiResults(prev => [...prev, result]);
+    }
   };
 
   if (!loggedInEmployee) return <Login employees={EMPLOYEES} onLoginSuccess={handleLoginSuccess} />;
@@ -447,21 +500,21 @@ const App: React.FC = () => {
       )}
 
       <header className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 transition-colors duration-200">
-        <div className="container mx-auto px-4 py-2 sm:py-3 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-1.5 sm:py-3 flex justify-between items-center">
           <div className="flex flex-col">
-            <h1 className="text-lg sm:text-xl font-bold text-sky-600 dark:text-sky-400 uppercase leading-none">Hệ Thống Đặt Hàng</h1>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 sm:mt-1 uppercase tracking-tight italic">Ngày cập nhật CTKM: {PROMO_UPDATE_DATE}</p>
+            <h1 className="text-base sm:text-xl font-black text-sky-600 dark:text-sky-400 uppercase leading-none whitespace-nowrap">Hệ Thống Đặt Hàng</h1>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 sm:mt-1 uppercase tracking-tight italic hidden sm:block">Ngày cập nhật CTKM: {PROMO_UPDATE_DATE}</p>
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-1.5 sm:space-x-4">
             {isSuperUser ? (
-              <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200 dark:border-slate-600">
+              <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700 p-0.5 sm:p-1 rounded-lg border border-slate-200 dark:border-slate-600">
                 <div className="p-1 bg-sky-100 dark:bg-sky-900/50 rounded text-sky-600 dark:text-sky-400">
                   <UserGroupIcon />
                 </div>
                 <select
                   value={loggedInEmployee.code}
                   onChange={handleSwitchEmployee}
-                  className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[120px] sm:max-w-xs cursor-pointer"
+                  className="bg-transparent border-none outline-none text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[90px] sm:max-w-xs cursor-pointer"
                 >
                   {EMPLOYEES.map(emp => (
                     <option key={emp.code} value={emp.code} className="text-slate-800">
@@ -481,7 +534,14 @@ const App: React.FC = () => {
             >
               {darkMode ? <SunIcon /> : <MoonIcon />}
             </button>
-            <button onClick={handleLogout} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1 rounded text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600">Thoát</button>
+            <button onClick={handleLogout} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 p-2 sm:px-3 sm:py-1 rounded text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center justify-center">
+              <span className="hidden sm:inline">Thoát</span>
+              <span className="sm:hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </span>
+            </button>
           </div>
         </div>
 
@@ -491,7 +551,7 @@ const App: React.FC = () => {
               setViewMode('order');
               setDashboardCustomerCode(null);
             }}
-            className={`flex-1 min-w-[70px] sm:min-w-[80px] py-2 sm:py-3 text-[11px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'order' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'order' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <ClipboardDocumentListIcon />
             <span className="hidden sm:inline">Đặt Hàng</span>
@@ -499,7 +559,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('dashboard')}
-            className={`flex-1 min-w-[70px] sm:min-w-[80px] py-2 sm:py-3 text-[11px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <ChartBarIcon />
             <span className="hidden sm:inline">Báo Cáo</span>
@@ -507,7 +567,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('rebate')}
-            className={`flex-1 min-w-[70px] sm:min-w-[80px] py-2 sm:py-3 text-[11px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'rebate' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'rebate' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <BanknotesIcon />
             <span className="hidden sm:inline">Trả Thưởng</span>
@@ -515,7 +575,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('landing')}
-            className={`flex-1 min-w-[70px] sm:min-w-[80px] py-2 sm:py-3 text-[11px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landing' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landing' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <StarIcon />
             <span className="hidden sm:inline">Dummybox</span>
@@ -523,19 +583,30 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('forecast')}
-            className={`flex-1 min-w-[70px] sm:min-w-[80px] py-2 sm:py-3 text-[11px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <TrendingUpIcon />
             <span className="hidden sm:inline">Forecast T2</span>
             <span className="sm:hidden">FC T2</span>
           </button>
+
+          {LIXI_ELIGIBLE_CODES.includes(loggedInEmployee.code) && (
+            <button
+              onClick={() => setViewMode('lixi')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'lixi' ? 'text-red-600 border-red-600 bg-red-50 dark:bg-slate-800 dark:text-red-400 dark:border-red-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <GiftIcon />
+              <span className="hidden sm:inline">Lì Xì</span>
+              <span className="sm:hidden">Lì Xì</span>
+            </button>
+          )}
         </div>
 
         {viewMode === 'order' && (
-          <div className="bg-slate-50 dark:bg-slate-900 py-2 sm:py-3 border-t border-slate-200 dark:border-slate-700 shadow-inner">
-            <div className="container mx-auto px-4 flex gap-3 items-center">
+          <div className="bg-slate-50 dark:bg-slate-900 py-1.5 sm:py-3 border-t border-slate-200 dark:border-slate-700 shadow-inner">
+            <div className="container mx-auto px-4 flex gap-2 sm:gap-3 items-center">
               <div className="flex-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
                   <SearchIcon />
                 </div>
                 <input
@@ -543,11 +614,11 @@ const App: React.FC = () => {
                   placeholder="Tìm sản phẩm..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none shadow-sm transition-all text-sm"
+                  className="w-full pl-8 sm:pl-10 pr-3 py-1.5 sm:py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none shadow-sm transition-all text-[13px] sm:text-sm"
                 />
               </div>
 
-              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 flex-shrink-0">
+              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5 sm:p-1 flex-shrink-0">
                 {(['All', 'Local', 'Import'] as const).map(f => (
                   <button key={f} onClick={() => setProductTypeFilter(f)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${productTypeFilter === f ? 'bg-white dark:bg-slate-600 text-sky-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
                     {f === 'All' && <CubeIcon />}
@@ -615,6 +686,8 @@ const App: React.FC = () => {
             rebates={allRebates}
             purchaseHistory={allPurchaseHistory}
             initialCustomerCode={dashboardCustomerCode} // Pass selected customer from Rebate tab
+            forecastData={forecastData}
+            onUpdateForecast={handleUpdateForecast}
             onBack={() => {
               setViewMode('order');
               setDashboardCustomerCode(null);
@@ -647,6 +720,16 @@ const App: React.FC = () => {
             forecastData={forecastData}
             currentEmployee={loggedInEmployee}
             onUpdateForecast={handleUpdateForecast}
+            onCustomerClick={handleQuickViewCustomer}
+          />
+        )}
+
+        {viewMode === 'lixi' && (
+          <LuckyWheelTab
+            currentEmployee={loggedInEmployee}
+            allLiXiResults={allLiXiResults}
+            onSubmitResult={handleSubmitLiXi}
+            isLoading={isLoading}
           />
         )}
       </main>

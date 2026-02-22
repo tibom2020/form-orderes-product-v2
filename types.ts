@@ -225,6 +225,27 @@ export interface PurchaseHistoryItem {
   Note?: string;            // Ghi chú (ví dụ: BuyMed)
 }
 
+// Interface cho tin tức Admin
+export interface AdminNewsItem {
+  timestamp: string;
+  adminName: string;
+  message: string;
+  type?: 'update' | 'news' | 'alert';
+}
+
+export interface LiXiOnTopStats {
+  employeeName: string;
+  orderCount: number;
+  totalSales: number;
+}
+
+export interface LiXiOnTopCustomerStats {
+  customerCode: string;
+  customerName: string;
+  totalSales: number;
+  employeeName: string;
+}
+
 // Interface cho kết quả Lì xì
 export interface LiXiResult {
   Timestamp?: string;

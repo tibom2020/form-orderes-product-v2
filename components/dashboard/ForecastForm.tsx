@@ -215,12 +215,12 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
             <div className="flex justify-between items-center text-xs">
                 <div className="flex gap-3">
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-slate-400 uppercase">GigaT2</span>
+                        <span className="text-[9px] text-slate-400 uppercase">Giga_T2</span>
                         <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(giga)}</span>
                     </div>
                     <div className="w-px bg-slate-200 dark:bg-slate-600 h-8"></div>
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-slate-400 uppercase">BuyMedT2</span>
+                        <span className="text-[9px] text-slate-400 uppercase">BuyMed_T2</span>
                         <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(buymed)}</span>
                     </div>
                 </div>

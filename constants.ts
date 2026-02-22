@@ -6,6 +6,7 @@ export const PROMO_UPDATE_DATE = '23/02/2026';
 
 // Đường dẫn Google Apps Script (Cập nhật mới nhất)
 export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD5n_kNXKaJhIpfVHW014ZZ4AE8PEz-29d3i6ym-fhNIf2T10Gntq7F13N4CHmb9DTnA/exec';
+export const ADMIN_CODE = '20043741';
 
 export const EMPLOYEES: Employee[] = [
   { name: 'Huynh Thi To Trinh', code: '20045852' },

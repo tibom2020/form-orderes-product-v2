@@ -122,3 +122,27 @@ export const submitLiXiResult = async (
   }
 };
 
+export const submitAdminNews = async (
+  url: string,
+  payload: { adminName: string; message: string; timestamp: string }
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify({
+        action: 'adminNews',
+        ...payload
+      }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting Admin News:', error);
+    return { status: 'error', message: 'Không thể gửi thông báo Admin.' };
+  }
+};
+

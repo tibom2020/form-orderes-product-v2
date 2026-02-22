@@ -1,28 +1,28 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, LiXiResult } from './types';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiOnTopStats, LiXiResult, LiXiOnTopCustomerStats } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login from './components/Login';
 import OrderHistory from './components/OrderHistory';
 import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
-import ForecastTab from './components/ForecastTab'; // Import mới
-import RebateTab from './components/RebateTab'; // Import mới
-import LuckyWheelTab from './components/LuckyWheelTab'; // Import mới
+import ForecastTab from './components/ForecastTab';
+import RebateTab from './components/RebateTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, GiftIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet, submitLiXiResult } from './services/googleSheetService';
+import AdminNewsWidget from './components/AdminNewsWidget';
+import LiXiStatsTab from './components/LiXiStatsTab';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon } from './components/icons';
+import { postOrderToGoogleSheet, fetchDataFromSheet } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 
 const TELFAST_GROUP_IDS = [7, 8];
 const PHARMATON_GROUP_IDS = [18, 19];
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
-const LIXI_ELIGIBLE_CODES = ['20045852', '20044677', '20044676', '20043742', '20043750', '20042514', '20043683', '20046380', '20043741'];
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'lixi' | 'lixiStats';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -34,7 +34,8 @@ const App: React.FC = () => {
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
-  const [allLiXiResults, setAllLiXiResults] = useState<LiXiResult[]>([]); // State mới cho Lì xì
+  const [liXiStatsData, setLiXiStatsData] = useState<LiXiOnTopStats[]>([]);
+  const [liXiCustomerStatsData, setLiXiCustomerStatsData] = useState<LiXiOnTopCustomerStats[]>([]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('order');
 
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [drafts, setDrafts] = useState<Order[]>([]);
   const [sentOrders, setSentOrders] = useState<Order[]>([]);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -91,14 +93,17 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
 
     try {
-      const [customers, rebates, sales, history, marketing, forecasts, lixiResults] = await Promise.all([
+      const [customers, rebates, sales, history, marketing, forecasts, , news, lixiStats, lixiCustomerStats] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
         fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY"),
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
-        fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL")
+        fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL"),
+        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS'),
+        fetchDataFromSheet<LiXiOnTopStats>(GOOGLE_SCRIPT_URL, 'LIXI_ONTOP_STATS'),
+        fetchDataFromSheet<LiXiOnTopCustomerStats>(GOOGLE_SCRIPT_URL, 'LIXI_ONTOP_CUSTOMER_STATS')
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
@@ -106,7 +111,10 @@ const App: React.FC = () => {
       setAllPurchaseHistory(history);
       setMarketingData(marketing);
       setForecastData(forecasts);
-      setAllLiXiResults(lixiResults);
+      // setAllLiXiResults(lixiResults); // Tạm ẩn
+      setNewsItems(news || []);
+      setLiXiStatsData(lixiStats || []);
+      setLiXiCustomerStatsData(lixiCustomerStats || []);
     } catch (e) {
       console.error("Data load failed", e);
     }
@@ -472,19 +480,11 @@ const App: React.FC = () => {
     });
   };
 
+  /* 
   const handleSubmitLiXi = async (result: LiXiResult) => {
-    setIsLoading(true);
-    const res = await submitLiXiResult(GOOGLE_SCRIPT_URL, {
-      employeeName: result.EmployeeName,
-      employeeCode: result.EmployeeCode,
-      prizeName: result.PrizeName,
-      prizeValue: result.PrizeValue
-    });
-    setIsLoading(false);
-    if (res.status === 'success') {
-      setAllLiXiResults(prev => [...prev, result]);
-    }
+    // ...
   };
+  */
 
   if (!loggedInEmployee) return <Login employees={EMPLOYEES} onLoginSuccess={handleLoginSuccess} />;
 
@@ -590,6 +590,7 @@ const App: React.FC = () => {
             <span className="sm:hidden">FC T2</span>
           </button>
 
+          {/* Tạm thời ẩn Tab Lì xì theo yêu cầu
           {LIXI_ELIGIBLE_CODES.includes(loggedInEmployee.code) && (
             <button
               onClick={() => setViewMode('lixi')}
@@ -599,7 +600,17 @@ const App: React.FC = () => {
               <span className="hidden sm:inline">Lì Xì</span>
               <span className="sm:hidden">Lì Xì</span>
             </button>
-          )}
+          )} 
+          */}
+
+          <button
+            onClick={() => setViewMode('lixiStats')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'lixiStats' ? 'text-emerald-600 border-emerald-600 bg-emerald-50 dark:bg-slate-800 dark:text-emerald-400 dark:border-emerald-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <StarIcon />
+            <span className="hidden sm:inline">Thống kê đơn Lì xì</span>
+            <span className="sm:hidden">TK Lì xì</span>
+          </button>
         </div>
 
         {viewMode === 'order' && (
@@ -724,6 +735,7 @@ const App: React.FC = () => {
           />
         )}
 
+        {/* Tạm thời ẩn LuckyWheelTab
         {viewMode === 'lixi' && (
           <LuckyWheelTab
             currentEmployee={loggedInEmployee}
@@ -732,7 +744,23 @@ const App: React.FC = () => {
             isLoading={isLoading}
           />
         )}
+        */}
+        {viewMode === 'lixiStats' && (
+          <LiXiStatsTab
+            stats={liXiStatsData}
+            customerStats={liXiCustomerStatsData}
+            isLoading={isLoading}
+            currentEmployee={loggedInEmployee!}
+            isAdmin={isSuperUser}
+          />
+        )}
       </main>
+      <AdminNewsWidget
+        currentEmployee={loggedInEmployee!}
+        isAdmin={loggedInEmployee?.code === ADMIN_CODE}
+        newsItems={newsItems}
+        onNewMessage={(newItem) => setNewsItems(prev => [...prev, newItem])}
+      />
     </div>
   );
 };

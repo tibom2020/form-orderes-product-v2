@@ -253,7 +253,7 @@ const Cart: React.FC<CartProps> = (props) => {
         return { totalMaxPayableFeeLocal: localFee, totalMaxPayableFeeImport: importFee };
     }, [items, telfastGroupBaseTotal, pharmatonGroupBaseTotal]);
 
-    const rebateDiscount = useMemo(() => {
+    const { rebateDiscount, selectedLocalRebateTotal, selectedImportRebateTotal } = useMemo(() => {
         const selectedLocalRebateAmount = localRebates
             .filter(r => selectedRebateIds.includes(r["PromotionID#program"]))
             .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
@@ -265,7 +265,11 @@ const Cart: React.FC<CartProps> = (props) => {
         const actualLocalRebate = Math.min(selectedLocalRebateAmount, totalMaxPayableFeeLocal);
         const actualImportRebate = Math.min(selectedImportRebateAmount, totalMaxPayableFeeImport);
 
-        return actualLocalRebate + actualImportRebate;
+        return {
+            rebateDiscount: actualLocalRebate + actualImportRebate,
+            selectedLocalRebateTotal: selectedLocalRebateAmount,
+            selectedImportRebateTotal: selectedImportRebateAmount,
+        };
     }, [localRebates, importRebates, selectedRebateIds, totalMaxPayableFeeLocal, totalMaxPayableFeeImport]);
 
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount);
@@ -530,15 +534,33 @@ const Cart: React.FC<CartProps> = (props) => {
                         </div>
                     )}
 
-                    {/* Phí Max - Hàng ngang */}
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex items-baseline space-x-1.5">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Local Max:</span>
-                            <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
+                    {/* Phí Max + Tổng Phí Cần Trả - 2 dòng (Local & Import) */}
+                    <div className="pt-1 border-t border-slate-100 dark:border-slate-700 space-y-0.5">
+                        {/* LOCAL */}
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-baseline space-x-1.5">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Local Max:</span>
+                                <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
+                            </div>
+                            {selectedLocalRebateTotal > 0 && (
+                                <div className="flex items-baseline space-x-1.5">
+                                    <span className="text-[9px] font-bold text-amber-500 uppercase">Tổng Phí Cần Trả:</span>
+                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">-{formatCurrency(selectedLocalRebateTotal)}</span>
+                                </div>
+                            )}
                         </div>
-                        <div className="flex items-baseline space-x-1.5">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Import Max:</span>
-                            <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
+                        {/* IMPORT */}
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-baseline space-x-1.5">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Import Max:</span>
+                                <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
+                            </div>
+                            {selectedImportRebateTotal > 0 && (
+                                <div className="flex items-baseline space-x-1.5">
+                                    <span className="text-[9px] font-bold text-amber-500 uppercase">Tổng Phí Cần Trả:</span>
+                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">-{formatCurrency(selectedImportRebateTotal)}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

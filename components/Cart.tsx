@@ -508,6 +508,16 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="dummy-box" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">DummyBox (-150k)</label>
                             </div>
                         )}
+                        <div className="flex items-center space-x-1.5">
+                            <input
+                                type="checkbox"
+                                id="hd-thang-3"
+                                checked={note === 'HĐ tháng 3'}
+                                onChange={(e) => onNoteChange(e.target.checked ? 'HĐ tháng 3' : '')}
+                                className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
+                            />
+                            <label htmlFor="hd-thang-3" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">HĐ tháng 3</label>
+                        </div>
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}

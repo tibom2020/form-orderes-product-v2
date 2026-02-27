@@ -161,6 +161,29 @@ const Cart: React.FC<CartProps> = (props) => {
     // --- Search Logic ---
     const [showSuggestions, setShowSuggestions] = useState(false);
 
+    // --- Submit Validation ---
+    const [showOverLimitWarning, setShowOverLimitWarning] = useState(false);
+
+    const handleSubmitWithValidation = () => {
+        const localOver = selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0;
+        const importOver = selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0;
+        if (localOver || importOver) {
+            setShowOverLimitWarning(true);
+            return;
+        }
+        setShowOverLimitWarning(false);
+        onSubmitOrder();
+    };
+
+    // Helper: append/remove note preset text
+    const toggleNotePreset = (preset: string) => {
+        if (note.includes(preset)) {
+            onNoteChange(note.replace(new RegExp(`\\s*${preset}\\s*`, 'g'), ' ').trim());
+        } else {
+            onNoteChange(note ? `${note} ${preset}` : preset);
+        }
+    };
+
     const filteredCustomers = useMemo(() => {
         if (!customerName || customerName.trim() === '') return [];
         const lower = customerName.toLowerCase();
@@ -508,24 +531,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="dummy-box" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">DummyBox (-150k)</label>
                             </div>
                         )}
-                        <div className="flex items-center space-x-1.5">
-                            <input
-                                type="checkbox"
-                                id="hd-thang-3"
-                                checked={note.includes('HĐ tháng 3')}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        // Append vào note hiện tại, không xóa nội dung cũ
-                                        onNoteChange(note ? `${note} HĐ tháng 3` : 'HĐ tháng 3');
-                                    } else {
-                                        // Chỉ xóa phần "HĐ tháng 3", giữ lại nội dung còn lại
-                                        onNoteChange(note.replace(/\s*HĐ tháng 3\s*/g, ' ').trim());
-                                    }
-                                }}
-                                className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
-                            />
-                            <label htmlFor="hd-thang-3" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">HĐ tháng 3</label>
-                        </div>
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
@@ -553,32 +558,58 @@ const Cart: React.FC<CartProps> = (props) => {
                     )}
 
                     {/* Phí Max + Tổng Phí Cần Trả - 2 dòng (Local & Import) */}
-                    <div className="pt-1 border-t border-slate-100 dark:border-slate-700 space-y-0.5">
+                    <div className="pt-1 border-t border-slate-100 dark:border-slate-700 space-y-1">
                         {/* LOCAL */}
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-baseline space-x-1.5">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Local Max:</span>
-                                <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeLocal)}</span>
-                            </div>
-                            {selectedLocalRebateTotal > 0 && (
+                        <div>
+                            <div className="flex justify-between items-center">
                                 <div className="flex items-baseline space-x-1.5">
-                                    <span className="text-[9px] font-bold text-amber-500 uppercase">Tổng Phí Cần Trả:</span>
-                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">-{formatCurrency(selectedLocalRebateTotal)}</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Local Max:</span>
+                                    <span className={`text-[10px] font-black ${selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{formatCurrency(totalMaxPayableFeeLocal)}</span>
                                 </div>
-                            )}
+                                {selectedLocalRebateTotal > 0 && (
+                                    <div className="flex items-baseline space-x-1.5">
+                                        <span className={`text-[9px] font-bold uppercase ${selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0 ? 'text-red-500' : 'text-amber-500'}`}>Tổng Phí Cần Trả:</span>
+                                        <span className={`text-[10px] font-black ${selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>-{formatCurrency(selectedLocalRebateTotal)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {/* Checkbox preset note LOCAL */}
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                                <input
+                                    type="checkbox"
+                                    id="note-local-max"
+                                    checked={note.includes('Trả tối đa phí Local')}
+                                    onChange={() => toggleNotePreset('Trả tối đa phí Local')}
+                                    className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
+                                />
+                                <label htmlFor="note-local-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Local</label>
+                            </div>
                         </div>
                         {/* IMPORT */}
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-baseline space-x-1.5">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Import Max:</span>
-                                <span className="text-[10px] font-black text-green-600 dark:text-green-400">{formatCurrency(totalMaxPayableFeeImport)}</span>
-                            </div>
-                            {selectedImportRebateTotal > 0 && (
+                        <div>
+                            <div className="flex justify-between items-center">
                                 <div className="flex items-baseline space-x-1.5">
-                                    <span className="text-[9px] font-bold text-amber-500 uppercase">Tổng Phí Cần Trả:</span>
-                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">-{formatCurrency(selectedImportRebateTotal)}</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase">Phí Import Max:</span>
+                                    <span className={`text-[10px] font-black ${selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{formatCurrency(totalMaxPayableFeeImport)}</span>
                                 </div>
-                            )}
+                                {selectedImportRebateTotal > 0 && (
+                                    <div className="flex items-baseline space-x-1.5">
+                                        <span className={`text-[9px] font-bold uppercase ${selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0 ? 'text-red-500' : 'text-amber-500'}`}>Tổng Phí Cần Trả:</span>
+                                        <span className={`text-[10px] font-black ${selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>-{formatCurrency(selectedImportRebateTotal)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {/* Checkbox preset note IMPORT */}
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                                <input
+                                    type="checkbox"
+                                    id="note-import-max"
+                                    checked={note.includes('Trả tối đa phí Import')}
+                                    onChange={() => toggleNotePreset('Trả tối đa phí Import')}
+                                    className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
+                                />
+                                <label htmlFor="note-import-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Import</label>
+                            </div>
                         </div>
                     </div>
 
@@ -602,9 +633,25 @@ const Cart: React.FC<CartProps> = (props) => {
                         rows={1}
                     ></textarea>
 
+                    {/* Warning vượt phí MAX */}
+                    {showOverLimitWarning && (
+                        <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700 p-2 text-[10px] text-red-700 dark:text-red-300">
+                            <p className="font-black uppercase mb-1">⚠️ Cần kiểm tra lại đơn!</p>
+                            {selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0 && (
+                                <p>• Phí Local cần trả <span className="font-bold">{formatCurrency(selectedLocalRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeLocal)}</span></p>
+                            )}
+                            {selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0 && (
+                                <p>• Phí Import cần trả <span className="font-bold">{formatCurrency(selectedImportRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeImport)}</span></p>
+                            )}
+                            <div className="flex gap-2 mt-1.5">
+                                <button onClick={() => setShowOverLimitWarning(false)} className="flex-1 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[10px] uppercase">Kiểm tra lại</button>
+                                <button onClick={() => { setShowOverLimitWarning(false); onSubmitOrder(); }} className="flex-1 py-1 rounded bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] uppercase">Vẫn gửi đơn</button>
+                            </div>
+                        </div>
+                    )}
                     <div className="flex gap-2">
                         <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded-lg font-bold text-[10px] transition-all uppercase border border-slate-200 dark:border-slate-600"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
-                        <button onClick={onSubmitOrder} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
                             {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
                         </button>
                     </div>

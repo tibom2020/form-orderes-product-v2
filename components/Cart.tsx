@@ -512,8 +512,16 @@ const Cart: React.FC<CartProps> = (props) => {
                             <input
                                 type="checkbox"
                                 id="hd-thang-3"
-                                checked={note === 'HĐ tháng 3'}
-                                onChange={(e) => onNoteChange(e.target.checked ? 'HĐ tháng 3' : '')}
+                                checked={note.includes('HĐ tháng 3')}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        // Append vào note hiện tại, không xóa nội dung cũ
+                                        onNoteChange(note ? `${note} HĐ tháng 3` : 'HĐ tháng 3');
+                                    } else {
+                                        // Chỉ xóa phần "HĐ tháng 3", giữ lại nội dung còn lại
+                                        onNoteChange(note.replace(/\s*HĐ tháng 3\s*/g, ' ').trim());
+                                    }
+                                }}
                                 className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
                             />
                             <label htmlFor="hd-thang-3" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">HĐ tháng 3</label>

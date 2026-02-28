@@ -168,7 +168,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
         if (imageFilterMode === 'NO_IMAGE' && hasImage) return false;
 
         return true;
-    });
+    })
+    .sort((a, b) => ((a.District || '').trim()).localeCompare((b.District || '').trim(), 'vi'));
 
     const handleBoxClick = (slot: 1 | 2) => {
         resetUploadState();

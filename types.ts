@@ -10,7 +10,9 @@ export interface Product {
   promotion?: string;
   basePrice?: number;
   note?: string;
-  image?: string; // Link ảnh sản phẩm
+  image?: string;
+  nearExpiry?: string;
+  requireApproval?: boolean;
 }
 
 export interface CartItem extends Product {

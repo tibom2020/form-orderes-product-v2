@@ -81,7 +81,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
             {/* Product Image Section */}
-            <div className="w-full h-32 flex items-center justify-center bg-white rounded-md overflow-hidden mb-3 p-1 border border-slate-100 dark:border-slate-700">
+            <div className="relative w-full h-32 flex items-center justify-center bg-white rounded-md overflow-hidden mb-3 p-1 border border-slate-100 dark:border-slate-700">
+                {product.nearExpiry && (
+                    <span className="absolute top-0 left-0 z-10 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-br-lg shadow-sm uppercase leading-tight">
+                        ⏳ Cận Date {product.nearExpiry}
+                    </span>
+                )}
                 {product.image ? (
                     <img
                         src={product.image}
@@ -95,6 +100,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                     </div>
                 )}
             </div>
+
+            {/* Badges */}
+            {product.requireApproval && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                    <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm uppercase">Đơn Duyệt</span>
+                </div>
+            )}
 
             <div className="flex-1 flex flex-col justify-between">
                 <div>

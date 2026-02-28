@@ -159,20 +159,6 @@ const Cart: React.FC<CartProps> = (props) => {
     // --- Search Logic ---
     const [showSuggestions, setShowSuggestions] = useState(false);
 
-    // --- Submit Validation ---
-    const [showOverLimitWarning, setShowOverLimitWarning] = useState(false);
-
-    const handleSubmitWithValidation = () => {
-        const localOver = selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0;
-        const importOver = selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0;
-        if (localOver || importOver) {
-            setShowOverLimitWarning(true);
-            return;
-        }
-        setShowOverLimitWarning(false);
-        onSubmitOrder();
-    };
-
     // Helper: append/remove note preset text
     const toggleNotePreset = (preset: string) => {
         if (note.includes(preset)) {
@@ -279,6 +265,24 @@ const Cart: React.FC<CartProps> = (props) => {
             selectedImportRebateTotal: selectedImportRebateAmount,
         };
     }, [localRebates, importRebates, selectedRebateIds, totalMaxPayableFeeLocal, totalMaxPayableFeeImport]);
+
+    // --- Submit Validation ---
+    const localProductCount = items.filter(i => i.type === 'Local').length;
+    const importProductCount = items.filter(i => i.type === 'Import').length;
+
+    const localOver = selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0;
+    const importOver = selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0;
+    const hasLocalMaxNote = note.includes('Trả tối đa phí Local');
+    const hasImportMaxNote = note.includes('Trả tối đa phí Import');
+
+    const feeOverNeedsNote = (localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote);
+    const rebateWithoutProducts = (selectedLocalRebateTotal > 0 && localProductCount < 1) || (selectedImportRebateTotal > 0 && importProductCount < 1);
+    const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts;
+
+    const handleSubmitWithValidation = () => {
+        if (isSubmitBlocked) return;
+        onSubmitOrder();
+    };
 
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount);
 
@@ -607,25 +611,36 @@ const Cart: React.FC<CartProps> = (props) => {
                         rows={1}
                     ></textarea>
 
-                    {/* Warning vượt phí MAX */}
-                    {showOverLimitWarning && (
+                    {/* Warning vượt phí MAX & thiếu sản phẩm - Khóa gửi đơn */}
+                    {isSubmitBlocked && (
                         <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700 p-2 text-[10px] text-red-700 dark:text-red-300">
-                            <p className="font-black uppercase mb-1">⚠️ Cần kiểm tra lại đơn!</p>
-                            {selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0 && (
-                                <p>• Phí Local cần trả <span className="font-bold">{formatCurrency(selectedLocalRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeLocal)}</span></p>
+                            <p className="font-black uppercase mb-1">▲ Cần kiểm tra lại đơn!</p>
+                            {feeOverNeedsNote && (
+                                <>
+                                    {localOver && !hasLocalMaxNote && (
+                                        <p>• Phí Local cần trả <span className="font-bold">{formatCurrency(selectedLocalRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeLocal)}</span>. Chọn &quot;Trả tối đa phí Local&quot; để xác nhận.</p>
+                                    )}
+                                    {importOver && !hasImportMaxNote && (
+                                        <p>• Phí Import cần trả <span className="font-bold">{formatCurrency(selectedImportRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeImport)}</span>. Chọn &quot;Trả tối đa phí Import&quot; để xác nhận.</p>
+                                    )}
+                                </>
                             )}
-                            {selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0 && (
-                                <p>• Phí Import cần trả <span className="font-bold">{formatCurrency(selectedImportRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeImport)}</span></p>
+                            {rebateWithoutProducts && (
+                                <>
+                                    {selectedLocalRebateTotal > 0 && localProductCount < 1 && (
+                                        <p>• Chọn trả phí Local nhưng đơn không có sản phẩm Local. Cần ít nhất 1 sản phẩm Local.</p>
+                                    )}
+                                    {selectedImportRebateTotal > 0 && importProductCount < 1 && (
+                                        <p>• Chọn trả phí Import nhưng đơn không có sản phẩm Import. Cần ít nhất 1 sản phẩm Import.</p>
+                                    )}
+                                </>
                             )}
-                            <div className="flex gap-2 mt-1.5">
-                                <button onClick={() => setShowOverLimitWarning(false)} className="flex-1 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[10px] uppercase">Kiểm tra lại</button>
-                                <button onClick={() => { setShowOverLimitWarning(false); onSubmitOrder(); }} className="flex-1 py-1 rounded bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] uppercase">Vẫn gửi đơn</button>
-                            </div>
+                            <p className="mt-1 text-[9px] opacity-90">Chỉnh sửa theo hướng dẫn trên để gửi đơn.</p>
                         </div>
                     )}
                     <div className="flex gap-2">
                         <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded-lg font-bold text-[10px] transition-all uppercase border border-slate-200 dark:border-slate-600"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
-                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading || isSubmitBlocked} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
                             {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
                         </button>
                     </div>

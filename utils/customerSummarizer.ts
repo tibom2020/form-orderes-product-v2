@@ -1,5 +1,5 @@
 
-import type { SalesRecord, Rebate, ForecastItem } from '../types';
+import type { SalesRecord, ForecastItem } from '../types';
 import { formatCurrency } from './formatters';
 
 const REBATE_TIERS = [
@@ -22,7 +22,6 @@ const getRebateLevel = (amount: number) => {
 
 export const generateCustomerSummary = (
     record: SalesRecord | undefined,
-    rebates: Rebate[],
     forecast: ForecastItem | undefined
 ): string => {
     if (!record) return 'Không có dữ liệu khách hàng.';
@@ -38,7 +37,7 @@ export const generateCustomerSummary = (
     const importTier = getRebateLevel(actualImport);
     const localTier = getRebateLevel(actualLocal);
 
-    const remainingRebates = rebates.filter(r => Number(r.RemainAmount) > 0);
+
 
 
     // Header Info
@@ -60,16 +59,8 @@ export const generateCustomerSummary = (
     const totalQuarterDS = (Number(record.MustWin) || 0) + (Number(record.Other) || 0);
     summary += `💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n\n`;
 
-    if (remainingRebates.length > 0) {
-        summary += `🎁 REBATE CÒN LẠI:\n`;
-        remainingRebates.forEach(r => {
-            summary += `+ ${r["PromotionID#program"]}: ${formatCurrency(r.RemainAmount)}\n`;
-        });
-        summary += `\n`;
-    }
-
     // Trạng thái & Điều kiện
-    summary += `\n📑 TRẠNG THÁI:\n`;
+    summary += `📑 TRẠNG THÁI:\n`;
     summary += `+ Điều kiện TB: ${record.Check || 'N/A'}\n`;
     summary += `+ Counter Top: ${record.CounterTop || 'N/A'}\n`;
     summary += `+ CDU: ${record.CDU || 'N/A'}\n`;

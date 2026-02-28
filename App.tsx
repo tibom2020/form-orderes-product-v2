@@ -337,13 +337,12 @@ const App: React.FC = () => {
 
     // Tạo tóm tắt thông tin khách hàng
     const currentSalesRecord = allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim());
-    const currentCustomerRebates = allRebates.filter(r => String(r.code).trim() === String(customerCode).trim());
+
     const currentForecast = forecastData.find(f => String(f.CustomerCode).trim() === String(customerCode).trim());
 
 
     const customerSummary = generateCustomerSummary(
       currentSalesRecord,
-      currentCustomerRebates,
       currentForecast
     );
 
@@ -725,7 +724,6 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee!}
             marketingData={marketingData}
             salesRecords={allSalesRecords}
-            rebates={allRebates}
             forecastData={forecastData}
             onReloadData={handleMarketingDataReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}

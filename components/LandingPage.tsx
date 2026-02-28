@@ -4,7 +4,7 @@ import { submitMarketingData } from '../services/googleSheetService';
 import { GOOGLE_SCRIPT_URL } from '../constants';
 import { removeVietnameseTones } from '../utils/formatters';
 import { generateCustomerSummary } from '../utils/customerSummarizer';
-import type { MarketingRecord, Employee, SalesRecord, Rebate, ForecastItem } from '../types';
+import type { MarketingRecord, Employee, SalesRecord, ForecastItem } from '../types';
 import {
     CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
@@ -16,7 +16,6 @@ interface LandingPageProps {
     currentEmployee: Employee;
     marketingData: MarketingRecord[];
     salesRecords: SalesRecord[];
-    rebates: Rebate[];
     forecastData: ForecastItem[];
     onReloadData: () => void;
     onCustomerSelect: (code: string) => void;
@@ -29,7 +28,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
     currentEmployee,
     marketingData,
     salesRecords,
-    rebates,
     forecastData,
     onCustomerSelect,
     onUpdateRecord
@@ -241,12 +239,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
             let customerSummary = "";
             if (activeSlot === 1) {
                 const record = salesRecords.find(r => String(r.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
-                const customerRebates = rebates.filter(r => String(r.code).trim() === String(selectedCustomer.CustomerCode).trim());
                 const forecast = forecastData.find(f => String(f.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
 
                 customerSummary = generateCustomerSummary(
                     record,
-                    customerRebates,
                     forecast
                 );
             }

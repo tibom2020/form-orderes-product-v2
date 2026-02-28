@@ -1,20 +1,39 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import type { MarketingRecord, Employee } from '../types';
-import { CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon, SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon, DocumentTextIcon, ChartBarIcon, FunnelIcon } from './icons';
 import { submitMarketingData } from '../services/googleSheetService';
+
 import { GOOGLE_SCRIPT_URL } from '../constants';
 import { removeVietnameseTones } from '../utils/formatters';
+import { generateCustomerSummary } from '../utils/customerSummarizer';
+import type { MarketingRecord, Employee, SalesRecord, Rebate, ForecastItem } from '../types';
+import {
+    CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
+    SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
+    DocumentTextIcon, ChartBarIcon, FunnelIcon
+} from './icons';
+
 
 interface LandingPageProps {
     currentEmployee: Employee;
     marketingData: MarketingRecord[];
+    salesRecords: SalesRecord[];
+    rebates: Rebate[];
+    forecastData: ForecastItem[];
     onReloadData: () => void;
     onCustomerSelect: (code: string) => void;
     onUpdateRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ currentEmployee, marketingData, onCustomerSelect, onUpdateRecord }) => {
+
+
+const LandingPage: React.FC<LandingPageProps> = ({
+    currentEmployee,
+    marketingData,
+    salesRecords,
+    rebates,
+    forecastData,
+    onCustomerSelect,
+    onUpdateRecord
+}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<MarketingRecord | null>(null);
     const [showReport, setShowReport] = useState(false);
@@ -218,6 +237,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ currentEmployee, marketingDat
             const base64 = await compressAndConvertBase64(selectedImage);
             const targetColumn = activeSlot === 1 ? 'UpHinh' : 'UpHinh2';
 
+            // Tạo tóm tắt thông tin khách hàng nếu là ảnh số 1
+            let customerSummary = "";
+            if (activeSlot === 1) {
+                const record = salesRecords.find(r => String(r.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
+                const customerRebates = rebates.filter(r => String(r.code).trim() === String(selectedCustomer.CustomerCode).trim());
+                const forecast = forecastData.find(f => String(f.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
+
+                customerSummary = generateCustomerSummary(
+                    record,
+                    customerRebates,
+                    forecast
+                );
+            }
+
             const response = await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'uploadImage',
                 sheetName: 'DummyBoxRecord',
@@ -228,8 +261,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ currentEmployee, marketingDat
                 note: uploadNote,
                 // ADD: Gửi thêm thông tin để Bot Telegram hiển thị
                 employeeName: currentEmployee.name,
-                customerName: selectedCustomer.CustomerName
+                customerName: selectedCustomer.CustomerName,
+                customerSummary: customerSummary // Gửi kèm tóm tắt KPI
             });
+
 
             if (response.status === 'success' && response.url) {
                 const updates = activeSlot === 1 ? { UpHinh: response.url } : { UpHinh2: response.url };
@@ -525,8 +560,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ currentEmployee, marketingDat
                                 else setImageFilterMode('ALL');
                             }}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${imageFilterMode === 'HAS_IMAGE' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800' :
-                                    imageFilterMode === 'NO_IMAGE' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800' :
-                                        'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                imageFilterMode === 'NO_IMAGE' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800' :
+                                    'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                 }`}
                         >
                             <FunnelIcon />
@@ -588,18 +623,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ currentEmployee, marketingDat
 
                                             <div className="flex items-center gap-2 flex-shrink-0">
                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${hasImage
-                                                        ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                                                        : 'bg-slate-100 text-slate-300 dark:bg-slate-700 dark:text-slate-600'
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
+                                                    : 'bg-slate-100 text-slate-300 dark:bg-slate-700 dark:text-slate-600'
                                                     }`}>
                                                     <div className="scale-75"><CameraIcon /></div>
                                                 </div>
                                                 <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasLocal
-                                                        ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800'
-                                                        : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
+                                                    ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800'
+                                                    : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
                                                     }`}>L</div>
                                                 <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasImport
-                                                        ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800'
-                                                        : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800'
+                                                    : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
                                                     }`}>I</div>
                                             </div>
                                         </div>

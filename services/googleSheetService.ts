@@ -10,6 +10,7 @@ interface OrderPayload {
   items: CartItem[];
   isOnTopLiXi: boolean;
   appliedRebates: string[];
+  customerSummary?: string;
 }
 
 export const postOrderToGoogleSheet = async (

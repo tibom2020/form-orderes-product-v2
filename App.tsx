@@ -17,9 +17,10 @@ import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon,
 import { postOrderToGoogleSheet, fetchDataFromSheet } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
+import { generateCustomerSummary } from './utils/customerSummarizer';
+
 
 const TELFAST_GROUP_IDS = [7, 8];
-const PHARMATON_GROUP_IDS = [18, 19];
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
 type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'lixi' | 'lixiStats';
@@ -255,13 +256,9 @@ const App: React.FC = () => {
 
 
   const createOrderObject = (): Omit<Order, 'id' | 'createdAt' | 'status'> => {
-    const telfastGroupBaseTotal = cart
+    const telfastGroupTotal = cart
       .filter(item => TELFAST_GROUP_IDS.includes(item.id))
-      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
-
-    const pharmatonGroupBaseTotal = cart
-      .filter(item => PHARMATON_GROUP_IDS.includes(item.id))
-      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     let totalMaxPayableFeeLocal = 0;
     let totalMaxPayableFeeImport = 0;
@@ -272,10 +269,7 @@ const App: React.FC = () => {
         const maxTotalDiscountLine = basePriceLine * 0.5;
 
         const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-        const isPharmatonGroup = PHARMATON_GROUP_IDS.includes(item.id);
-        let compareValue = undefined;
-        if (isTelfastGroup) compareValue = telfastGroupBaseTotal;
-        else if (isPharmatonGroup) compareValue = pharmatonGroupBaseTotal;
+        let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
 
         const monthlyDiscountPercent = getDiscountPercent(
           item.promotion,
@@ -302,11 +296,7 @@ const App: React.FC = () => {
 
     const totalAmount = cart.reduce((sum, item) => {
       const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-      const isPharmatonGroup = PHARMATON_GROUP_IDS.includes(item.id);
-
-      let compareValue = undefined;
-      if (isTelfastGroup) compareValue = telfastGroupBaseTotal;
-      else if (isPharmatonGroup) compareValue = pharmatonGroupBaseTotal;
+      let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
 
       return sum + calculateLineTotal(
         item.price,
@@ -344,13 +334,28 @@ const App: React.FC = () => {
     if (!customerCode || cart.length === 0) return;
     setIsLoading(true);
     const orderObj = createOrderObject();
+
+    // Tạo tóm tắt thông tin khách hàng
+    const currentSalesRecord = allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim());
+    const currentCustomerRebates = allRebates.filter(r => String(r.code).trim() === String(customerCode).trim());
+    const currentForecast = forecastData.find(f => String(f.CustomerCode).trim() === String(customerCode).trim());
+
+
+    const customerSummary = generateCustomerSummary(
+      currentSalesRecord,
+      currentCustomerRebates,
+      currentForecast
+    );
+
     const result = await postOrderToGoogleSheet(GOOGLE_SCRIPT_URL, {
       employeeName: loggedInEmployee!.name,
       employeeCode: loggedInEmployee!.code,
       ...orderObj,
-      appliedRebates: selectedRebateIds
+      appliedRebates: selectedRebateIds,
+      customerSummary: customerSummary // Gửi kèm tóm tắt KPI
     });
     setIsLoading(false);
+
 
     if (result.status === 'success') {
       const newSent: Order = { ...orderObj, id: Date.now().toString(), createdAt: Date.now(), status: 'sent' };
@@ -717,8 +722,11 @@ const App: React.FC = () => {
 
         {viewMode === 'landing' && (
           <LandingPage
-            currentEmployee={loggedInEmployee}
+            currentEmployee={loggedInEmployee!}
             marketingData={marketingData}
+            salesRecords={allSalesRecords}
+            rebates={allRebates}
+            forecastData={forecastData}
             onReloadData={handleMarketingDataReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}
             onUpdateRecord={handleUpdateMarketingRecord}

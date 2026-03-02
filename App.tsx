@@ -10,10 +10,11 @@ import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
 import ForecastTab from './components/ForecastTab';
 import RebateTab from './components/RebateTab';
+import PriceListTab from './components/PriceListTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import LiXiStatsTab from './components/LiXiStatsTab';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
 import { postOrderToGoogleSheet, fetchDataFromSheet } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
@@ -23,7 +24,7 @@ import { generateCustomerSummary } from './utils/customerSummarizer';
 const TELFAST_GROUP_IDS = [7, 8];
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'lixi' | 'lixiStats';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'lixi' | 'lixiStats';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -593,6 +594,14 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Forecast T2</span>
             <span className="sm:hidden">FC T2</span>
           </button>
+          <button
+            onClick={() => setViewMode('priceList')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <TagIcon />
+            <span className="hidden sm:inline">Báo giá & CTKM</span>
+            <span className="sm:hidden">Báo giá</span>
+          </button>
 
           {/* Tạm thời ẩn Tab Lì xì theo yêu cầu
           {LIXI_ELIGIBLE_CODES.includes(loggedInEmployee.code) && (
@@ -739,6 +748,10 @@ const App: React.FC = () => {
             onUpdateForecast={handleUpdateForecast}
             onCustomerClick={handleQuickViewCustomer}
           />
+        )}
+
+        {viewMode === 'priceList' && (
+          <PriceListTab products={PRODUCTS} />
         )}
 
         {/* Tạm thời ẩn LuckyWheelTab

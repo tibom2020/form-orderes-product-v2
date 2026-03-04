@@ -35,9 +35,9 @@ export const PRODUCTS: Product[] = [
   { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 500k ck 1.97%, 700k ck 2.46%, 900k ck 2.96% (đến 31.03.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
   { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, promotion: 'Mua đơn >= 500k ck 1.97%, 700k ck 2.46%, 900k ck 2.96% (đến 31.03.2026)', image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
   { id: 9, name: 'NO-SPA 40mg', minOrder: '1', minOrderQuantity: 1, price: 45700, type: 'Local', basePrice: 43524, requireApproval: true, image: 'https://i.postimg.cc/QMmGZFm3/nospa-40.webp' },
-  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
+  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, promotion: 'Mua 1h ck 9.85%, (đến 31.03.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
   { id: 11, name: 'ENTEROGERMINA GUT DEFEND (NEW)', minOrder: '1', minOrderQuantity: 1, price: 188321, type: 'Import', basePrice: 174371, promotion: 'Mua 4h ck 3.94%, 6h ck 5.91% (đến 31.03.2026)', image: 'https://i.postimg.cc/bvgcfZT5/entero-2b.webp' },
-  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 169240, type: 'Import', basePrice: 161181, promotion: 'Mua 4h ck 2.47%, 6h ck 2.96% (đến 31.03.2026)', image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
+  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 169240, type: 'Import', basePrice: 161181, promotion: 'Mua 6h ck 0.99% (đến 31.03.2026)', image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
   { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 305130, type: 'Import', basePrice: 290600, promotion: 'Mua 3h ck 4.93% (đến 31.03.2026)', nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
   { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 15.8% (đến 31.03.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },
   { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 63901, type: 'Import', basePrice: 60858, image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
@@ -55,3 +55,17 @@ export const PRODUCTS: Product[] = [
   { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
   { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
+
+// CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
+export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml
+export const DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID = 1; // CORBIERE CALCIUM PLUS 3SUPX10 10ML
+export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
+
+// CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
+// Pharmaton Energy (id 17): tính giá gốc, ko tính chiết khấu 29.5%
+export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [17, 18, 20, 27, 11, 12, 30] as const; // Pharmaton Energy, Essent, Fizzi, Vitality + Enterogermina (GUT 2B, 4B, 2B/20)
+export const DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID = 17; // Khi tính tổng điều kiện: dùng originalPrice (ko áp CK 29.5%)
+export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
+export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
+
+export const DUMMY_BOX_DISCOUNT = 150_000;

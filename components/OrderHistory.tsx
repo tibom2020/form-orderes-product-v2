@@ -123,6 +123,9 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
           <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2 text-sm bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
             <div className="flex justify-between text-slate-600 dark:text-slate-400"><span>Tạm tính:</span> <span>{formatCurrency(order.totalAmount)}</span></div>
             {order.isOnTopLiXi && <div className="flex justify-between text-rose-500 font-medium"><span>Đơn Ontop lì xì:</span> <span>- {formatCurrency(250000)}</span></div>}
+            {order.isDummyBoxLocal && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Local:</span> <span>- {formatCurrency(150000)}</span></div>}
+            {order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Import:</span> <span>- {formatCurrency(150000)}</span></div>}
+            {order.isDummyBox && !order.isDummyBoxLocal && !order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox:</span> <span>- {formatCurrency(150000)}</span></div>}
             <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 text-sky-600 dark:text-sky-400"><span>Tổng thanh toán:</span> <span>{formatCurrency(order.finalAmount)}</span></div>
           </div>
           {order.note && <div className="mt-4"><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Ghi chú:</h4><p className="text-sm whitespace-pre-wrap bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 p-3 rounded-lg border border-amber-100 dark:border-amber-900/30">{order.note}</p></div>}

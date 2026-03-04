@@ -35,6 +35,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<MarketingRecord | null>(null);
     const [showReport, setShowReport] = useState(false);
+    const [showConditionsModal, setShowConditionsModal] = useState(false);
     const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE'>('ALL');
     // State lọc theo Rep
     const [selectedRepFilter, setSelectedRepFilter] = useState<string | null>(null);
@@ -517,6 +518,47 @@ const LandingPage: React.FC<LandingPageProps> = ({
         )
     };
 
+    // Modal điều kiện đặt hàng DummyBox Local & Import (CTKM OPELLA 3/2026)
+    const renderConditionsModal = () => {
+        if (!showConditionsModal) return null;
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
+                        <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase flex items-center gap-2">
+                            <DocumentTextIcon />
+                            Điều kiện đặt hàng DummyBox
+                        </h2>
+                        <button onClick={() => setShowConditionsModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors">✕</button>
+                    </div>
+                    <div className="p-5 space-y-5 overflow-y-auto max-h-[70vh]">
+                        <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                            <h3 className="text-sm font-black text-green-800 dark:text-green-300 uppercase mb-2">DummyBox Local (-150k)</h3>
+                            <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK) của nhóm SP bên dưới).</li>
+                                <li>Sản phẩm tính điều kiện: <strong>Corbiere Calcium Plus</strong>, <strong>Telfast HD</strong>, <strong>Telfast BD</strong>, <strong>Calcium Corbiere Extra 5ml</strong>.</li>
+                                <li>Đơn phải có ít nhất <strong>01 CORBIERE CALCIUM PLUS 3SUPX10 10ML</strong>.</li>
+                                <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
+                            </ul>
+                        </div>
+                        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                            <h3 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase mb-2">DummyBox Import (-150k)</h3>
+                            <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
+                                <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK); riêng Pharmaton Energy dùng giá gốc, không áp CK 29.5%).</li>
+                                <li>Sản phẩm tính điều kiện: <strong>Pharmaton Energy</strong>, <strong>Essent</strong>, <strong>Vitality</strong>, <strong>Pharmaton Energy Fizzi</strong>, <strong>Enterogermina</strong> (GUT 2B, 4B, 2B/20).</li>
+                                <li>Đơn phải có ít nhất <strong>01 PHARMATON VITALITY 40MG TAB BT30 M24 VN</strong>.</li>
+                                <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 rounded-b-2xl text-right">
+                        <button onClick={() => setShowConditionsModal(false)} className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg shadow transition-colors">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="pb-20">
             <input
@@ -528,6 +570,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             />
 
             {renderReportModal()}
+            {renderConditionsModal()}
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -574,6 +617,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         >
                             <ChartBarIcon />
                             <span>Báo Cáo</span>
+                        </button>
+                        <button
+                            onClick={() => setShowConditionsModal(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition-all border border-amber-200 dark:border-amber-800"
+                            title="Xem điều kiện đặt hàng DummyBox Local & Import"
+                        >
+                            <DocumentTextIcon />
+                            <span>Điều kiện đặt hàng</span>
                         </button>
                     </div>
                 </div>

@@ -4,6 +4,16 @@ import type { CartItem, Rebate, Customer } from '../types';
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+import {
+    DUMMY_BOX_LOCAL_PRODUCT_IDS,
+    DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID,
+    DUMMY_BOX_LOCAL_MIN_AMOUNT,
+    DUMMY_BOX_IMPORT_PRODUCT_IDS,
+    DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
+    DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID,
+    DUMMY_BOX_IMPORT_MIN_AMOUNT,
+    DUMMY_BOX_DISCOUNT,
+} from '../constants';
 
 // Nhóm sản phẩm Telfast áp dụng KM theo doanh số đơn hàng
 const TELFAST_GROUP_IDS = [7, 8];
@@ -133,8 +143,10 @@ interface CartProps {
     successMessage: string | null;
     isOnTopLiXi: boolean;
     onIsOnTopLiXiChange: (isChecked: boolean) => void;
-    isDummyBox?: boolean;
-    onIsDummyBoxChange?: (isChecked: boolean) => void;
+    isDummyBoxLocal?: boolean;
+    onIsDummyBoxLocalChange?: (isChecked: boolean) => void;
+    isDummyBoxImport?: boolean;
+    onIsDummyBoxImportChange?: (isChecked: boolean) => void;
     activeDraftId: string | null;
     rebates: Rebate[];
     selectedRebateIds: string[];
@@ -150,7 +162,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onCustomerNameChange, customerAddress, onCustomerAddressChange,
         note, onNoteChange, onUpdateQuantity, onRemoveItem,
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
-        isOnTopLiXi, onIsOnTopLiXiChange, isDummyBox, onIsDummyBoxChange,
+        isOnTopLiXi, onIsOnTopLiXiChange, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [], // Default empty array
         onQuickView
@@ -212,7 +224,40 @@ const Cart: React.FC<CartProps> = (props) => {
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
 
-    const dummyBoxDiscount = isDummyBox ? 150000 : 0;
+    // CTKM OPELLA 3/2026: điều kiện = doanh số sau chiết khấu = tổng (basePrice × số lượng × (1 - % CK tương ứng))
+    const eligibleDummyBoxLocal = useMemo(() => {
+        const localIds: number[] = [...DUMMY_BOX_LOCAL_PRODUCT_IDS];
+        const sum = items
+            .filter(item => localIds.includes(item.id))
+            .reduce((s, item) => {
+                const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+                const compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+                const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue);
+                const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
+                return s + lineAfterDiscount;
+            }, 0);
+        const hasRequired = items.some(item => item.id === DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID && item.quantity > 0);
+        return sum >= DUMMY_BOX_LOCAL_MIN_AMOUNT && hasRequired;
+    }, [items, telfastGroupTotal]);
+    const eligibleDummyBoxImport = useMemo(() => {
+        const importIds: number[] = [...DUMMY_BOX_IMPORT_PRODUCT_IDS];
+        const sum = items
+            .filter(item => importIds.includes(item.id))
+            .reduce((s, item) => {
+                // Pharmaton Energy: ko áp CK 29.5% → dùng giá gốc (originalPrice) cho dòng này
+                if (item.id === DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID) {
+                    return s + (item.originalPrice ?? item.price ?? item.basePrice ?? 0) * item.quantity;
+                }
+                const compareValue = item.price * item.quantity;
+                const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue);
+                const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
+                return s + lineAfterDiscount;
+            }, 0);
+        const hasRequired = items.some(item => item.id === DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID && item.quantity > 0);
+        return sum >= DUMMY_BOX_IMPORT_MIN_AMOUNT && hasRequired;
+    }, [items]);
+
+    const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
     const localRebates = rebates.filter(r => r.Group === 'LOCAL');
     const importRebates = rebates.filter(r => r.Group === 'IMPORT');
@@ -497,22 +542,24 @@ const Cart: React.FC<CartProps> = (props) => {
                         </div>
                     )}
 
-                    {/* Toggles - Giảm chiều cao */}
+                    {/* Toggles - CTKM OPELLA 3/2026: DummyBox Local / Import (chỉ bật khi đủ điều kiện) */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 py-0.5">
-                        <div className="flex items-center space-x-1.5">
-                            <input type="checkbox" id="ontop-lixi" checked={isOnTopLiXi} onChange={(e) => onIsOnTopLiXiChange(e.target.checked)} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
-                            <label htmlFor="ontop-lixi" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Ontop lì xì (-250k)</label>
-                        </div>
-                        {onIsDummyBoxChange && (
+                        {onIsDummyBoxLocalChange && (
                             <div className="flex items-center space-x-1.5">
-                                <input type="checkbox" id="dummy-box" checked={isDummyBox} onChange={(e) => onIsDummyBoxChange(e.target.checked)} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500" />
-                                <label htmlFor="dummy-box" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">DummyBox (-150k)</label>
+                                <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!eligibleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxLocal ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxLocal ? 'Đơn ≥1M (sau CK) nhóm Corbiere Calcium Plus, Telfast HD/BD, Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML' : 'Chưa đủ điều kiện: đơn ≥1M nhóm Corbiere/Telfast/Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML'}>DummyBox Local (-150k)</label>
+                            </div>
+                        )}
+                        {onIsDummyBoxImportChange && (
+                            <div className="flex items-center space-x-1.5">
+                                <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!eligibleDummyBoxImport} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đơn ≥1M (sau CK) nhóm Pharmaton (Energy ko CK 29.5%), Essent, Vitality, Fizzi + Enterogermina (GUT 2B, 4B, 2B/20) + ít nhất 01 Pharmaton Vitality' : 'Chưa đủ điều kiện: đơn ≥1M nhóm trên + ít nhất 01 Pharmaton Vitality'}>DummyBox Import (-150k)</label>
                             </div>
                         )}
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isOnTopLiXi || isDummyBox || rebateDiscount > 0) && (
+                    {(isOnTopLiXi || isDummyBoxLocal || isDummyBoxImport || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isOnTopLiXi && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
@@ -520,10 +567,16 @@ const Cart: React.FC<CartProps> = (props) => {
                                     <span>-{formatCurrency(250000)}</span>
                                 </div>
                             )}
-                            {isDummyBox && (
+                            {isDummyBoxLocal && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
-                                    <span>- Trừ DummyBox:</span>
-                                    <span>-{formatCurrency(150000)}</span>
+                                    <span>- Trừ DummyBox Local:</span>
+                                    <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
+                                </div>
+                            )}
+                            {isDummyBoxImport && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ DummyBox Import:</span>
+                                    <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
                                 </div>
                             )}
                             {rebateDiscount > 0 && (

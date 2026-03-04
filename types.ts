@@ -202,7 +202,9 @@ export interface Order {
   note: string;
   items: CartItem[];
   isOnTopLiXi: boolean;
-  isDummyBox?: boolean; // Tùy chọn đơn DummyBox
+  isDummyBox?: boolean; // Legacy: đơn DummyBox (cũ)
+  isDummyBoxLocal?: boolean;  // CTKM OPELLA: DummyBox Local -150k (đủ điều kiện mới chọn)
+  isDummyBoxImport?: boolean; // CTKM OPELLA: DummyBox Import -150k (đủ điều kiện mới chọn)
   appliedRebates?: string[];
   createdAt: number;
   status: 'draft' | 'sent';

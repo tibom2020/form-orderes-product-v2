@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiOnTopStats, LiXiResult, LiXiOnTopCustomerStats } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -52,7 +52,8 @@ const App: React.FC = () => {
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isOnTopLiXi, setIsOnTopLiXi] = useState(false);
-  const [isDummyBox, setIsDummyBox] = useState(false);
+  const [isDummyBoxLocal, setIsDummyBoxLocal] = useState(false);
+  const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
 
   const [selectedRebateIds, setSelectedRebateIds] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Order[]>([]);
@@ -141,7 +142,8 @@ const App: React.FC = () => {
     setCart([]);
     setNote('');
     setIsOnTopLiXi(false);
-    setIsDummyBox(false);
+    setIsDummyBoxLocal(false);
+    setIsDummyBoxImport(false);
     setSelectedRebateIds([]);
     setActiveDraftId(null);
   }
@@ -163,14 +165,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDummyBoxToggle = (checked: boolean) => {
-    setIsDummyBox(checked);
-    const discountNote = "Đơn DummyBox";
-    if (checked) {
-      setNote(prevNote => prevNote.includes(discountNote) ? prevNote : (prevNote ? `${prevNote}\n${discountNote}` : discountNote));
-    } else {
-      setNote(prevNote => prevNote.split('\n').filter(line => !line.includes(discountNote)).join('\n'));
-    }
+  const handleDummyBoxLocalToggle = (checked: boolean) => {
+    setIsDummyBoxLocal(checked);
+  };
+  const handleDummyBoxImportToggle = (checked: boolean) => {
+    setIsDummyBoxImport(checked);
   };
 
   const handleSwitchEmployee = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -309,12 +308,14 @@ const App: React.FC = () => {
 
     const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
-    const dummyBoxDiscount = isDummyBox ? 150000 : 0;
+    const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount);
 
     return {
-      customerCode, customerName, customerAddress, note, items: cart, isOnTopLiXi, isDummyBox,
+      customerCode, customerName, customerAddress, note, items: cart, isOnTopLiXi,
+      isDummyBox: isDummyBoxLocal || isDummyBoxImport,
+      isDummyBoxLocal, isDummyBoxImport,
       appliedRebates: selectedRebateIds,
       totalAmount, finalAmount, totalSales
     };
@@ -388,7 +389,11 @@ const App: React.FC = () => {
     setCart(d.items);
     setNote(d.note);
     setIsOnTopLiXi(d.isOnTopLiXi);
-    setIsDummyBox(!!d.isDummyBox);
+    setIsDummyBoxLocal(!!d.isDummyBoxLocal);
+    setIsDummyBoxImport(!!d.isDummyBoxImport);
+    if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
+      setIsDummyBoxLocal(true);
+    }
     setSelectedRebateIds(d.appliedRebates || []);
     setActiveDraftId(d.id);
   };
@@ -678,7 +683,8 @@ const App: React.FC = () => {
                     onSubmitOrder={handleSubmitOrder} isLoading={isLoading}
                     successMessage={successMessage}
                     isOnTopLiXi={isOnTopLiXi} onIsOnTopLiXiChange={handleOnTopLiXiToggle}
-                    isDummyBox={isDummyBox} onIsDummyBoxChange={handleDummyBoxToggle}
+                    isDummyBoxLocal={isDummyBoxLocal} onIsDummyBoxLocalChange={handleDummyBoxLocalToggle}
+                    isDummyBoxImport={isDummyBoxImport} onIsDummyBoxImportChange={handleDummyBoxImportToggle}
                     activeDraftId={activeDraftId}
                     rebates={currentCustomerRebates}
                     selectedRebateIds={selectedRebateIds}

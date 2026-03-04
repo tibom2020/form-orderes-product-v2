@@ -9,6 +9,9 @@ interface OrderPayload {
   note: string;
   items: CartItem[];
   isOnTopLiXi: boolean;
+  isDummyBox?: boolean;
+  isDummyBoxLocal?: boolean;
+  isDummyBoxImport?: boolean;
   appliedRebates: string[];
   customerSummary?: string;
 }

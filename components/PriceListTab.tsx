@@ -3,7 +3,15 @@ import type { Product } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { SearchIcon, DocumentTextIcon, TagIcon, HomeIcon, GlobeAmericasIcon } from './icons';
 import { PROMO_UPDATE_DATE } from '../constants';
-import { REBATE_TIERS } from './dashboard/DashboardUtils';
+import { REBATE_TIERS, formatCompact } from './dashboard/DashboardUtils';
+
+/** Format doanh số level: hiển thị 1.5 Tr cho 1.500.000 thay vì làm tròn 2 Tr */
+function formatTierAmount(amount: number): string {
+    if (amount >= 1000000 && amount < 10000000 && amount % 1000000 !== 0) {
+        return (amount / 1000000).toFixed(1).replace(/\.0$/, '') + ' Tr';
+    }
+    return formatCompact(amount);
+}
 
 /** Lấy % CK lớn nhất từ chuỗi promotion để hiển thị (ví dụ "4.9" từ "Mua 5h ck 4.9%") */
 function getMaxDiscountPercent(promotion: string | undefined): number | null {
@@ -86,9 +94,11 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                                 <button
                                     key={tier.level}
                                     onClick={() => setSelectedLevelIndex(idx)}
+                                    title={`Doanh số ≥ ${formatTierAmount(tier.amount)}`}
                                     className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${selectedLevelIndex === idx ? 'bg-red-500 text-white shadow-sm' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-500'}`}
                                 >
-                                    Lv{tier.level} -{tier.percent}%
+                                    <span>Lv{tier.level} -{tier.percent}%</span>
+                                    <span className="opacity-90 font-normal ml-0.5">(≥{formatTierAmount(tier.amount)})</span>
                                 </button>
                             ))}
                         </div>
@@ -98,12 +108,12 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                     </span>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[calc(100vh-12rem)] md:max-h-none md:overflow-x-auto">
                     <table className="w-full text-left border-collapse text-sm">
                         <thead className="bg-slate-100 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300 sticky top-0 z-10">
                             <tr>
-                                <th className="px-2 py-2.5 w-10 text-center font-bold border-b border-slate-200 dark:border-slate-600">STT</th>
-                                <th className="px-3 py-2.5 font-bold border-b border-slate-200 dark:border-slate-600 min-w-[200px]">Tên thuốc</th>
+                                <th className="px-2 py-2.5 w-10 text-center font-bold border-b border-slate-200 dark:border-slate-600 sticky left-0 z-20 bg-slate-100 dark:bg-slate-700/70">STT</th>
+                                <th className="px-3 py-2.5 font-bold border-b border-slate-200 dark:border-slate-600 min-w-[200px] sticky left-10 z-20 bg-slate-100 dark:bg-slate-700/70 shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)]">Tên thuốc</th>
                                 <th className="px-2 py-2.5 w-20 text-center font-bold border-b border-slate-200 dark:border-slate-600">Mua tối thiểu</th>
                                 <th className="px-2 py-2.5 w-28 text-right font-bold border-b border-slate-200 dark:border-slate-600">Đơn giá gốc (VAT)</th>
                                 <th className="px-2 py-2.5 w-24 text-center font-bold border-b border-slate-200 dark:border-slate-600">% CK tháng</th>
@@ -123,9 +133,9 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                                 if (p.note) noteParts.push(p.note);
                                 const noteStr = noteParts.join(' • ') || '-';
                                 return (
-                                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">
-                                        <td className="px-2 py-2 text-center text-slate-500 dark:text-slate-400 font-medium">{idx + 1}</td>
-                                        <td className="px-3 py-2 font-medium uppercase leading-tight">{p.name}</td>
+                                    <tr key={p.id} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">
+                                        <td className="px-2 py-2 text-center text-slate-500 dark:text-slate-400 font-medium sticky left-0 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 border-r border-slate-100 dark:border-slate-700">{idx + 1}</td>
+                                        <td className="px-3 py-2 font-medium uppercase leading-tight sticky left-10 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 min-w-[200px] shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)] border-r border-slate-100 dark:border-slate-700">{p.name}</td>
                                         <td className="px-2 py-2 text-center">{p.minOrder}</td>
                                         <td className="px-2 py-2 text-right font-medium">
                                             {formatCurrency(p.basePrice ?? p.price)}

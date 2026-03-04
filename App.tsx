@@ -15,7 +15,7 @@ import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import LiXiStatsTab from './components/LiXiStatsTab';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet } from './services/googleSheetService';
+import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary } from './utils/customerSummarizer';
@@ -165,11 +165,29 @@ const App: React.FC = () => {
     }
   };
 
+  const toggleNoteLine = (lineText: string, checked: boolean) => {
+    setNote(prevNote => {
+      const lines = prevNote
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+      const hasLine = lines.includes(lineText);
+
+      if (checked) {
+        return hasLine ? prevNote : [...lines, lineText].join('\n');
+      }
+
+      return lines.filter(line => line !== lineText).join('\n');
+    });
+  };
+
   const handleDummyBoxLocalToggle = (checked: boolean) => {
     setIsDummyBoxLocal(checked);
+    toggleNoteLine('DummyBox Local -150k', checked);
   };
   const handleDummyBoxImportToggle = (checked: boolean) => {
     setIsDummyBoxImport(checked);
+    toggleNoteLine('DummyBox Import -150k', checked);
   };
 
   const handleSwitchEmployee = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -205,6 +223,20 @@ const App: React.FC = () => {
     if (!code) return;
     setDashboardCustomerCode(code);
     setViewMode('dashboard');
+  };
+
+  const handlePublishGppNotice = async (message: string) => {
+    const timestamp = new Date().toLocaleString('vi-VN');
+    const result = await submitAdminNews(GOOGLE_SCRIPT_URL, {
+      adminName: loggedInEmployee!.name,
+      message,
+      timestamp
+    });
+    if (result.status === 'success') {
+      setNewsItems(prev => [...prev, { timestamp, adminName: loggedInEmployee!.name, message, type: 'alert' }]);
+    } else {
+      throw new Error(result.message);
+    }
   };
 
   const handleRebateCustomerClick = (code: string | number) => {
@@ -731,6 +763,8 @@ const App: React.FC = () => {
             customers={allCustomers}
             currentEmployee={loggedInEmployee}
             onCustomerClick={handleRebateCustomerClick}
+            isAdmin={loggedInEmployee?.code === ADMIN_CODE}
+            onPublishGppNotice={handlePublishGppNotice}
           />
         )}
 

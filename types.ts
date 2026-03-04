@@ -39,6 +39,7 @@ export interface Rebate {
   Endate?: string | number;
   RemainAmount: number;
   Rep?: string; // Added Rep field
+  DATEGPP?: string | number; // Ngày hết hạn giấy phép GPP (từ sheet REBATE)
 }
 
 export interface DashboardProps {

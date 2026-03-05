@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Rebate, Customer, Employee } from '../types';
+import type { Rebate, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem } from '../types';
 import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon } from './icons';
 import { formatCurrency, removeVietnameseTones } from '../utils/formatters';
 
@@ -19,6 +19,7 @@ interface RebateTabProps {
     onCustomerClick: (code: string) => void;
     isAdmin?: boolean;
     onPublishGppNotice?: (message: string) => Promise<void>;
+    onPublishCustomerNotice?: (payload: RebateCustomerNoticePayload) => Promise<void>;
 }
 
 // Helper to parse date from string (dd/mm/yyyy) or excel serial number
@@ -60,7 +61,22 @@ const formatDateForInput = (date: Date): string => {
     return `${y}-${m}-${d}`;
 }
 
-const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice }) => {
+type RebateMergedItem = Rebate & {
+    customerName: string;
+    amount: number;
+    expiryDate: Date | null;
+    groupTag: string;
+    dateStr: string;
+};
+
+type RebateGroup = {
+    code: string;
+    name: string;
+    items: RebateMergedItem[];
+    total: number;
+};
+
+const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
     const [sortOption, setSortOption] = useState<'NAME' | 'AMOUNT_DESC' | 'DATE_ASC'>('NAME');
@@ -164,7 +180,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
 
     // 3. Group the filtered data by Customer Code
     const groupedData = useMemo(() => {
-        const groups: { [key: string]: { code: string, name: string, items: any[], total: number } } = {};
+        const groups: { [key: string]: RebateGroup } = {};
 
         filteredAndSortedData.forEach(item => {
             const code = String(item.code);
@@ -264,6 +280,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
 
     const [showExportGppModal, setShowExportGppModal] = useState(false);
     const [isPublishingGpp, setIsPublishingGpp] = useState(false);
+    const [publishingCustomerCode, setPublishingCustomerCode] = useState<string | null>(null);
 
     const buildGppNoticeText = useMemo(() => {
         const lines: string[] = ['📋 THÔNG BÁO: KH CÓ GPP SẮP HẾT HẠN', ''];
@@ -302,6 +319,93 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             alert('Gửi thất bại. Vui lòng thử lại.');
         } finally {
             setIsPublishingGpp(false);
+        }
+    };
+
+    const buildCustomerNoticePayload = (group: RebateGroup): RebateCustomerNoticePayload => {
+        const rep = group.items.find(item => item.Rep)?.Rep || currentEmployee.name;
+        const gppRawDate = group.items.find(item => item.DATEGPP != null)?.DATEGPP;
+        const gppExpiryDate = formatDateDisplay(gppRawDate);
+
+        const toProgramItem = (item: RebateMergedItem): RebateNoticeProgramItem => ({
+            program: item["PromotionID#program"] || 'N/A',
+            remainAmount: Number(item.RemainAmount) || 0,
+            dueDate: formatDateDisplay(item.Endate || item.EndDate),
+        });
+
+        const localPrograms = group.items
+            .filter(item => item.groupTag.includes('LOCAL'))
+            .map(toProgramItem);
+        const importPrograms = group.items
+            .filter(item => item.groupTag.includes('IMPORT'))
+            .map(toProgramItem);
+
+        const totalLocalAmount = localPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
+        const totalImportAmount = importPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
+        const totalAmount = totalLocalAmount + totalImportAmount;
+
+        const dueDates = group.items
+            .map(item => parseDate(item.Endate || item.EndDate))
+            .filter((d): d is Date => !!d);
+        const nearestDueDate = dueDates.length > 0
+            ? formatDateDisplay(new Date(Math.min(...dueDates.map(d => d.getTime()))).toISOString())
+            : 'N/A';
+
+        const formatProgramList = (items: RebateNoticeProgramItem[]): string => {
+            if (items.length === 0) return '- Không có';
+            return items
+                .map((it, idx) => `${idx + 1}. ${it.program} | ${formatCurrency(it.remainAmount)} | Hạn: ${it.dueDate}`)
+                .join('\n');
+        };
+
+        const message = [
+            '📢 THÔNG BÁO PHÍ TRẢ THƯỞNG KHÁCH HÀNG',
+            '--------------------------------',
+            `🔢 Code: ${group.code}`,
+            `🏠 Tên KH: ${group.name}`,
+            `🧑‍💼 Tên nhân viên: ${rep}`,
+            `📅 Ngày đến hạn gần nhất: ${nearestDueDate}`,
+            `🧾 Ngày hết GPP: ${gppExpiryDate}`,
+            '',
+            `💚 LOCAL (Tổng: ${formatCurrency(totalLocalAmount)}):`,
+            formatProgramList(localPrograms),
+            '',
+            `💙 IMPORT (Tổng: ${formatCurrency(totalImportAmount)}):`,
+            formatProgramList(importPrograms),
+            '',
+            `💰 Tổng phí còn lại: ${formatCurrency(totalAmount)}`,
+        ].join('\n');
+
+        return {
+            code: group.code,
+            customerName: group.name,
+            employeeName: rep,
+            gppExpiryDate,
+            nearestDueDate,
+            localPrograms,
+            importPrograms,
+            totalLocalAmount,
+            totalImportAmount,
+            totalAmount,
+            message,
+        };
+    };
+
+    const handlePublishCustomerNotice = async (group: RebateGroup) => {
+        const payload = buildCustomerNoticePayload(group);
+        setPublishingCustomerCode(group.code);
+        try {
+            if (onPublishCustomerNotice) {
+                await onPublishCustomerNotice(payload);
+                alert('Đã gửi thông báo qua n8n/Telegram.');
+            } else {
+                await navigator.clipboard.writeText(payload.message);
+                alert('Đã sao chép thông báo vào clipboard.');
+            }
+        } catch {
+            alert('Gửi thông báo thất bại. Vui lòng thử lại.');
+        } finally {
+            setPublishingCustomerCode(null);
         }
     };
 
@@ -567,6 +671,14 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                             <div className="text-[12px] font-black text-red-600 dark:text-red-400">
                                                 Σ {formatCurrency(group.total)}
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePublishCustomerNotice(group)}
+                                                disabled={publishingCustomerCode === group.code}
+                                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60"
+                                            >
+                                                {publishingCustomerCode === group.code ? 'Đang gửi...' : 'Xuất thông báo'}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

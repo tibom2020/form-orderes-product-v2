@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult } from './types';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login from './components/Login';
@@ -14,7 +14,7 @@ import PriceListTab from './components/PriceListTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews } from './services/googleSheetService';
+import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary } from './utils/customerSummarizer';
@@ -229,6 +229,13 @@ const App: React.FC = () => {
       setNewsItems(prev => [...prev, { timestamp, adminName: loggedInEmployee!.name, message, type: 'alert' }]);
     } else {
       throw new Error(result.message);
+    }
+  };
+
+  const handlePublishCustomerNotice = async (payload: RebateCustomerNoticePayload) => {
+    const result = await submitRebateCustomerNotice(GOOGLE_SCRIPT_URL, payload);
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Gửi thông báo thất bại.');
     }
   };
 
@@ -749,6 +756,7 @@ const App: React.FC = () => {
             onCustomerClick={handleRebateCustomerClick}
             isAdmin={loggedInEmployee?.code === ADMIN_CODE}
             onPublishGppNotice={handlePublishGppNotice}
+            onPublishCustomerNotice={handlePublishCustomerNotice}
           />
         )}
 

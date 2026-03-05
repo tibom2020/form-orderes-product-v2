@@ -1,5 +1,6 @@
 
 import type { CartItem } from '../types';
+import type { RebateCustomerNoticePayload } from '../types';
 
 interface OrderPayload {
   employeeName: string;
@@ -147,6 +148,30 @@ export const submitAdminNews = async (
   } catch (error) {
     console.error('Error submitting Admin News:', error);
     return { status: 'error', message: 'Không thể gửi thông báo Admin.' };
+  }
+};
+
+export const submitRebateCustomerNotice = async (
+  url: string,
+  payload: RebateCustomerNoticePayload
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify({
+        action: 'rebateCustomerNotice',
+        ...payload,
+      }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting rebate customer notice:', error);
+    return { status: 'error', message: 'Không thể gửi thông báo khách hàng qua webhook.' };
   }
 };
 

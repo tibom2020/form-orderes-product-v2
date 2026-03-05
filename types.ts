@@ -259,3 +259,23 @@ export interface LiXiResult {
   PrizeName: string;
   PrizeValue: number;
 }
+
+export interface RebateNoticeProgramItem {
+  program: string;
+  remainAmount: number;
+  dueDate: string;
+}
+
+export interface RebateCustomerNoticePayload {
+  code: string;
+  customerName: string;
+  employeeName: string;
+  gppExpiryDate: string;
+  nearestDueDate: string;
+  localPrograms: RebateNoticeProgramItem[];
+  importPrograms: RebateNoticeProgramItem[];
+  totalLocalAmount: number;
+  totalImportAmount: number;
+  totalAmount: number;
+  message: string;
+}

@@ -779,6 +779,7 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee}
             onUpdateForecast={handleUpdateForecast}
             onCustomerClick={handleQuickViewCustomer}
+            onReloadData={loadInitialData}
           />
         )}
 

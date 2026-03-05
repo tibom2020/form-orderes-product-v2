@@ -4,12 +4,16 @@ import type { SalesRecord, Employee, ForecastItem } from '../../types';
 import { SaveIcon, CheckCircleIcon, TrendingUpIcon } from '../icons';
 import { submitMarketingData } from '../../services/googleSheetService';
 import { GOOGLE_SCRIPT_URL } from '../../constants';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, buildForecastNotificationMessage } from '../../utils/formatters';
+import { FORECAST_LEVELS, REASONS } from '../../utils/forecastCalculations';
 
 interface ForecastFormProps {
     selectedCustomer: SalesRecord;
     forecastData: ForecastItem[];
     currentEmployee: Employee;
+    /** Số KH đã dự báo / tổng KH cần dự báo (để hiển thị trong thông báo) */
+    forecastedCount?: number;
+    totalCount?: number;
     onUpdateForecast: (
         customerCode: string,
         importLevel: string,
@@ -27,33 +31,6 @@ interface ForecastFormProps {
     ) => void;
     onSuccess?: () => void;
 }
-
-const FORECAST_LEVELS = [
-    { id: '0DONG', label: '0 đồng', sub: '', max: 0, avg: 0 },
-    { id: '700k', label: '700k', sub: '', max: 700000, avg: 700000 },
-    { id: '1.5-3TR', label: '1.5 - 3Tr', sub: '(3%)', max: 3000000, avg: 2250000 },
-    { id: '3-5TR', label: '3 - 5Tr', sub: '(3.5%)', max: 5000000, avg: 4000000 },
-    { id: '5-10TR', label: '5 - 10Tr', sub: '(4%)', max: 10000000, avg: 7500000 },
-    { id: '10-15TR', label: '10 - 15Tr', sub: '(4.5%)', max: 15000000, avg: 12500000 },
-    { id: '15-25TR', label: '15 - 25Tr', sub: '(5%)', max: 25000000, avg: 20000000 },
-    { id: '>25TR', label: '> 25Tr', sub: '(5.5%)', max: Infinity, avg: 25000000 },
-];
-
-const REASONS = [
-    "KH giảm mua hàng do đăng kí mức doanh thu thấp với Thuế",
-    "Khách hàng hạn chế hóa đơn đầu vào hoặc đã thừa hóa đơn đầu vào, nhập hàng qua các kênh không cần xuất Hóa đơn",
-    "Khách hàng chưa xử lý xong thuế truy thu những năm trước nên hạn chế nhập hàng",
-    "KH lo ngại thuế, kiểm tra liên ngành",
-    "KH tồn kho nhiều do mua Stockpile trong 2025 nên hạn chế nhập hàng thêm",
-    "KH tồn kho nhiều do hàng ra chậm nên hạn chế nhập hàng",
-    "Nhu cầu thị trường giảm nên giảm mua hàng",
-    "KH mua hàng từ nguồn khác rẻ hơn do giá Opella/ giá Buymed cao hơn",
-    "KH hết công nợ với Gigamed, không mua được hàng",
-    "KH mới mở",
-    "KH hết GPP. Chờ thẩm định mới",
-    "KH đóng code/ block code/ đóng MST. Tạm đóng cửa",
-    "Khác"
-];
 
 const REASON_DETAILS_PROMPTS: Record<string, string> = {
     "KH giảm mua hàng do đăng kí mức doanh thu thấp với Thuế": "Cung cấp mức Doanh Thu KH đăng kí với cơ quan Thuế",
@@ -92,6 +69,8 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
     selectedCustomer,
     forecastData,
     currentEmployee,
+    forecastedCount = 0,
+    totalCount = 0,
     onUpdateForecast,
     onSuccess
 }) => {
@@ -129,15 +108,15 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
     const impBm = Number(selectedCustomer.BMImport || selectedCustomer.ActualImportBuyMed) || 0;
     const totalImp = impGiga + impBm;
 
-    const impGigaRatio = totalImp > 0 ? impGiga / totalImp : 0;
-    const impBmRatio = totalImp > 0 ? impBm / totalImp : 0;
+    const impGigaRatio = totalImp > 0 ? impGiga / totalImp : 0.5;
+    const impBmRatio = totalImp > 0 ? impBm / totalImp : 0.5;
 
     const locGiga = Math.max(0, totalGiga - impGiga);
     const locBm = Math.max(0, totalBm - impBm);
     const totalLoc = locGiga + locBm;
 
-    const locGigaRatio = totalLoc > 0 ? locGiga / totalLoc : 0;
-    const locBmRatio = totalLoc > 0 ? locBm / totalLoc : 0;
+    const locGigaRatio = totalLoc > 0 ? locGiga / totalLoc : 0.5;
+    const locBmRatio = totalLoc > 0 ? locBm / totalLoc : 0.5;
 
     // CALCULATE EXPECTED VALUES
     const getLevelValue = (lvlId: string | null, specVal: number) => {
@@ -170,6 +149,22 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
 
         setIsSubmitting(true);
         try {
+            const existingForecast = forecastData.find(f => String(f.CustomerCode) === String(selectedCustomer.CustomerCode) && (f.ImportLevel || f.LocalLevel));
+            const newForecastedCount = existingForecast ? forecastedCount : forecastedCount + 1;
+
+            const message = buildForecastNotificationMessage({
+                customerCode: selectedCustomer.CustomerCode,
+                customerName: selectedCustomer.CustomerName || '',
+                employeeName: currentEmployee.name,
+                importLevel: importLevel || '',
+                localLevel: localLevel || '',
+                expectedTotalT2,
+                targetMonthly,
+                reasonNotAchieved: !isTargetAchieved ? reasonNotAchieved : "Đạt Target",
+                forecastedCount: newForecastedCount,
+                totalCount
+            });
+
             await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'submitForecast',
                 customerCode: selectedCustomer.CustomerCode,
@@ -179,13 +174,15 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                 localLevel: localLevel || '',
                 importValue: importLevel === '>25TR' ? importSpecificValue : 0,
                 localValue: localLevel === '>25TR' ? localSpecificValue : 0,
-                // New Fields
                 expectedGigaT2,
                 expectedBMT2,
                 expectedTotalT2,
                 targetMonthly,
                 reasonNotAchieved: !isTargetAchieved ? reasonNotAchieved : "Đạt Target",
-                reason2: !isTargetAchieved ? reason2 : ""
+                reason2: !isTargetAchieved ? reason2 : "",
+                forecastedCount: newForecastedCount,
+                totalCount,
+                message
             });
 
             onUpdateForecast(

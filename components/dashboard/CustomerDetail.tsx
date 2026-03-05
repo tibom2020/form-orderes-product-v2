@@ -12,6 +12,7 @@ import {
 import { ProgressBar } from './ProgressBars';
 import { LevelTodoTable } from './LevelTodoTable';
 import ForecastForm from './ForecastForm';
+import { isCoverQ1 } from '../../utils/forecastCalculations';
 import { TrendingUpIcon } from '../icons';
 
 interface CustomerDetailProps {
@@ -49,6 +50,16 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     const [showQuickSearch, setShowQuickSearch] = useState(false);
     const [quickSearchTerm, setQuickSearchTerm] = useState('');
     const quickSearchInputRef = useRef<HTMLInputElement>(null);
+
+    // Forecast stats: số KH dự báo / tổng KH cần dự báo (cho thông báo)
+    const forecastStats = useMemo(() => {
+        const coverQ1 = allRecords.filter(r => isCoverQ1(r));
+        const total = coverQ1.length;
+        const done = coverQ1.filter(r =>
+            forecastData.some(f => String(f.CustomerCode) === String(r.CustomerCode) && (f.ImportLevel || f.LocalLevel))
+        ).length;
+        return { forecastedCount: done, totalCount: total };
+    }, [allRecords, forecastData]);
 
     // Quick Search Logic
     const quickSearchResults = useMemo(() => {
@@ -692,7 +703,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                 </div>
             )}
             {/* Forecast Section */}
-            {record.CoverQ1 === 'YES' && (
+            {isCoverQ1(record) && (
                 <div className="mt-8 mx-4 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-fade-in">
                     <h3 className="text-lg font-black uppercase text-sky-600 dark:text-sky-400 mb-6 flex items-center gap-2">
                         <TrendingUpIcon />
@@ -703,6 +714,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                         selectedCustomer={record}
                         forecastData={forecastData}
                         currentEmployee={currentEmployee}
+                        forecastedCount={forecastStats.forecastedCount}
+                        totalCount={forecastStats.totalCount}
                         onUpdateForecast={onUpdateForecast}
                     />
                 </div>

@@ -1,3 +1,40 @@
+/** Escape cho Telegram HTML (tránh < > & làm hỏng parse_mode) */
+const escapeHtml = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Build message thông báo forecast (dùng khi gửi tới AppScript - AppScript ưu tiên data.message) */
+export const buildForecastNotificationMessage = (params: {
+    customerCode: string;
+    customerName: string;
+    employeeName: string;
+    importLevel: string;
+    localLevel: string;
+    expectedTotalT2: number;
+    targetMonthly: number;
+    reasonNotAchieved?: string;
+    forecastedCount: number;
+    totalCount: number;
+    timeStr?: string;
+}) => {
+    const { customerCode, customerName, employeeName, importLevel, localLevel, expectedTotalT2, targetMonthly, reasonNotAchieved, forecastedCount, totalCount } = params;
+    const timeStr = params.timeStr ?? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const progressStr = totalCount > 0 ? `${forecastedCount}/${totalCount}` : '-';
+    return (
+        '📊 <b>THÔNG BÁO DỰ BÁO DOANH SỐ T3</b>\n' +
+        '--------------------------------\n' +
+        `⏰ <b>Thời gian:</b> ${escapeHtml(timeStr)}\n` +
+        `🔢 <b>Code:</b> ${escapeHtml(customerCode)}\n` +
+        `🏠 <b>Tên KH:</b> ${escapeHtml(customerName)}\n` +
+        `🧑‍💼 <b>Nhân viên:</b> ${escapeHtml(employeeName)}\n` +
+        '--------------------------------\n' +
+        `📦 <b>Mức Import:</b> ${escapeHtml(importLevel || '-')}\n` +
+        `📦 <b>Mức Local:</b> ${escapeHtml(localLevel || '-')}\n` +
+        `💰 <b>Expected Total T3:</b> ${formatCurrency(expectedTotalT2)}\n` +
+        `🎯 <b>Target tháng:</b> ${formatCurrency(targetMonthly)}\n` +
+        (reasonNotAchieved ? `📝 <b>Lý do không đạt Target:</b> ${escapeHtml(reasonNotAchieved)}\n` : '') +
+        '--------------------------------\n' +
+        `📈 <b>Tiến độ:</b> ${progressStr} KH dự báo`
+    );
+};
 
 export const formatCurrency = (value: number) => {
     if (isNaN(value)) {

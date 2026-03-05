@@ -42,9 +42,7 @@ export const generateCustomerSummary = (
 
     // Header Info
     let summary = `📍 KH: ${record.CustomerName}\n`;
-    summary += `🆔 Code: ${record.CustomerCode}${record.CodeBuyMed ? ` - ${record.CodeBuyMed} (BM)` : ''}\n`;
     summary += `🏆 Loại TB: ${record.FinalStoreType || 'Thành viên'}\n`;
-    summary += `📦 DummyBox: ${record.DieuKienTrungBay || 'N/A'}\n\n`;
 
     // KPI Tháng hiện tại
     summary += `📊 KPI THÁNG HIỆN TẠI:\n`;
@@ -53,30 +51,22 @@ export const generateCustomerSummary = (
 
     summary += `🔹 Local: ${formatCurrency(actualLocal)} (${localPct.toFixed(1)}% / ${formatCurrency(targetLocal)})\n`;
     summary += `   ➔ ${localTier ? `Mức: ${localTier.level} (CK: ${localTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'}\n\n`;
-
-
     // Doanh số Quý (Tính từ tổng MW + Other)
     const totalQuarterDS = (Number(record.MustWin) || 0) + (Number(record.Other) || 0);
     summary += `💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n\n`;
-
-    // Trạng thái & Điều kiện
+ 
     summary += `📑 TRẠNG THÁI:\n`;
     summary += `+ Điều kiện TB: ${record.Check || 'N/A'}\n`;
     summary += `+ Counter Top: ${record.CounterTop || 'N/A'}\n`;
     summary += `+ CDU: ${record.CDU || 'N/A'}\n`;
-
-
-    // Forecast T2
-    summary += `\n📈 FORECAST T2:\n`;
+// Dự báo T3
+    summary += `\n📈 FORECAST T3:\n`;
     if (forecast) {
         summary += `+ Import: ${forecast.ImportLevel || 'N/A'}\n`;
         summary += `+ Local: ${forecast.LocalLevel || 'N/A'}\n`;
     } else {
-        summary += `- Chưa có dự báo T2.\n`;
+        summary += `- Chưa có dự báo T3.\n`;
     }
-
-
-
     summary += `\nNote : Doanh số chưa bao gồm đơn đã đặt\n`;
     return summary;
 };

@@ -88,13 +88,25 @@ const ForecastTab: React.FC<ForecastTabProps> = ({ salesData, forecastData, curr
         return amount.toString();
     };
 
+    const getSalesT1 = (record: SalesRecord) => {
+        const imp = Number(record.ActualImportT1) || Number(record["SALE IMPORT T1"]) || Number(record.SaleImportTotalT1) || 0;
+        const loc = Number(record.ActualLocalT1) || Number(record["SALE LOCAL T1"]) || Number(record.SaleLocalTotalT1) || 0;
+        return imp + loc;
+    };
+
+    const getSalesT2 = (record: SalesRecord) => {
+        const imp = Number(record.ActualImportT2) || Number(record["SALE IMPORT T2"]) || 0;
+        const loc = Number(record.ActualLocalT2) || Number(record["SALE LOCAL T2"]) || 0;
+        return imp + loc;
+    };
+
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[500px] flex flex-col">
             <div className="p-4 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10 rounded-t-xl">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold text-slate-800 dark:text-white uppercase flex items-center gap-2">
                         <TrendingUpIcon />
-                        <span>Dự Báo Sale T2 ({filteredData.length})</span>
+                        <span>Dự Báo Sale T3 ({filteredData.length})</span>
                     </h2>
                     <button
                         onClick={() => setShowStats(true)}
@@ -148,7 +160,9 @@ const ForecastTab: React.FC<ForecastTabProps> = ({ salesData, forecastData, curr
                                     <div className="flex items-center gap-2">
                                         <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{record.CustomerCode}</p>
                                         <span className="text-[10px] text-slate-400">•</span>
-                                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">DS T1: {formatCompact((Number(record.ActualImport) || 0) + (Number(record.ActualLocal) || 0))}</p>
+                                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">DS T1: {formatCompact(getSalesT1(record))}</p>
+                                        <span className="text-[10px] text-slate-400">|</span>
+                                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">DS T2: {formatCompact(getSalesT2(record))}</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
@@ -178,7 +192,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({ salesData, forecastData, curr
                         </button>
 
                         <div className="mb-6">
-                            <h3 className="text-xl font-black uppercase text-indigo-600 dark:text-indigo-400">Thống kê Forecast T2</h3>
+                            <h3 className="text-xl font-black uppercase text-indigo-600 dark:text-indigo-400">Thống kê Forecast T3</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tổng hợp tiến độ theo nhân viên (Chỉ tính KH Cover Q1)</p>
                         </div>
 

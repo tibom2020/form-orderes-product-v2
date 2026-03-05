@@ -133,6 +133,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     // T1 Data
     const actualImportT1 = Number(record.ActualImportT1 || record["SALE IMPORT T1"] || record.SaleImportTotalT1) || 0;
     const actualLocalT1 = Number(record.ActualLocalT1 || record["SALE LOCAL T1"] || record.SaleLocalTotalT1) || 0;
+    const actualImportT2 = Number(record.ActualImportT2 || record["SALE IMPORT T2"] || record.ActualImport) || 0;
+    const actualLocalT2 = Number(record.ActualLocalT2 || record["SALE LOCAL T2"] || record.ActualLocal) || 0;
+    const totalActualT2 = actualImportT2 + actualLocalT2;
 
     const importTierT1 = getRebateLevel(actualImportT1);
     const importBonusT1 = importTierT1 ? actualImportT1 * (importTierT1.percent / 100) : 0;
@@ -402,8 +405,18 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                             <div className="absolute top-2 right-2 text-slate-300 group-hover:text-sky-500 transition-colors"><ClockIcon /></div>
                             <div className="w-10 h-10 rounded-full bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400"><GiftIcon /></div>
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">Doanh số tháng</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">Doanh số hiện tại</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalActual)}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400"><ClockIcon /></div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Actual T2 (DOANH_SO)</p>
+                                <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalActualT2)}</p>
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400">
+                                    Imp: {formatCompact(actualImportT2)} | Loc: {formatCompact(actualLocalT2)}
+                                </p>
                             </div>
                         </div>
                         <div onClick={() => setActiveDetailModal('Products')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group relative">
@@ -683,7 +696,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                 <div className="mt-8 mx-4 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-fade-in">
                     <h3 className="text-lg font-black uppercase text-sky-600 dark:text-sky-400 mb-6 flex items-center gap-2">
                         <TrendingUpIcon />
-                        <span>Dự Báo Sale T2</span>
+                        <span>Dự Báo Sale T3</span>
                     </h3>
 
                     <ForecastForm

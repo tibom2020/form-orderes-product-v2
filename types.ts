@@ -123,6 +123,8 @@ export interface SalesRecord {
   // --- DỮ LIỆU LỊCH SỬ CHI TIẾT T1 (Tên biến chuẩn) ---
   ActualImportT1?: number; // MỚI: Thực đạt Import T1
   ActualLocalT1?: number;  // MỚI: Thực đạt Local T1
+  ActualImportT2?: number; // MỚI: Thực đạt Import T2
+  ActualLocalT2?: number;  // MỚI: Thực đạt Local T2
 
   SaleImportGigaT1?: number;
   SaleImportBuyMedT1?: number;
@@ -136,10 +138,16 @@ export interface SalesRecord {
   "SALE IMPORT (GIGA T1)"?: number | string;
   "SALE IMPORT (BUYMED) T1"?: number | string;
   "SALE IMPORT T1"?: number | string;
+  "SALE IMPORT T2"?: number | string;
+  "SALE IMPORT (GIGA T2)"?: number | string;
+  "SALE IMPORT (BUYMED) T2"?: number | string;
 
   "SALE LOCAL (GIGA) T1"?: number | string;
   "SALE LOCAL (BUYMED) T1"?: number | string;
   "SALE LOCAL T1"?: number | string;
+  "SALE LOCAL T2"?: number | string;
+  "SALE LOCAL (GIGA) T2"?: number | string;
+  "SALE LOCAL (BUYMED) T2"?: number | string;
 
   // --- DỮ LIỆU TỶ TRỌNG KÊNH ---
   GIGAMED?: number | string;

@@ -29,6 +29,7 @@ interface ForecastFormProps {
 }
 
 const FORECAST_LEVELS = [
+    { id: '0DONG', label: '0 đồng', sub: '', max: 0, avg: 0 },
     { id: '700k', label: '700k', sub: '', max: 700000, avg: 700000 },
     { id: '1.5-3TR', label: '1.5 - 3Tr', sub: '(3%)', max: 3000000, avg: 2250000 },
     { id: '3-5TR', label: '3 - 5Tr', sub: '(3.5%)', max: 5000000, avg: 4000000 },
@@ -147,6 +148,8 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
 
     const impDS = getLevelValue(importLevel, importSpecificValue);
     const locDS = getLevelValue(localLevel, localSpecificValue);
+    const actualImportT2 = Number(selectedCustomer.ActualImportT2 || selectedCustomer["SALE IMPORT T2"]) || 0;
+    const actualLocalT2 = Number(selectedCustomer.ActualLocalT2 || selectedCustomer["SALE LOCAL T2"]) || 0;
 
     const expectedGigaT2 = (impDS * impGigaRatio) + (locDS * locGigaRatio);
     const expectedBMT2 = (impDS * impBmRatio) + (locDS * locBmRatio);
@@ -170,6 +173,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
             await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'submitForecast',
                 customerCode: selectedCustomer.CustomerCode,
+                customerName: selectedCustomer.CustomerName || '',
                 employeeName: currentEmployee.name,
                 importLevel: importLevel || '',
                 localLevel: localLevel || '',
@@ -209,56 +213,88 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
         }
     };
 
-    const HistoryCard = ({ title, giga, buymed, total, colorClass, titleClass, totalClass }: any) => (
+    const HistoryCard = ({ title, t1Giga, t1BuyMed, t1Total, t2Giga, t2BuyMed, t2Total, colorClass, titleClass, totalClass }: any) => (
         <div className={`p-3 rounded-lg border ${colorClass} mb-4`}>
             <h4 className={`text-xs font-bold uppercase mb-2 ${titleClass}`}>{title}</h4>
-            <div className="flex justify-between items-center text-xs">
-                <div className="flex gap-3">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] text-slate-400 uppercase">Giga_T2</span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(giga)}</span>
+            <div className="space-y-3 text-xs">
+                <div className="flex justify-between items-center">
+                    <div className="flex gap-3">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 uppercase">Giga T1</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(t1Giga)}</span>
+                        </div>
+                        <div className="w-px bg-slate-200 dark:bg-slate-600 h-8"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 uppercase">BuyMed T1</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(t1BuyMed)}</span>
+                        </div>
                     </div>
-                    <div className="w-px bg-slate-200 dark:bg-slate-600 h-8"></div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] text-slate-400 uppercase">BuyMed_T2</span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(buymed)}</span>
+                    <div className={`flex flex-col items-end ${totalClass}`}>
+                        <span className="text-[9px] opacity-70 uppercase">Tổng T1</span>
+                        <span className="text-base font-black">{formatCompact(t1Total)}</span>
                     </div>
                 </div>
-                <div className={`flex flex-col items-end ${totalClass}`}>
-                    <span className="text-[9px] opacity-70 uppercase">Tổng T1</span>
-                    <span className="text-lg font-black">{formatCompact(total)}</span>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-slate-600/50">
+                    <div className="flex gap-3">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 uppercase">Giga T2</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(t2Giga)}</span>
+                        </div>
+                        <div className="w-px bg-slate-200 dark:bg-slate-600 h-8"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 uppercase">BuyMed T2</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCompact(t2BuyMed)}</span>
+                        </div>
+                    </div>
+                    <div className={`flex flex-col items-end ${totalClass}`}>
+                        <span className="text-[9px] opacity-70 uppercase">Tổng T2</span>
+                        <span className="text-base font-black">{formatCompact(t2Total)}</span>
+                    </div>
                 </div>
             </div>
         </div>
     );
 
-    const importGiga = getSaleValue(selectedCustomer, ["ActualImportGiga", "SALE IMPORT (GIGA T1)", "SaleImportGigaT1"]);
-    const importBuyMed = getSaleValue(selectedCustomer, ["ActualImportBuyMed", "SALE IMPORT (BUYMED) T1", "SaleImportBuyMedT1"]);
-    const importTotal = getSaleValue(selectedCustomer, ["ActualImportT1", "ActualImport", "SALE IMPORT T1", "SaleImportTotalT1"]);
+    // T1: Chỉ dùng key T1
+    const importGigaT1 = getSaleValue(selectedCustomer, ["SALE IMPORT (GIGA T1)", "SaleImportGigaT1"]);
+    const importBuyMedT1 = getSaleValue(selectedCustomer, ["SALE IMPORT (BUYMED) T1", "SaleImportBuyMedT1"]);
+    const importTotalT1 = getSaleValue(selectedCustomer, ["ActualImportT1", "SALE IMPORT T1", "SaleImportTotalT1"]);
 
-    const localGiga = getSaleValue(selectedCustomer, ["ActualLocalGiga", "SALE LOCAL (GIGA) T1", "SaleLocalGigaT1"]);
-    const localBuyMed = getSaleValue(selectedCustomer, ["ActualLocalBuyMed", "SALE LOCAL (BUYMED) T1", "SaleLocalBuyMedT1"]);
-    const localTotal = getSaleValue(selectedCustomer, ["ActualLocalT1", "ActualLocal", "SALE LOCAL T1", "SaleLocalTotalT1"]);
+    // T2: Chỉ dùng key T2 (không fallback sang ActualImport/ActualLocal vì đó là tổng tích lũy)
+    const importGigaT2 = getSaleValue(selectedCustomer, ["SALE IMPORT (GIGA T2)"]);
+    const importBuyMedT2 = getSaleValue(selectedCustomer, ["SALE IMPORT (BUYMED) T2"]);
+    const importTotalT2 = getSaleValue(selectedCustomer, ["ActualImportT2", "SALE IMPORT T2"]);
+
+    const localGigaT1 = getSaleValue(selectedCustomer, ["SALE LOCAL (GIGA) T1", "SaleLocalGigaT1"]);
+    const localBuyMedT1 = getSaleValue(selectedCustomer, ["SALE LOCAL (BUYMED) T1", "SaleLocalBuyMedT1"]);
+    const localTotalT1 = getSaleValue(selectedCustomer, ["ActualLocalT1", "SALE LOCAL T1", "SaleLocalTotalT1"]);
+
+    const localGigaT2 = getSaleValue(selectedCustomer, ["SALE LOCAL (GIGA) T2"]);
+    const localBuyMedT2 = getSaleValue(selectedCustomer, ["SALE LOCAL (BUYMED) T2"]);
+    const localTotalT2 = getSaleValue(selectedCustomer, ["ActualLocalT2", "SALE LOCAL T2"]);
 
     return (
         <div className="space-y-6">
             <div className="animate-fade-in">
                 <HistoryCard
-                    title="Lịch sử Sale Import T1"
-                    giga={importGiga}
-                    buymed={importBuyMed}
-                    total={importTotal}
+                    title="Lịch sử Sale Import T1 & T2"
+                    t1Giga={importGigaT1}
+                    t1BuyMed={importBuyMedT1}
+                    t1Total={importTotalT1}
+                    t2Giga={importGigaT2}
+                    t2BuyMed={importBuyMedT2}
+                    t2Total={importTotalT2}
                     colorClass="bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
                     titleClass="text-blue-700 dark:text-blue-400"
                     totalClass="text-blue-600 dark:text-blue-400"
                 />
 
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase mb-3 flex items-center gap-2">
-                    <span>🎯 Chọn Dự Kiến Import T2</span>
+                    <span>🎯 Chọn Dự Kiến Import T3</span>
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {FORECAST_LEVELS.map((lvl) => {
-                        const isWarning = importLevel === lvl.id && lvl.max < (selectedCustomer.ActualImport || 0);
+                        const isWarning = importLevel === lvl.id && lvl.max < actualImportT2;
                         return (
                             <button
                                 key={lvl.id}
@@ -304,9 +340,9 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                         </div>
                     </div>
                 )}
-                {importLevel && importLevel !== '>25TR' && FORECAST_LEVELS.find(l => l.id === importLevel)!.max < (selectedCustomer.ActualImport || 0) && (
+                {importLevel && importLevel !== '>25TR' && FORECAST_LEVELS.find(l => l.id === importLevel)!.max < actualImportT2 && (
                     <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[11px] font-bold rounded border border-red-100 dark:border-red-800 flex items-center gap-2 animate-pulse">
-                        ⚠️ Mức dự báo thấp hơn doanh số thực tế hiện tại ({formatCompact(selectedCustomer.ActualImport)})
+                        ⚠️ Mức dự báo thấp hơn doanh số thực tế T2 ({formatCompact(actualImportT2)})
                     </div>
                 )}
             </div>
@@ -315,21 +351,24 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
 
             <div className="animate-fade-in delay-100">
                 <HistoryCard
-                    title="Lịch sử Sale Local T1"
-                    giga={localGiga}
-                    buymed={localBuyMed}
-                    total={localTotal}
+                    title="Lịch sử Sale Local T1 & T2"
+                    t1Giga={localGigaT1}
+                    t1BuyMed={localBuyMedT1}
+                    t1Total={localTotalT1}
+                    t2Giga={localGigaT2}
+                    t2BuyMed={localBuyMedT2}
+                    t2Total={localTotalT2}
                     colorClass="bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-800"
                     titleClass="text-green-700 dark:text-green-400"
                     totalClass="text-green-600 dark:text-green-400"
                 />
 
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase mb-3 flex items-center gap-2">
-                    <span>🎯 Chọn Dự Kiến Local T2</span>
+                    <span>🎯 Chọn Dự Kiến Local T3</span>
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {FORECAST_LEVELS.map((lvl) => {
-                        const isWarning = localLevel === lvl.id && lvl.max < (selectedCustomer.ActualLocal || 0);
+                        const isWarning = localLevel === lvl.id && lvl.max < actualLocalT2;
                         return (
                             <button
                                 key={lvl.id}
@@ -375,9 +414,9 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                         </div>
                     </div>
                 )}
-                {localLevel && localLevel !== '>25TR' && FORECAST_LEVELS.find(l => l.id === localLevel)!.max < (selectedCustomer.ActualLocal || 0) && (
+                {localLevel && localLevel !== '>25TR' && FORECAST_LEVELS.find(l => l.id === localLevel)!.max < actualLocalT2 && (
                     <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[11px] font-bold rounded border border-red-100 dark:border-red-800 flex items-center gap-2 animate-pulse">
-                        ⚠️ Mức dự báo thấp hơn doanh số thực tế hiện tại ({formatCompact(selectedCustomer.ActualLocal)})
+                        ⚠️ Mức dự báo thấp hơn doanh số thực tế T2 ({formatCompact(actualLocalT2)})
                     </div>
                 )}
             </div>
@@ -387,7 +426,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in zoom-in-95 duration-300">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingUpIcon />
-                        <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">Tổng kết dự kiến T2</h4>
+                        <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">Tổng kết dự kiến T3</h4>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -403,11 +442,11 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
 
                     <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Tổng dự kiến T2</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Tổng dự kiến T3</span>
                             <span className="text-base font-black text-sky-600 dark:text-sky-400">{formatCurrency(expectedTotalT2)}</span>
                         </div>
                         <div className="flex justify-between items-center mb-3">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Target Tháng</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Target Tháng 3</span>
                             <span className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(targetMonthly)}</span>
                         </div>
 
@@ -460,7 +499,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
 
             <div className="pt-4 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="text-xs text-slate-500 italic">
-                    * Vui lòng cân nhắc kỹ dựa trên lịch sử T1
+                    * Vui lòng cân nhắc kỹ dựa trên lịch sử T1 & T2
                 </div>
                 <button
                     onClick={handleSubmit}

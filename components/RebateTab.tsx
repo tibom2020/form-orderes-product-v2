@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Rebate, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem } from '../types';
-import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon } from './icons';
+import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon, ChartBarIcon } from './icons';
 import { formatCurrency, removeVietnameseTones } from '../utils/formatters';
 
 export type GppNoticeRow = {
@@ -82,6 +82,8 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
     const [sortOption, setSortOption] = useState<'NAME' | 'AMOUNT_DESC' | 'DATE_ASC'>('NAME');
     const [selectedDates, setSelectedDates] = useState<string[]>([]); // Array of YYYY-MM-DD
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
+    // Lọc KH khi click vào ô số tiền trong bảng thống kê (Rep + ngày hết hạn)
+    const [statsCellFilter, setStatsCellFilter] = useState<{ rep: string; dateStr: string } | null>(null);
 
     const ADMIN_CODE = '20043741';
 
@@ -155,6 +157,14 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             matchingItems = matchingItems.filter(item => selectedPromotions.includes(item["PromotionID#program"]));
         }
 
+        // Lọc theo ô đã chọn trong bảng thống kê (Rep + ngày hết hạn)
+        if (statsCellFilter) {
+            matchingItems = matchingItems.filter(item => {
+                const rep = item.Rep?.trim() || 'Chưa phân công';
+                return rep === statsCellFilter.rep && item.dateStr === statsCellFilter.dateStr;
+            });
+        }
+
         // 2. Identify the set of customer codes that have at least one matching item
         const matchingCustomerCodes = new Set(matchingItems.map(item => String(item.code)));
 
@@ -176,7 +186,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
         });
 
         return finalSet;
-    }, [mergedData, searchTerm, filterGroup, sortOption, selectedDates, selectedPromotions]);
+    }, [mergedData, searchTerm, filterGroup, sortOption, selectedDates, selectedPromotions, statsCellFilter]);
 
     // 3. Group the filtered data by Customer Code
     const groupedData = useMemo(() => {
@@ -279,8 +289,45 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
     const hasGppWarnings = gppWarningBuckets.some(b => b.list.length > 0);
 
     const [showExportGppModal, setShowExportGppModal] = useState(false);
+    const [showRepStatsModal, setShowRepStatsModal] = useState(false);
     const [isPublishingGpp, setIsPublishingGpp] = useState(false);
     const [publishingCustomerCode, setPublishingCustomerCode] = useState<string | null>(null);
+
+    // Pivot: Rep (rows) x Ngày hết hạn (columns) - tương tự ảnh đính kèm
+    const repStatsPivot = useMemo(() => {
+        const data = mergedData;
+        const dateSet = new Set<string>();
+        const repMap = new Map<string, Map<string, number>>(); // rep -> (dateStr -> sum)
+        data.forEach(item => {
+            const rep = item.Rep?.trim() || 'Chưa phân công';
+            const dateStr = item.dateStr !== 'N/A' ? item.dateStr : '__NO_DATE__';
+            if (dateStr !== '__NO_DATE__') dateSet.add(dateStr);
+            if (!repMap.has(rep)) repMap.set(rep, new Map());
+            const row = repMap.get(rep)!;
+            row.set(dateStr, (row.get(dateStr) || 0) + item.amount);
+        });
+        const dateColumns = Array.from(dateSet).sort();
+        const repRows = Array.from(repMap.entries()).map(([rep, rowMap]) => {
+            let rowTotal = 0;
+            const dateAmounts: Record<string, number> = {};
+            dateColumns.forEach(d => {
+                const v = rowMap.get(d) || 0;
+                dateAmounts[d] = v;
+                rowTotal += v;
+            });
+            const minTs = Math.min(...data.filter(i => (i.Rep?.trim() || 'Chưa phân công') === rep).map(i => i.expiryDate?.getTime() ?? Infinity));
+            return { rep, dateAmounts, rowTotal, minExpiryTs: minTs === Infinity ? null : minTs };
+        });
+        repRows.sort((a, b) => (a.minExpiryTs ?? Infinity) - (b.minExpiryTs ?? Infinity));
+        const grandTotalRow: Record<string, number> = {};
+        let overallTotal = 0;
+        dateColumns.forEach(d => {
+            const colSum = repRows.reduce((s, r) => s + (r.dateAmounts[d] || 0), 0);
+            grandTotalRow[d] = colSum;
+            overallTotal += colSum;
+        });
+        return { dateColumns, repRows, grandTotalRow, overallTotal };
+    }, [mergedData]);
 
     const buildGppNoticeText = useMemo(() => {
         const lines: string[] = ['📋 THÔNG BÁO: KH CÓ GPP SẮP HẾT HẠN', ''];
@@ -290,8 +337,10 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             hasAny = true;
             lines.push(`--- Trong ${bucket.days} ngày (${bucket.list.length} KH) ---`);
             bucket.list.forEach((row, idx) => {
-                const phiStr = row.programDetails.map(p => `${p.program}: ${formatCurrency(p.remainAmount)}`).join('; ');
-                lines.push(`${idx + 1}. Code: ${row.code} | Tên: ${row.name} | Ngày hết GPP: ${row.dateStr} | Rep: ${row.rep} | Phí: ${phiStr}`);
+                lines.push(`${idx + 1}. Code: ${row.code} | Tên: ${row.name} | Ngày hết GPP: ${row.dateStr} | Rep: ${row.rep}`);
+                row.programDetails.forEach(p => {
+                    lines.push(`   - ${p.program}: ${formatCurrency(p.remainAmount)}`);
+                });
             });
             lines.push('');
         });
@@ -418,10 +467,28 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                         <BanknotesIcon />
                         <span>Phí Trả Thưởng ({groupedData.length} khách hàng)</span>
                     </h2>
-                    {/* Show Rep Name badge */}
-                    <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-600">
-                        {currentEmployee.code === ADMIN_CODE ? 'ALL REPS' : currentEmployee.name}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {statsCellFilter && (
+                            <button
+                                type="button"
+                                onClick={() => setStatsCellFilter(null)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50"
+                            >
+                                ✕ Bỏ lọc: {statsCellFilter.rep} - {formatDateDisplay(statsCellFilter.dateStr)}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setShowRepStatsModal(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                        >
+                            <ChartBarIcon />
+                            Thống kê theo Rep
+                        </button>
+                        <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-600">
+                            {currentEmployee.code === ADMIN_CODE ? 'ALL REPS' : currentEmployee.name}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Search */}
@@ -594,8 +661,10 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                             </div>
                                             <div className="text-slate-500 dark:text-slate-400 mt-0.5">NV: {row.rep}</div>
                                             <div className="text-amber-600 dark:text-amber-400 font-semibold mt-0.5">Hết GPP: {row.dateStr}</div>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                                                Phí: {row.programDetails.map(p => `${p.program} (${formatCurrency(p.remainAmount)})`).join('; ')}
+                                            <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-1 space-y-0.5">
+                                                {row.programDetails.map((p, i) => (
+                                                    <div key={i}>{p.program}: {formatCurrency(p.remainAmount)}</div>
+                                                ))}
                                             </div>
                                             </div>
                                         </li>
@@ -610,6 +679,96 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                     </p>
                 )}
             </div>
+
+            {/* Modal Thống kê theo Rep - Pivot Rep x Ngày hết hạn */}
+            {showRepStatsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowRepStatsModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase flex items-center gap-2">
+                                <ChartBarIcon />
+                                Thống kê phí còn lại theo Rep
+                            </h3>
+                            <button type="button" onClick={() => setShowRepStatsModal(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">✕</button>
+                        </div>
+                        <div className="p-4 overflow-auto flex-1">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Click vào ô số tiền để lọc danh sách KH có phí tương ứng</p>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs border-collapse min-w-[400px]">
+                                    <thead className="bg-slate-100 dark:bg-slate-700/70">
+                                        <tr>
+                                            <th className="px-2 py-2 font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 text-left sticky left-0 bg-slate-100 dark:bg-slate-700/70 z-10">Row Labels</th>
+                                            {repStatsPivot.dateColumns.map(d => {
+                                                const [y, m, day] = d.split('-');
+                                                return (
+                                                    <th key={d} className="px-2 py-2 font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 text-center whitespace-nowrap">
+                                                        {day}/{m}/{y}
+                                                    </th>
+                                                );
+                                            })}
+                                            <th className="px-2 py-2 font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-right bg-slate-200 dark:bg-slate-600">Grand Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {repStatsPivot.repRows.map((row, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                                <td className="px-2 py-1.5 font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600 sticky left-0 bg-white dark:bg-slate-800 z-[1]">
+                                                    {row.rep}
+                                                </td>
+                                                {repStatsPivot.dateColumns.map(d => {
+                                                    const val = row.dateAmounts[d] || 0;
+                                                    return (
+                                                        <td key={d} className="px-2 py-1.5 border border-slate-200 dark:border-slate-600 text-right">
+                                                            {val > 0 ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setStatsCellFilter({ rep: row.rep, dateStr: d });
+                                                                        setShowRepStatsModal(false);
+                                                                    }}
+                                                                    className="w-full text-right font-bold text-red-600 dark:text-red-400 hover:bg-sky-100 dark:hover:bg-sky-900/30 hover:text-sky-700 dark:hover:text-sky-300 px-1 py-0.5 rounded cursor-pointer transition-colors"
+                                                                >
+                                                                    {formatCurrency(val)}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-slate-300 dark:text-slate-600">—</span>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td className="px-2 py-1.5 font-black text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600 text-right bg-slate-50 dark:bg-slate-700/50">
+                                                    {formatCurrency(row.rowTotal)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-slate-200 dark:bg-slate-600 font-black">
+                                            <td className="px-2 py-2 font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600 sticky left-0 bg-slate-200 dark:bg-slate-600 z-[1]">
+                                                Grand Total
+                                            </td>
+                                            {repStatsPivot.dateColumns.map(d => (
+                                                <td key={d} className="px-2 py-2 font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600 text-right">
+                                                    {formatCurrency(repStatsPivot.grandTotalRow[d] || 0)}
+                                                </td>
+                                            ))}
+                                            <td className="px-2 py-2 font-black text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600 text-right">
+                                                {formatCurrency(repStatsPivot.overallTotal)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            {repStatsPivot.repRows.length === 0 && (
+                                <p className="text-center py-6 text-slate-400 italic text-sm">Không có dữ liệu</p>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                            <button type="button" onClick={() => setShowRepStatsModal(false)} className="flex-1 px-4 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white">
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Xuất thông báo GPP */}
             {showExportGppModal && (

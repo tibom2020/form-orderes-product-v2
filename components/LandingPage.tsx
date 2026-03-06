@@ -99,6 +99,19 @@ const LandingPage: React.FC<LandingPageProps> = ({
             .sort((a, b) => b.total - a.total);
     }, [uniqueMarketingData]);
 
+    // Tổng số cho các ô thống kê phía trên báo cáo (tương tự Forecast)
+    const reportTotalStats = useMemo(() => {
+        return reportData.reduce(
+            (acc, row) => ({
+                total: acc.total + row.total,
+                upHinh: acc.upHinh + row.upHinh,
+                local: acc.local + row.local,
+                import: acc.import + row.import
+            }),
+            { total: 0, upHinh: 0, local: 0, import: 0 }
+        );
+    }, [reportData]);
+
     const currentDate = new Date().toLocaleDateString('vi-VN');
     // --------------------
 
@@ -456,6 +469,28 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         >
                             ✕
                         </button>
+                    </div>
+
+                    {/* Ô tổng phía trên (tương tự Thống kê Forecast) */}
+                    <div className="px-5 pb-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng KH</p>
+                                <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.total}</p>
+                            </div>
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                                <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase">Đã có ảnh</p>
+                                <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{reportTotalStats.upHinh}</p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
+                                <p className="text-[10px] font-bold text-green-500 dark:text-green-400 uppercase">Gói Local</p>
+                                <p className="text-2xl font-black text-green-700 dark:text-green-300">{reportTotalStats.local}</p>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
+                                <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase">Gói Import</p>
+                                <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{reportTotalStats.import}</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="overflow-auto p-0">

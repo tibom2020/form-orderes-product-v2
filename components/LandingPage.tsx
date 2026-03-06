@@ -347,7 +347,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         return (
             <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col h-full transition-all">
-                <div className={`p-3 text-white flex justify-between items-center ${slot === 1 ? 'bg-gradient-to-r from-indigo-500 to-purple-600' : 'bg-gradient-to-r from-pink-500 to-rose-600'}`}>
+                <div className={`p-3 text-white flex justify-between items-center ${slot === 1 ? 'bg-opella-green' : 'bg-opella-green/90'}`}>
                     <div className="flex items-center gap-2 text-sm">
                         <CameraIcon />
                         <h3 className="font-bold uppercase">{title}</h3>
@@ -371,7 +371,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             <p className="text-green-600 dark:text-green-400 font-bold text-sm">Ảnh đã lưu</p>
                             <div className="flex flex-col gap-2 mt-4">
                                 {displayUrl && (
-                                    <a href={displayUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-sky-600 dark:text-sky-400 rounded text-xs font-bold border border-slate-200 dark:border-slate-600 transition-colors">
+                                    <a href={displayUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-opella-green dark:text-opella-green rounded text-xs font-bold border border-slate-200 dark:border-slate-600 transition-colors">
                                         Mở Ảnh Drive
                                     </a>
                                 )}
@@ -390,7 +390,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     onClick={() => handleBoxClick(slot)}
                                     className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all min-h-[160px] group"
                                 >
-                                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-400 group-hover:text-sky-500 transition-colors">
+                                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-400 group-hover:text-opella-green transition-colors">
                                         <CameraIcon />
                                     </div>
                                     <span className="mt-3 text-xs font-bold text-slate-500 dark:text-slate-400 text-center uppercase tracking-tight">Chụp ảnh {slot}</span>
@@ -416,14 +416,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             onChange={(e) => setUploadNote(e.target.value)}
                                             placeholder="Ghi chú ảnh (ví dụ: Góc trái cửa...)"
                                             rows={2}
-                                            className="w-full pl-10 pr-3 py-2 text-[11px] border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none resize-none"
+                                            className="w-full pl-10 pr-3 py-2 text-[11px] border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none resize-none"
                                         />
                                     </div>
 
                                     <button
                                         onClick={handleUploadImage}
                                         disabled={isUploading}
-                                        className={`w-full text-white font-black py-3 rounded-lg shadow-lg flex justify-center items-center gap-2 text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 ${slot === 1 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-pink-600 hover:bg-pink-700'}`}
+                                        className={`w-full text-white font-black py-3 rounded-lg shadow-lg flex justify-center items-center gap-2 text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 ${slot === 1 ? 'bg-opella-green hover:bg-opella-green/90' : 'bg-opella-green/90 hover:bg-opella-green/80'}`}
                                     >
                                         {isUploading ? (
                                             <>
@@ -459,7 +459,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <span>Báo Cáo Tiến Độ DummyBox</span>
                             </h2>
                             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">
-                                Ngày hệ thống: <span className="text-sky-600 dark:text-sky-400">{currentDate}</span>
+                                Ngày hệ thống: <span className="text-opella-green dark:text-opella-green">{currentDate}</span>
                             </p>
                             <p className="text-[10px] text-slate-400 italic mt-1">(Click vào tên Rep để lọc danh sách)</p>
                         </div>
@@ -478,17 +478,17 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng KH</p>
                                 <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.total}</p>
                             </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
-                                <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase">Đã có ảnh</p>
-                                <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{reportTotalStats.upHinh}</p>
+                            <div className="bg-opella-beige/50 dark:bg-opella-green/20 p-3 rounded-xl border border-opella-green/30 dark:border-opella-green/50">
+                                <p className="text-[10px] font-bold text-opella-green dark:text-opella-green uppercase">Đã có ảnh</p>
+                                <p className="text-2xl font-black text-opella-green dark:text-opella-green">{reportTotalStats.upHinh}</p>
                             </div>
                             <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
                                 <p className="text-[10px] font-bold text-green-500 dark:text-green-400 uppercase">Gói Local</p>
                                 <p className="text-2xl font-black text-green-700 dark:text-green-300">{reportTotalStats.local}</p>
                             </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
-                                <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase">Gói Import</p>
-                                <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{reportTotalStats.import}</p>
+                            <div className="bg-opella-beige/50 dark:bg-opella-green/20 p-3 rounded-xl border border-opella-green/30 dark:border-opella-green/50">
+                                <p className="text-[10px] font-bold text-opella-green dark:text-opella-green uppercase">Gói Import</p>
+                                <p className="text-2xl font-black text-opella-green dark:text-opella-green">{reportTotalStats.import}</p>
                             </div>
                         </div>
                     </div>
@@ -499,7 +499,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <tr>
                                     <th className="px-4 py-3">Rep Phụ Trách</th>
                                     <th className="px-4 py-3 text-center">Tổng KH</th>
-                                    <th className="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400">Ảnh</th>
+                                    <th className="px-4 py-3 text-center text-opella-green dark:text-opella-green">Ảnh</th>
                                     <th className="px-4 py-3 text-center text-green-600 dark:text-green-400">Gói Local</th>
                                     <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">Gói Import</th>
                                 </tr>
@@ -512,13 +512,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             setSelectedRepFilter(row.rep);
                                             setShowReport(false);
                                         }}
-                                        className="hover:bg-sky-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
+                                        className="hover:bg-opella-beige/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
                                         title="Click để lọc theo Rep này"
                                     >
-                                        <td className="px-4 py-3 font-bold group-hover:text-sky-600 transition-colors">{row.rep}</td>
+                                        <td className="px-4 py-3 font-bold group-hover:text-opella-green transition-colors">{row.rep}</td>
                                         <td className="px-4 py-3 text-center font-bold bg-slate-50 dark:bg-slate-800/50">{row.total}</td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.upHinh > 0 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-slate-400'}`}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.upHinh > 0 ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'text-slate-400'}`}>
                                                 {row.upHinh} <span className="font-normal text-[10px] opacity-70">({Math.round(row.upHinh / row.total * 100)}%)</span>
                                             </span>
                                         </td>
@@ -528,7 +528,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.import > 0 ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-400'}`}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.import > 0 ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'text-slate-400'}`}>
                                                 {row.import} <span className="font-normal text-[10px] opacity-70">({Math.round(row.import / row.total * 100)}%)</span>
                                             </span>
                                         </td>
@@ -576,8 +576,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
                             </ul>
                         </div>
-                        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                            <h3 className="text-sm font-black text-blue-800 dark:text-blue-300 uppercase mb-2">DummyBox Import (-150k)</h3>
+                        <div className="p-4 rounded-xl bg-opella-beige/50 dark:bg-opella-green/20 border border-opella-green/30 dark:border-opella-green/50">
+                            <h3 className="text-sm font-black text-opella-green dark:text-opella-green uppercase mb-2">DummyBox Import (-150k)</h3>
                             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
                                 <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK); riêng Pharmaton Energy dùng giá gốc, không áp CK 29.5%).</li>
                                 <li>Sản phẩm tính điều kiện: <strong>Pharmaton Energy</strong>, <strong>Essent</strong>, <strong>Vitality</strong>, <strong>Pharmaton Energy Fizzi</strong>, <strong>Enterogermina</strong> (GUT 2B, 4B, 2B/20).</li>
@@ -609,8 +609,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black uppercase text-sm tracking-tight">
-                        <div className="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-opella-green dark:text-opella-green font-black uppercase text-sm tracking-tight">
+                        <div className="p-2 bg-opella-beige/50 dark:bg-opella-green/20 rounded-lg">
                             <UserGroupIcon />
                         </div>
                         <span>Danh mục khách hàng ({filteredCustomers.length})</span>
@@ -648,7 +648,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                         <button
                             onClick={() => setShowReport(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800"
+                            className="flex items-center gap-2 px-3 py-2 bg-opella-beige/50 hover:bg-opella-beige dark:bg-opella-green/20 dark:hover:bg-opella-green/30 text-opella-green dark:text-opella-green rounded-lg text-xs font-bold transition-all border border-opella-green/30 dark:border-opella-green/50"
                         >
                             <ChartBarIcon />
                             <span>Báo Cáo</span>
@@ -672,7 +672,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             placeholder="Tìm tên KH, mã KH, quận..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                            className="w-full pl-10 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none transition-all"
                         />
                         <div className="mt-4 max-h-[55vh] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 border-t border-slate-100 dark:border-slate-700">
                             {filteredCustomers.length === 0 ? (
@@ -692,7 +692,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             className="py-3 px-1 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer flex justify-between items-center transition-colors group"
                                         >
                                             <div className="flex-1 min-w-0 pr-4">
-                                                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{c.CustomerName}</p>
+                                                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green dark:group-hover:text-opella-green transition-colors">{c.CustomerName}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{c.CustomerCode} • {c.District}</p>
                                                     {/* Hiển thị Rep Name nếu đang xem ở chế độ Admin */}
@@ -716,7 +716,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                     : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
                                                     }`}>L</div>
                                                 <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasImport
-                                                    ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800'
+                                                    ? 'bg-opella-beige/50 text-opella-green border-opella-green/30 dark:bg-opella-green/20 dark:text-opella-green dark:border-opella-green/50'
                                                     : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
                                                     }`}>I</div>
                                             </div>
@@ -727,15 +727,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl border border-sky-100 dark:border-sky-800 animate-slide-up">
+                    <div className="flex justify-between items-center bg-opella-beige/50 dark:bg-opella-green/20 p-4 rounded-xl border border-opella-green/20 dark:border-opella-green/40 animate-slide-up">
                         <div className="min-w-0 flex-1">
-                            <p className="font-black text-sky-800 dark:text-sky-300 truncate text-base">{selectedCustomer.CustomerName}</p>
-                            <p className="text-xs text-sky-600 dark:text-sky-400 font-mono mt-0.5">{selectedCustomer.CustomerCode}</p>
+                            <p className="font-black text-opella-green dark:text-opella-green truncate text-base">{selectedCustomer.CustomerName}</p>
+                            <p className="text-xs text-opella-green dark:text-opella-green font-mono mt-0.5">{selectedCustomer.CustomerCode}</p>
                         </div>
                         <div className="flex items-center gap-3 ml-4">
                             <button
                                 onClick={() => onCustomerSelect(selectedCustomer.CustomerCode)}
-                                className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-md transition-all uppercase flex items-center gap-2 active:scale-95"
+                                className="px-4 py-2 bg-opella-green hover:bg-opella-green/90 text-white text-xs font-bold rounded-lg shadow-md transition-all uppercase flex items-center gap-2 active:scale-95"
                             >
                                 <CartIcon />
                                 <span className="hidden sm:inline">Đặt Hàng</span>
@@ -779,9 +779,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             </div>
                         </div>
 
-                        <div className={`rounded-2xl border-2 shadow-sm p-5 flex flex-col justify-between transition-all duration-300 ${isImportDone ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                        <div className={`rounded-2xl border-2 shadow-sm p-5 flex flex-col justify-between transition-all duration-300 ${isImportDone ? 'bg-opella-beige/50 border-opella-green/30 dark:bg-opella-green/20 dark:border-opella-green/50' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
                             <div className="text-center mb-4">
-                                <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 ${isImportDone ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'}`}>
+                                <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 ${isImportDone ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'}`}>
                                     <RocketLaunchIcon />
                                 </div>
                                 <h4 className="font-black text-slate-800 dark:text-white uppercase text-sm tracking-tight">Gói Import 2026</h4>
@@ -799,7 +799,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                         disabled={isRegistering || !canEditPackages}
                                         onChange={(e) => handleTogglePackage('GoiImport', e.target.checked)}
                                     />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-opella-green"></div>
                                 </label>
                             </div>
                         </div>

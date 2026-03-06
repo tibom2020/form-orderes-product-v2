@@ -273,7 +273,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                         )}
                         <button
                             onClick={() => setShowStats(true)}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 bg-opella-green hover:bg-opella-green/90 text-white text-xs font-bold rounded-lg shadow transition-colors flex items-center gap-2"
                         >
                             📊 Thống kê
                         </button>
@@ -288,7 +288,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                         placeholder="Tìm khách hàng..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none bg-slate-50 dark:bg-slate-700 dark:text-white"
+                        className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-opella-green outline-none bg-slate-50 dark:bg-slate-700 dark:text-white"
                     />
                 </div>
             </div>
@@ -345,7 +345,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                                                 {(importLvl || localLvl) && (
                                                     <>
                                                         <span className="text-slate-400">|</span>
-                                                        <span className="font-bold text-sky-600 dark:text-sky-400">DS T3 dự kiến: {formatCompact(expectedT3)}</span>
+                                                        <span className="font-bold text-opella-green dark:text-opella-green">DS T3 dự kiến: {formatCompact(expectedT3)}</span>
                                                     </>
                                                 )}
                                             </div>
@@ -407,7 +407,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                                             <button
                                                 onClick={e => handleQuickConfirm(record, e)}
                                                 disabled={isThisSubmitting || (!draft.importLevel && !draft.localLevel)}
-                                                className="px-3 py-1 text-[10px] font-bold bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                                className="px-3 py-1 text-[10px] font-bold bg-opella-green hover:bg-opella-green/90 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                                             >
                                                 {isThisSubmitting ? '...' : 'Xác nhận'}
                                             </button>
@@ -465,7 +465,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                             ✕
                         </button>
                         <div className="mb-6">
-                            <h3 className="text-xl font-black uppercase text-indigo-600 dark:text-indigo-400">Thống kê Forecast T3</h3>
+                            <h3 className="text-xl font-black uppercase text-opella-green dark:text-opella-green">Thống kê Forecast T3</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tổng hợp tiến độ theo nhân viên (Chỉ tính KH Cover Q1)</p>
                         </div>
                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -505,9 +505,9 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
                                                 <td className="px-4 py-3 text-center font-black text-orange-500">{remaining}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex flex-col items-end">
-                                                        <span className="font-black text-indigo-600 dark:text-indigo-400">{percent.toFixed(0)}%</span>
+                                                        <span className="font-black text-opella-green dark:text-opella-green">{percent.toFixed(0)}%</span>
                                                         <div className="w-16 h-1 bg-slate-100 dark:bg-slate-600 rounded-full mt-1 overflow-hidden">
-                                                            <div className="h-full bg-indigo-500" style={{ width: `${percent}%` }}></div>
+                                                            <div className="h-full bg-opella-green" style={{ width: `${percent}%` }}></div>
                                                         </div>
                                                     </div>
                                                 </td>

@@ -281,8 +281,8 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                     t2Giga={importGigaT2}
                     t2BuyMed={importBuyMedT2}
                     t2Total={importTotalT2}
-                    colorClass="bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
-                    titleClass="text-blue-700 dark:text-blue-400"
+                    colorClass="bg-opella-beige/50 dark:bg-opella-green/10 border-opella-green/30 dark:border-opella-green/50"
+                    titleClass="text-opella-green dark:text-opella-green"
                     totalClass="text-blue-600 dark:text-blue-400"
                 />
 
@@ -299,14 +299,14 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                                 className={`p-3 rounded-lg border-2 text-center transition-all ${importLevel === lvl.id
                                     ? isWarning
                                         ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 shadow-md'
-                                        : 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-md transform scale-105'
-                                    : 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:border-blue-200 dark:hover:border-blue-800'
+                                        : 'border-opella-green bg-opella-beige/50 dark:bg-opella-green/20 text-opella-green dark:text-opella-green shadow-md transform scale-105'
+                                    : 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:border-opella-green/50 dark:hover:border-opella-green'
                                     }`}
                             >
                                 <div className="font-bold text-sm">{lvl.label}</div>
                                 {lvl.sub && <div className="text-[10px] font-medium opacity-80">{lvl.sub}</div>}
                                 {importLevel === lvl.id && (
-                                    <div className={`mt-1 ${isWarning ? 'text-red-500' : 'text-blue-500'}`}>
+                                    <div className={`mt-1 ${isWarning ? 'text-red-500' : 'text-opella-green'}`}>
                                         <CheckCircleIcon />
                                     </div>
                                 )}
@@ -315,10 +315,10 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                     })}
                 </div>
                 {importLevel === '>25TR' && (
-                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 animate-in slide-in-from-top-2">
+                    <div className="mt-4 p-4 bg-opella-beige/50 dark:bg-opella-green/20 rounded-xl border border-opella-green/30 dark:border-opella-green/50 animate-in slide-in-from-top-2">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Doanh số Import chi tiết</span>
-                            <span className="text-sm font-black text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-800 px-3 py-1 rounded-full shadow-sm border border-blue-100 dark:border-blue-900">
+                            <span className="text-sm font-black text-opella-green dark:text-opella-green bg-white dark:bg-slate-800 px-3 py-1 rounded-full shadow-sm border border-opella-green/30 dark:border-opella-green/50">
                                 {formatCurrency(importSpecificValue)}
                             </span>
                         </div>
@@ -329,7 +329,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                             step="1000000"
                             value={importSpecificValue}
                             onChange={(e) => setImportSpecificValue(Number(e.target.value))}
-                            className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+                            className="w-full h-2 bg-opella-green/30 dark:bg-opella-green/50 rounded-lg appearance-none cursor-pointer accent-opella-green focus:outline-none"
                         />
                         <div className="flex justify-between mt-1 text-[10px] text-blue-400 font-bold px-1">
                             <span>25Tr</span>
@@ -440,7 +440,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                     <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Tổng dự kiến T3</span>
-                            <span className="text-base font-black text-sky-600 dark:text-sky-400">{formatCurrency(expectedTotalT2)}</span>
+                            <span className="text-base font-black text-opella-green dark:text-opella-green">{formatCurrency(expectedTotalT2)}</span>
                         </div>
                         <div className="flex justify-between items-center mb-3">
                             <span className="text-[10px] font-bold text-slate-500 uppercase">Target Tháng 3</span>
@@ -501,7 +501,7 @@ const ForecastForm: React.FC<ForecastFormProps> = ({
                 <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || (!importLevel && !localLevel)}
-                    className="px-6 py-3 bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 text-white font-black uppercase tracking-wider rounded-lg shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                    className="px-6 py-3 bg-opella-green hover:bg-opella-green/90 disabled:bg-slate-300 text-white font-black uppercase tracking-wider rounded-lg shadow-lg transition-all active:scale-95 flex items-center gap-2"
                 >
                     {isSubmitting ? 'Đan lưu...' : (
                         <>

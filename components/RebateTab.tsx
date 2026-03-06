@@ -480,7 +480,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                         <button
                             type="button"
                             onClick={() => setShowRepStatsModal(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-opella-beige/50 dark:bg-opella-green/20 text-opella-green dark:text-opella-green hover:bg-opella-beige dark:hover:bg-opella-green/30 border border-opella-green/30 dark:border-opella-green/50 transition-colors"
                         >
                             <ChartBarIcon />
                             Thống kê theo Rep
@@ -501,7 +501,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                         placeholder="Tìm tên hiệu thuốc, mã code..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none bg-slate-50 dark:bg-slate-700 dark:text-white"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-opella-green outline-none bg-slate-50 dark:bg-slate-700 dark:text-white"
                     />
                 </div>
 
@@ -519,7 +519,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                 key={f.id}
                                 onClick={() => setFilterGroup(f.id as any)}
                                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${filterGroup === f.id
-                                    ? 'bg-sky-600 text-white border-sky-600'
+                                    ? 'bg-opella-green text-white border-opella-green'
                                     : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
                                     }`}
                             >
@@ -539,7 +539,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                 {selectedDates.length > 0 && (
                                     <button
                                         onClick={() => setSelectedDates([])}
-                                        className="text-[10px] text-sky-600 font-bold hover:underline"
+                                        className="text-[10px] text-opella-green font-bold hover:underline"
                                     >
                                         Xóa tất cả
                                     </button>
@@ -555,8 +555,8 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                             key={dateStr}
                                             onClick={() => toggleDate(dateStr)}
                                             className={`flex-shrink-0 px-2.5 py-1 rounded-md text-[10px] font-black transition-all border ${isSelected
-                                                ? 'bg-sky-500 text-white border-sky-500'
-                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-sky-300'
+                                                ? 'bg-opella-green text-white border-opella-green'
+                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-opella-green/50'
                                                 }`}
                                         >
                                             {displayDate}
@@ -581,7 +581,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                 {selectedPromotions.length > 0 && (
                                     <button
                                         onClick={() => setSelectedPromotions([])}
-                                        className="text-[10px] text-sky-600 font-bold hover:underline"
+                                        className="text-[10px] text-opella-green font-bold hover:underline"
                                     >
                                         Xóa tất cả
                                     </button>
@@ -655,7 +655,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                             <div className="min-w-0 flex-1">
                                             <div
                                                 onClick={() => onCustomerClick(row.code)}
-                                                className="cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 font-bold text-slate-800 dark:text-white"
+                                                className="cursor-pointer hover:text-opella-green dark:hover:text-opella-green font-bold text-slate-800 dark:text-white"
                                             >
                                                 {row.code} — {row.name}
                                             </div>
@@ -665,6 +665,9 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                                 {row.programDetails.map((p, i) => (
                                                     <div key={i}>{p.program}: {formatCurrency(p.remainAmount)}</div>
                                                 ))}
+                                                <div className="font-bold text-opella-green dark:text-opella-green pt-0.5 border-t border-slate-200 dark:border-slate-600 mt-0.5">
+                                                    Tổng phí: {formatCurrency(row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
+                                                </div>
                                             </div>
                                             </div>
                                         </li>
@@ -726,7 +729,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                                                         setStatsCellFilter({ rep: row.rep, dateStr: d });
                                                                         setShowRepStatsModal(false);
                                                                     }}
-                                                                    className="w-full text-right font-bold text-red-600 dark:text-red-400 hover:bg-sky-100 dark:hover:bg-sky-900/30 hover:text-sky-700 dark:hover:text-sky-300 px-1 py-0.5 rounded cursor-pointer transition-colors"
+                                                                    className="w-full text-right font-bold text-red-600 dark:text-red-400 hover:bg-opella-beige/50 dark:hover:bg-opella-green/20 hover:text-opella-green dark:hover:text-opella-green px-1 py-0.5 rounded cursor-pointer transition-colors"
                                                                 >
                                                                     {formatCurrency(val)}
                                                                 </button>
@@ -790,7 +793,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                     Sao chép
                                 </button>
                                 {isAdmin && onPublishGppNotice && (
-                                    <button type="button" onClick={handlePublishGpp} disabled={isPublishingGpp || !buildGppNoticeText.trim()} className="px-4 py-2 rounded-lg text-xs font-bold bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50">
+                                    <button type="button" onClick={handlePublishGpp} disabled={isPublishingGpp || !buildGppNoticeText.trim()} className="px-4 py-2 rounded-lg text-xs font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50">
                                         {isPublishingGpp ? 'Đang gửi...' : 'Gửi lên Thông báo Admin'}
                                     </button>
                                 )}
@@ -807,7 +810,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                         <BanknotesIcon />
                         <span className="mt-2 text-sm italic">Không tìm thấy dữ liệu phí trả thưởng</span>
                         {filterGroup === 'DATE_SELECT' && selectedDates.length === 0 && (
-                            <span className="text-xs text-sky-500 mt-1">Vui lòng chọn ngày để lọc</span>
+                            <span className="text-xs text-opella-green/80 mt-1">Vui lòng chọn ngày để lọc</span>
                         )}
                     </div>
                 ) : (
@@ -819,7 +822,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                     <div className="flex justify-between items-start gap-2">
                                         <h3
                                             onClick={() => onCustomerClick(group.code)}
-                                            className="text-sm font-black text-slate-800 dark:text-white uppercase leading-tight cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-colors line-clamp-2 flex-1"
+                                            className="text-sm font-black text-slate-800 dark:text-white uppercase leading-tight cursor-pointer hover:text-opella-green dark:hover:text-opella-green transition-colors line-clamp-2 flex-1"
                                         >
                                             {group.name}
                                         </h3>
@@ -834,7 +837,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                                 type="button"
                                                 onClick={() => handlePublishCustomerNotice(group)}
                                                 disabled={publishingCustomerCode === group.code}
-                                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60"
+                                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-60"
                                             >
                                                 {publishingCustomerCode === group.code ? 'Đang gửi...' : 'Xuất thông báo'}
                                             </button>

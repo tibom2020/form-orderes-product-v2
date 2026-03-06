@@ -349,7 +349,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                     <td
                                                         key={idx}
                                                         onClick={() => count > 0 && handleLevelFilterClick(rep, idx)}
-                                                        className={`px-1 py-1.5 text-center font-bold transition-all ${count > 0 ? 'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 text-sky-600 dark:text-sky-400' : 'text-slate-300 dark:text-slate-600'} ${isSelected ? 'bg-yellow-100 dark:bg-yellow-900 ring-2 ring-inset ring-yellow-400' : ''}`}
+                                                        className={`px-1 py-1.5 text-center font-bold transition-all ${count > 0 ? 'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 text-opella-green dark:text-opella-green' : 'text-slate-300 dark:text-slate-600'} ${isSelected ? 'bg-yellow-100 dark:bg-yellow-900 ring-2 ring-inset ring-yellow-400' : ''}`}
                                                     >
                                                         {count > 0 ? count : '-'}
                                                     </td>
@@ -377,20 +377,20 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 {Object.keys(levelStats[statMode].byRep).length > 0 && (
                                     <React.Fragment>
                                         <tr className="bg-slate-100 dark:bg-slate-700 border-t-2 border-slate-300 dark:border-slate-500 font-bold text-slate-800 dark:text-white">
-                                            <td className="px-2 py-2 border-r border-slate-300 dark:border-slate-600 font-black uppercase text-sky-700 dark:text-sky-400">{ADMIN_NAME} (TỔNG)</td>
+                                            <td className="px-2 py-2 border-r border-slate-300 dark:border-slate-600 font-black uppercase text-opella-green dark:text-opella-green">{ADMIN_NAME} (TỔNG)</td>
                                             {levelStats[statMode].total.counts.map((count, idx) => {
                                                 const isSelected = activeLevelFilter && activeLevelFilter.rep === 'ALL' && activeLevelFilter.levelIndex === idx && activeLevelFilter.mode === statMode;
                                                 return (
                                                     <td
                                                         key={idx}
                                                         onClick={() => count > 0 && handleLevelFilterClick('ALL', idx)}
-                                                        className={`px-1 py-2 text-center font-black transition-all ${count > 0 ? 'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 text-sky-700 dark:text-sky-400' : ''} ${isSelected ? 'bg-yellow-100 dark:bg-yellow-900 ring-2 ring-inset ring-yellow-400' : ''}`}
+                                                        className={`px-1 py-2 text-center font-black transition-all ${count > 0 ? 'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 text-opella-green dark:text-opella-green' : ''} ${isSelected ? 'bg-yellow-100 dark:bg-yellow-900 ring-2 ring-inset ring-yellow-400' : ''}`}
                                                     >
                                                         {count > 0 ? count : '-'}
                                                     </td>
                                                 );
                                             })}
-                                            <td className="px-2 py-2 text-right font-black text-sky-700 dark:text-sky-400">
+                                            <td className="px-2 py-2 text-right font-black text-opella-green dark:text-opella-green">
                                                 {formatCompact(levelStats[statMode].total.totalSales)}
                                             </td>
                                         </tr>
@@ -446,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                             <button
                                 onClick={() => setSearchTerm(inputValue)}
-                                className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                                className="bg-opella-green hover:bg-opella-green/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
                             >
                                 <SearchIcon />
                                 <span>Tìm Kiếm</span>

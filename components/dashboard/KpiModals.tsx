@@ -134,7 +134,7 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                         <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white">{title}</h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {kpiViewMode === 'pass' ? 'Tổng cộng đạt: ' : 'Số lượng: '}
-                            <span className="font-bold text-sky-600 dark:text-sky-400">
+                            <span className="font-bold text-opella-green dark:text-opella-green">
                                 {kpiViewMode === 'pass' ? formatCompact(totalValue) : `${data.length} KH`}
                             </span>
                         </p>
@@ -145,7 +145,7 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                             <div className="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-300 dark:border-slate-600">
                                 <button
                                     onClick={() => onSetViewMode('pass')}
-                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'pass' ? 'bg-white dark:bg-slate-600 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'pass' ? 'bg-white dark:bg-slate-600 text-opella-green dark:text-opella-green shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                 >
                                     Đạt
                                 </button>
@@ -161,13 +161,13 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                             <div className="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-300 dark:border-slate-600">
                                 <button
                                     onClick={() => onSetGroupBy('customer')}
-                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiGroupBy === 'customer' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiGroupBy === 'customer' ? 'bg-white dark:bg-slate-600 text-opella-green dark:text-opella-green shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                 >
                                     Khách hàng
                                 </button>
                                 <button
                                     onClick={() => onSetGroupBy('group')}
-                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiGroupBy === 'group' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiGroupBy === 'group' ? 'bg-white dark:bg-slate-600 text-opella-green dark:text-opella-green shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                 >
                                     Sản phẩm
                                 </button>
@@ -191,7 +191,7 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                                     onClick={() => item.code !== 'GROUP' && onCustomerSelectFromModal(item.originalRecord)}
                                 >
                                     <td className="px-3 py-2">
-                                        <div className={`font-bold text-slate-700 dark:text-slate-200 ${item.code !== 'GROUP' ? 'group-hover:text-sky-600 dark:group-hover:text-sky-400' : ''} transition-colors`}>
+                                        <div className={`font-bold text-slate-700 dark:text-slate-200 ${item.code !== 'GROUP' ? 'group-hover:text-opella-green dark:group-hover:text-opella-green' : ''} transition-colors`}>
                                             {item.name}
                                         </div>
                                         <div className="flex gap-2 text-[10px] text-slate-400 font-mono mt-0.5">

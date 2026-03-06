@@ -18,7 +18,7 @@ export const ProgressBar = ({ actual, target, colorClass }: { actual: number, ta
         borderColorClass = 'border-green-300 dark:border-green-700';
         shadowClass = 'shadow-[0_0_6px_rgba(34,197,94,0.6)]';
     } else if (colorClass.includes('sky') || colorClass.includes('cyan')) {
-        borderColorClass = 'border-sky-300 dark:border-sky-700';
+        borderColorClass = 'border-opella-green/50 dark:border-opella-green';
         shadowClass = 'shadow-[0_0_6px_rgba(14,165,233,0.6)]';
     } else if (colorClass.includes('red') || colorClass.includes('pink') || colorClass.includes('rose')) {
         borderColorClass = 'border-red-300 dark:border-red-700';

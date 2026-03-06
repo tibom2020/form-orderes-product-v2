@@ -544,7 +544,7 @@ const App: React.FC = () => {
       <header className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 transition-colors duration-200">
         <div className="container mx-auto px-4 py-1.5 sm:py-3 flex justify-between items-center">
           <div className="flex flex-col">
-            <h1 className="text-base sm:text-xl font-black text-sky-600 dark:text-sky-400 uppercase leading-none whitespace-nowrap">Hệ Thống Đặt Hàng</h1>
+            <h1 className="text-base sm:text-xl font-black text-opella-green dark:text-opella-green uppercase leading-none whitespace-nowrap">Hệ Thống Đặt Hàng</h1>
             <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 sm:mt-1 uppercase tracking-tight italic hidden sm:block">Ngày cập nhật CTKM: {PROMO_UPDATE_DATE}</p>
           </div>
           <div className="flex items-center space-x-1.5 sm:space-x-4">
@@ -593,7 +593,7 @@ const App: React.FC = () => {
               setViewMode('order');
               setDashboardCustomerCode(null);
             }}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'order' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'order' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <ClipboardDocumentListIcon />
             <span className="hidden sm:inline">Đặt Hàng</span>
@@ -601,7 +601,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('dashboard')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <ChartBarIcon />
             <span className="hidden sm:inline">Báo Cáo</span>
@@ -609,7 +609,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('rebate')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'rebate' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'rebate' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <BanknotesIcon />
             <span className="hidden sm:inline">Trả Thưởng</span>
@@ -617,7 +617,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('landing')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landing' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landing' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <StarIcon />
             <span className="hidden sm:inline">Dummybox</span>
@@ -625,7 +625,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('forecast')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <TrendingUpIcon />
             <span className="hidden sm:inline">Forecast T3</span>
@@ -633,7 +633,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('priceList')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-sky-600 border-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 dark:border-sky-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <TagIcon />
             <span className="hidden sm:inline">Báo giá & CTKM</span>
@@ -655,10 +655,10 @@ const App: React.FC = () => {
         </div>
 
         {viewMode === 'order' && (
-          <div className="bg-slate-50 dark:bg-slate-900 py-1.5 sm:py-3 border-t border-slate-200 dark:border-slate-700 shadow-inner">
+          <div className="bg-opella-green py-1.5 sm:py-3 border-t border-opella-green/80 shadow-inner">
             <div className="container mx-auto px-4 flex gap-2 sm:gap-3 items-center">
               <div className="flex-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-white/70">
                   <SearchIcon />
                 </div>
                 <input
@@ -666,13 +666,13 @@ const App: React.FC = () => {
                   placeholder="Tìm sản phẩm..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 sm:pl-10 pr-3 py-1.5 sm:py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none shadow-sm transition-all text-[13px] sm:text-sm"
+                  className="w-full pl-8 sm:pl-10 pr-3 py-1.5 sm:py-2 rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 focus:border-white/50 outline-none shadow-sm transition-all text-[13px] sm:text-sm"
                 />
               </div>
 
-              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5 sm:p-1 flex-shrink-0">
+              <div className="flex bg-white/20 rounded-lg p-0.5 sm:p-1 flex-shrink-0">
                 {(['All', 'Local', 'Import'] as const).map(f => (
-                  <button key={f} onClick={() => setProductTypeFilter(f)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${productTypeFilter === f ? 'bg-white dark:bg-slate-600 text-sky-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <button key={f} onClick={() => setProductTypeFilter(f)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${productTypeFilter === f ? 'bg-white text-opella-green shadow-sm' : 'text-white/90 hover:text-white'}`}>
                     {f === 'All' && <CubeIcon />}
                     {f === 'Local' && <HomeIcon />}
                     {f === 'Import' && <GlobeAmericasIcon />}
@@ -685,7 +685,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className="container mx-auto p-4 flex-1">
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">

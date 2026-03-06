@@ -55,7 +55,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                     Bảng báo giá và các CTKM, CVM
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Cập nhật CTKM: <span className="font-semibold text-sky-600 dark:text-sky-400">{PROMO_UPDATE_DATE}</span>
+                    Cập nhật CTKM: <span className="font-semibold text-opella-green dark:text-opella-green">{PROMO_UPDATE_DATE}</span>
                 </p>
             </div>
 
@@ -70,7 +70,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                             placeholder="Tìm tên sản phẩm..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none"
                         />
                     </div>
                     <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5">
@@ -78,7 +78,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                             <button
                                 key={f}
                                 onClick={() => setTypeFilter(f)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${typeFilter === f ? 'bg-white dark:bg-slate-600 text-sky-600 dark:text-sky-300 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${typeFilter === f ? 'bg-white dark:bg-slate-600 text-opella-green dark:text-opella-green shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                             >
                                 {f === 'All' && <DocumentTextIcon />}
                                 {f === 'Local' && <HomeIcon />}
@@ -109,11 +109,11 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                 </div>
 
                 <div className="overflow-auto max-h-[calc(100vh-12rem)] md:max-h-none md:overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-sm">
+                    <table className="w-full text-left border-collapse text-xs md:text-sm">
                         <thead className="bg-slate-100 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300 sticky top-0 z-10">
                             <tr>
-                                <th className="px-2 py-2.5 w-10 text-center font-bold border-b border-slate-200 dark:border-slate-600 sticky left-0 z-20 bg-slate-100 dark:bg-slate-700/70">STT</th>
-                                <th className="px-3 py-2.5 font-bold border-b border-slate-200 dark:border-slate-600 min-w-[200px] sticky left-10 z-20 bg-slate-100 dark:bg-slate-700/70 shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)]">Tên thuốc</th>
+                                <th className="px-1.5 md:px-2 py-2 md:py-2.5 w-8 md:w-10 text-center font-bold border-b border-slate-200 dark:border-slate-600 sticky left-0 z-20 bg-slate-100 dark:bg-slate-700/70 text-[10px] md:text-sm">STT</th>
+                                <th className="px-2 md:px-3 py-2 md:py-2.5 font-bold border-b border-slate-200 dark:border-slate-600 min-w-[100px] md:min-w-[200px] max-w-[130px] md:max-w-none sticky left-8 md:left-10 z-20 bg-slate-100 dark:bg-slate-700/70 shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)] text-[10px] md:text-sm">Tên thuốc</th>
                                 <th className="px-2 py-2.5 w-20 text-center font-bold border-b border-slate-200 dark:border-slate-600">Mua tối thiểu</th>
                                 <th className="px-2 py-2.5 w-28 text-right font-bold border-b border-slate-200 dark:border-slate-600">Đơn giá gốc (VAT)</th>
                                 <th className="px-2 py-2.5 w-24 text-center font-bold border-b border-slate-200 dark:border-slate-600">% CK tháng</th>
@@ -127,6 +127,8 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {filteredProducts.map((p, idx) => {
                                 const maxCk = getMaxDiscountPercent(p.promotion);
+                                const giaHD = Math.round(p.price * (1 - (maxCk ?? 0) / 100));
+                                const giaCuoiThang = Math.round(giaHD * (1 - REBATE_TIERS[selectedLevelIndex].percent / 100));
                                 const noteParts: string[] = [];
                                 if (p.requireApproval) noteParts.push('ĐƠN DUYỆT');
                                 if (p.nearExpiry) noteParts.push(p.nearExpiry);
@@ -134,11 +136,11 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                                 const noteStr = noteParts.join(' • ') || '-';
                                 return (
                                     <tr key={p.id} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">
-                                        <td className="px-2 py-2 text-center text-slate-500 dark:text-slate-400 font-medium sticky left-0 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 border-r border-slate-100 dark:border-slate-700">{idx + 1}</td>
-                                        <td className="px-3 py-2 font-medium uppercase leading-tight sticky left-10 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 min-w-[200px] shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)] border-r border-slate-100 dark:border-slate-700">{p.name}</td>
+                                        <td className="px-1.5 md:px-2 py-1.5 md:py-2 text-center text-slate-500 dark:text-slate-400 font-medium text-[10px] md:text-sm sticky left-0 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 border-r border-slate-100 dark:border-slate-700 w-8 md:w-10">{idx + 1}</td>
+                                        <td className="px-2 md:px-3 py-1.5 md:py-2 font-medium uppercase leading-tight text-[10px] md:text-sm sticky left-8 md:left-10 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 min-w-[100px] md:min-w-[200px] max-w-[130px] md:max-w-none shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)] border-r border-slate-100 dark:border-slate-700 break-words">{p.name}</td>
                                         <td className="px-2 py-2 text-center">{p.minOrder}</td>
                                         <td className="px-2 py-2 text-right font-medium">
-                                            {formatCurrency(p.basePrice ?? p.price)}
+                                            {formatCurrency(p.price)}
                                         </td>
                                         <td className="px-2 py-2 text-center">
                                             {maxCk != null ? (
@@ -149,14 +151,14 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                                                 <span className="text-slate-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-2 py-2 text-right font-bold text-sky-600 dark:text-sky-400">
-                                            {formatCurrency(p.price)}
+                                        <td className="px-2 py-2 text-right font-bold text-opella-green dark:text-opella-green">
+                                            {formatCurrency(giaHD)}
                                         </td>
                                         <td className="px-2 py-2 text-center font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20">
                                             {REBATE_TIERS[selectedLevelIndex].percent}%
                                         </td>
                                         <td className="px-2 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                                            {formatCurrency(Math.round(p.price * (1 - REBATE_TIERS[selectedLevelIndex].percent / 100)))}
+                                            {formatCurrency(giaCuoiThang)}
                                         </td>
                                         <td className="px-2 py-2 text-center">
                                             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${p.type === 'Import' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'}`}>
@@ -184,7 +186,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                 )}
 
                 <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-[10px] text-slate-500 dark:text-slate-400">
-                    <p><strong>Chú thích:</strong> Giá HĐ = giá trên hóa đơn sau CK tháng (VAT). Chọn Level (Lv1–Lv6) để xem % chiết khấu theo nhóm doanh số. <strong>Giá cuối tháng (CK+VAT)</strong> = Giá HĐ đã trừ thêm % chiết khấu level đã chọn.</p>
+                    <p><strong>Chú thích:</strong> <strong>Đơn giá gốc (VAT)</strong> = price. <strong>Giá HĐ (CK+VAT)</strong> = price × (1 − CK Tháng). Chọn Level (Lv1–Lv6) để xem % chiết khấu theo nhóm doanh số. <strong>Giá cuối tháng (CK+VAT)</strong> = Giá HĐ đã trừ thêm % chiết khấu level đã chọn.</p>
                 </div>
             </div>
         </div>

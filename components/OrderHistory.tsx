@@ -56,19 +56,19 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
   const getTabClass = (tabName: 'draft' | 'sent') => {
     const baseClass = "px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors duration-200 focus:outline-none flex items-center gap-2";
     if (activeTab === tabName) {
-      return `${baseClass} bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 border-l border-t border-r -mb-px text-sky-600 dark:text-sky-400`;
+      return `${baseClass} bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 border-l border-t border-r -mb-px text-opella-green dark:text-opella-green`;
     }
     return `${baseClass} text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700`;
   };
 
   const OrderRow: React.FC<{ order: Order, type: 'draft' | 'sent' }> = ({ order, type }) => (
-    <div className={`p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-700 grid grid-cols-12 gap-2 items-center text-sm transition-colors ${selectedIds.includes(order.id) ? 'bg-sky-50/50 dark:bg-sky-900/20' : ''}`}>
+    <div className={`p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-700 grid grid-cols-12 gap-2 items-center text-sm transition-colors ${selectedIds.includes(order.id) ? 'bg-opella-beige/50 dark:bg-opella-green/10' : ''}`}>
       <div className="col-span-1 flex justify-center">
         <input
           type="checkbox"
           checked={selectedIds.includes(order.id)}
           onChange={() => toggleSelect(order.id)}
-          className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+          className="w-4 h-4 rounded border-slate-300 text-opella-green focus:ring-opella-green cursor-pointer"
         />
       </div>
       <div className="col-span-4">
@@ -80,7 +80,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
       <div className="col-span-2 flex justify-end space-x-1">
         {type === 'draft' ? (
           <>
-            <button onClick={() => onLoad(order.id)} className="bg-sky-500 text-white text-[10px] font-bold py-1 px-2 rounded-md hover:bg-sky-600 transition-colors">Tải</button>
+            <button onClick={() => onLoad(order.id)} className="bg-opella-green text-white text-[10px] font-bold py-1 px-2 rounded-md hover:bg-opella-green/90 transition-colors">Tải</button>
             <button onClick={() => setConfirmDelete({ ids: [order.id], type: 'draft' })} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"><TrashIcon /></button>
           </>
         ) : (
@@ -107,7 +107,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
             {order.customerAddress && <div className="sm:col-span-2"><span className="text-slate-500 dark:text-slate-400 block text-xs uppercase font-bold mb-1">Địa chỉ:</span> <span className="italic">{order.customerAddress}</span></div>}
           </div>
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-            <h4 className="font-bold mb-3 text-sky-600 dark:text-sky-400 uppercase text-xs tracking-wider">Danh sách sản phẩm ({order.items.length})</h4>
+            <h4 className="font-bold mb-3 text-opella-green dark:text-opella-green uppercase text-xs tracking-wider">Danh sách sản phẩm ({order.items.length})</h4>
             <div className="space-y-2">
               {order.items.map(item => (
                 <div key={item.id} className="flex justify-between items-start text-sm py-2 px-3 bg-slate-50 dark:bg-slate-700/20 rounded-md border border-slate-100 dark:border-slate-700">
@@ -126,7 +126,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
             {order.isDummyBoxLocal && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Local:</span> <span>- {formatCurrency(150000)}</span></div>}
             {order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Import:</span> <span>- {formatCurrency(150000)}</span></div>}
             {order.isDummyBox && !order.isDummyBoxLocal && !order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox:</span> <span>- {formatCurrency(150000)}</span></div>}
-            <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 text-sky-600 dark:text-sky-400"><span>Tổng thanh toán:</span> <span>{formatCurrency(order.finalAmount)}</span></div>
+            <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 text-opella-green dark:text-opella-green"><span>Tổng thanh toán:</span> <span>{formatCurrency(order.finalAmount)}</span></div>
           </div>
           {order.note && <div className="mt-4"><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Ghi chú:</h4><p className="text-sm whitespace-pre-wrap bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 p-3 rounded-lg border border-amber-100 dark:border-amber-900/30">{order.note}</p></div>}
         </div>
@@ -208,7 +208,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
                 type="checkbox"
                 checked={isAllSelected}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-400 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                className="w-4 h-4 rounded border-slate-400 text-opella-green focus:ring-opella-green cursor-pointer"
                 title="Chọn tất cả"
               />
             </div>

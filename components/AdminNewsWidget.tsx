@@ -60,7 +60,7 @@ const AdminNewsWidget: React.FC<AdminNewsWidgetProps> = ({ currentEmployee, isAd
             {!isOpen && (
                 <button
                     onClick={() => { setIsOpen(true); setShowBadge(false); }}
-                    className="relative w-14 h-14 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 animate-bounce-slow border-2 border-white dark:border-slate-800"
+                    className="relative w-14 h-14 bg-gradient-to-tr from-opella-green to-opella-green/90 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 animate-bounce-slow border-2 border-white dark:border-slate-800"
                 >
                     <BellIcon />
                     {showBadge && (
@@ -76,7 +76,7 @@ const AdminNewsWidget: React.FC<AdminNewsWidgetProps> = ({ currentEmployee, isAd
             {isOpen && (
                 <div className="w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden animate-slide-up origin-bottom-right">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-sky-600 to-blue-700 p-4 text-white flex justify-between items-center">
+                    <div className="bg-gradient-to-r from-opella-green to-opella-green/90 p-4 text-white flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <MegaphoneIcon />
                             <h3 className="font-black uppercase tracking-wider text-sm">Thông báo Admin</h3>

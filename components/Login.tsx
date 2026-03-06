@@ -48,10 +48,10 @@ const Login: React.FC<LoginProps> = ({ employees, onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-200">
+    <div className="flex items-center justify-center min-h-screen bg-opella-beige dark:bg-slate-900 font-sans transition-colors duration-200">
       <div className="w-full max-w-sm p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700">
         <div className="text-center">
-            <h1 className="text-3xl font-bold text-sky-600 dark:text-sky-400">Đăng Nhập</h1>
+            <h1 className="text-3xl font-bold text-opella-green">Đăng Nhập</h1>
             <p className="mt-2 text-slate-500 dark:text-slate-400">Vui lòng nhập mã nhân viên của bạn</p>
         </div>
         <form className="space-y-6" onSubmit={handleLogin}>
@@ -71,7 +71,7 @@ const Login: React.FC<LoginProps> = ({ employees, onLoginSuccess }) => {
                     setCode(e.target.value);
                     setError('');
                 }}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-opella-green focus:border-opella-green"
                 placeholder="e.g., 20045852"
               />
             </div>
@@ -85,7 +85,7 @@ const Login: React.FC<LoginProps> = ({ employees, onLoginSuccess }) => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 dark:focus:ring-sky-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+                className="w-4 h-4 text-opella-green border-slate-300 rounded focus:ring-opella-green dark:focus:ring-opella-green dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
               />
             </div>
             <label htmlFor="remember-me" className="ml-2 text-sm font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
@@ -101,7 +101,7 @@ const Login: React.FC<LoginProps> = ({ employees, onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-wait transition-all uppercase tracking-wide"
+              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-opella-green hover:bg-opella-green/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opella-green disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-wait transition-all uppercase tracking-wide"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">

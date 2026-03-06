@@ -31,7 +31,7 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                     <div className="flex items-center gap-2">
                         <span
                             onClick={() => onViewDetail(record)}
-                            className="font-bold text-slate-800 dark:text-slate-200 text-sm cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
+                            className="font-bold text-slate-800 dark:text-slate-200 text-sm cursor-pointer hover:text-opella-green dark:hover:text-opella-green"
                         >
                             {record.CustomerName}
                         </span>
@@ -46,7 +46,7 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                     </div>
                     <p
                         onClick={() => onGoToOrder(String(record.CustomerCode || ''))}
-                        className="text-lg text-sky-600 dark:text-sky-400 font-mono font-black cursor-pointer hover:underline hover:text-sky-800 dark:hover:text-sky-300 transition-colors w-max mt-0.5"
+                        className="text-lg text-opella-green dark:text-opella-green font-mono font-black cursor-pointer hover:underline hover:text-sky-800 dark:hover:text-sky-300 transition-colors w-max mt-0.5"
                         title="Click để tạo đơn hàng cho khách này"
                     >
                         {record.CustomerCode}
@@ -65,7 +65,7 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                     <div className="flex gap-1 mt-1.5 flex-wrap">
                         {record.CoverQ1 === 'YES' && <span className="text-[9px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded shadow-sm">Cover Q1: YES</span>}
                         {record.BuyMed === 'YES' && <span className="text-[9px] font-bold bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-800 px-2 py-1 rounded shadow-sm">BuyMed: YES</span>}
-                        {record.CounterTop && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border ${String(record.CounterTop).toLowerCase().includes('rớt') ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'}`}>CounterTop: {record.CounterTop}</span>}
+                        {record.CounterTop && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border ${String(record.CounterTop).toLowerCase().includes('rớt') ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-opella-beige/50 dark:bg-opella-green/20 text-opella-green dark:text-opella-green border-opella-green/30 dark:border-opella-green/50'}`}>CounterTop: {record.CounterTop}</span>}
                         {record.CDU && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border ${String(record.CDU).toLowerCase().includes('rớt') ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800'}`}>CDU: {record.CDU}</span>}
                     </div>
                 </div>

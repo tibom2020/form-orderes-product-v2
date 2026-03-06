@@ -127,7 +127,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                         <p className="text-[10px] text-red-600 dark:text-red-400 font-bold italic mb-2">{product.note}</p>
                     )}
 
-                    <p className="text-base font-bold text-sky-600 dark:text-sky-400 mb-2">
+                    <p className="text-base font-bold text-opella-green dark:text-opella-green mb-2">
                         {formatCurrency(product.price)}
                         <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1 uppercase">(VAT)</span>
                     </p>
@@ -163,7 +163,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                                 inputMode="numeric"
                                 value={quantity}
                                 onChange={handleQuantityChange}
-                                className="w-full text-center border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                                className="w-full text-center border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg py-2 text-sm font-bold focus:ring-2 focus:ring-opella-green focus:border-opella-green outline-none"
                                 placeholder="SL"
                             />
                             <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none">
@@ -172,7 +172,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                         </div>
                         <button
                             onClick={handleAddToCart}
-                            className="flex-1 flex items-center justify-center bg-sky-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-sky-600 active:scale-95 transition-all duration-200 text-xs uppercase shadow-sm"
+                            className="flex-1 flex items-center justify-center bg-opella-green text-white font-bold py-2 px-3 rounded-lg hover:bg-opella-green/90 active:scale-95 transition-all duration-200 text-xs uppercase shadow-sm"
                         >
                             <PlusIcon />
                             <span className="ml-1">Thêm</span>

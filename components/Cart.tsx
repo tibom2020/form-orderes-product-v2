@@ -109,7 +109,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
                 </div>
             </td>
             <td className="px-2 py-2.5 text-right">
-                <p className="font-bold text-sky-600 dark:text-sky-400 text-[11px]">{formatCurrency(lineTotal)}</p>
+                <p className="font-bold text-opella-green dark:text-sky-400 text-[11px]">{formatCurrency(lineTotal)}</p>
                 {monthlyDiscountPercent > 0 && (
                     <p className="text-[9px] text-red-500 dark:text-red-400 font-bold italic">
                         CK -{(monthlyDiscountPercent * 100).toFixed(2)}%
@@ -333,19 +333,19 @@ const Cart: React.FC<CartProps> = (props) => {
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col overflow-hidden h-[calc(100vh-190px)] transition-colors duration-200">
-            <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800 sticky top-0 z-10">
-                <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center">
+            <div className="p-3 border-b border-opella-green/20 flex justify-between items-center bg-opella-green sticky top-0 z-10">
+                <h2 className="text-base font-bold text-white flex items-center">
                     <CartIcon />
                     <span className="ml-2 uppercase tracking-tight">Chi tiết đơn hàng</span>
                     {activeDraftId && <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded-full uppercase font-bold">Bản nháp</span>}
                 </h2>
                 {items.length > 0 && (
-                    <button onClick={onClearCart} title="Xóa giỏ hàng" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-md transition-colors"><TrashIcon /></button>
+                    <button onClick={onClearCart} title="Xóa giỏ hàng" className="text-white/90 hover:bg-white/20 p-1.5 rounded-md transition-colors"><TrashIcon /></button>
                 )}
             </div>
 
             <div className="overflow-y-auto flex-1 no-scrollbar">
-                <div className="p-3 space-y-2.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                <div className="p-3 space-y-2.5 bg-opella-beige/50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                     <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-1">
                             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Mã KH</label>
@@ -354,7 +354,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     type="text"
                                     value={customerCode}
                                     onChange={(e) => onCustomerCodeChange(e.target.value)}
-                                    className="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none focus:ring-1 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-white font-mono font-bold"
+                                    className="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none focus:ring-1 focus:ring-opella-green bg-white dark:bg-slate-800 dark:text-white font-mono font-bold"
                                     placeholder="Mã..."
                                 />
                                 <button
@@ -362,7 +362,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     disabled={!customerCode}
                                     type="button"
                                     title="Xem chi tiết khách hàng"
-                                    className="flex-shrink-0 p-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded shadow-sm transition-all active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed"
+                                    className="flex-shrink-0 p-1.5 bg-opella-green hover:bg-opella-green/90 text-white rounded shadow-sm transition-all active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed"
                                 >
                                     <InfoIcon />
                                 </button>
@@ -381,7 +381,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     onFocus={() => setShowSuggestions(true)}
                                     // Delayed blur để kịp bắt sự kiện click vào suggestion
                                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                    className="w-full mt-0.5 border border-slate-300 dark:border-slate-600 rounded p-1.5 pl-7 text-sm outline-none focus:ring-1 focus:ring-sky-500 bg-white dark:bg-slate-800 dark:text-white"
+                                    className="w-full mt-0.5 border border-slate-300 dark:border-slate-600 rounded p-1.5 pl-7 text-sm outline-none focus:ring-1 focus:ring-opella-green bg-white dark:bg-slate-800 dark:text-white"
                                     placeholder="Nhập tên KH..."
                                     autoComplete="off"
                                 />
@@ -397,7 +397,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                         <li
                                             key={c.code}
                                             onMouseDown={() => handleCustomerSelect(c)} // Dùng onMouseDown để chạy trước onBlur của input
-                                            className="px-3 py-2 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                            className="px-3 py-2 hover:bg-opella-beige dark:hover:bg-slate-700 cursor-pointer transition-colors"
                                         >
                                             <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{c.name}</div>
                                             <div className="flex justify-between items-center mt-0.5">
@@ -420,11 +420,11 @@ const Cart: React.FC<CartProps> = (props) => {
                             {localRebates.length > 0 && (
                                 <div className="space-y-1.5">
                                     <p className="px-2 py-1 bg-green-50 dark:bg-green-900/20 text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-wide rounded border border-green-100 dark:border-green-800/50">
-                                        Phí Local (Max: {formatCurrency(totalMaxPayableFeeLocal)}):
+                                        TỔNG PHÍ CẦN TRẢ LOCAL: {formatCurrency(selectedLocalRebateTotal)}
                                     </p>
                                     {localRebates.map(r => (
-                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
                                             <div className="ml-2.5 flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
@@ -440,11 +440,11 @@ const Cart: React.FC<CartProps> = (props) => {
                             {importRebates.length > 0 && (
                                 <div className="space-y-1.5">
                                     <p className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wide rounded border border-blue-100 dark:border-blue-800/50">
-                                        Phí Import (Max: {formatCurrency(totalMaxPayableFeeImport)}):
+                                        TỔNG PHÍ CẦN TRẢ IMPORT: {formatCurrency(selectedImportRebateTotal)}
                                     </p>
                                     {importRebates.map(r => (
-                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
                                             <div className="ml-2.5 flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
@@ -546,13 +546,13 @@ const Cart: React.FC<CartProps> = (props) => {
                     <div className="flex flex-wrap gap-x-4 gap-y-1 py-0.5">
                         {onIsDummyBoxLocalChange && (
                             <div className="flex items-center space-x-1.5">
-                                <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!eligibleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!eligibleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
                                 <label htmlFor="dummy-box-local" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxLocal ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxLocal ? 'Đơn ≥1M (sau CK) nhóm Corbiere Calcium Plus, Telfast HD/BD, Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML' : 'Chưa đủ điều kiện: đơn ≥1M nhóm Corbiere/Telfast/Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML'}>DummyBox Local (-150k)</label>
                             </div>
                         )}
                         {onIsDummyBoxImportChange && (
                             <div className="flex items-center space-x-1.5">
-                                <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!eligibleDummyBoxImport} className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!eligibleDummyBoxImport} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
                                 <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đơn ≥1M (sau CK) nhóm Pharmaton (Energy ko CK 29.5%), Essent, Vitality, Fizzi + Enterogermina (GUT 2B, 4B, 2B/20) + ít nhất 01 Pharmaton Vitality' : 'Chưa đủ điều kiện: đơn ≥1M nhóm trên + ít nhất 01 Pharmaton Vitality'}>DummyBox Import (-150k)</label>
                             </div>
                         )}
@@ -611,7 +611,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     id="note-local-max"
                                     checked={note.includes('Trả tối đa phí Local')}
                                     onChange={() => toggleNotePreset('Trả tối đa phí Local')}
-                                    className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
+                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
                                 />
                                 <label htmlFor="note-local-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Local</label>
                             </div>
@@ -637,7 +637,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     id="note-import-max"
                                     checked={note.includes('Trả tối đa phí Import')}
                                     onChange={() => toggleNotePreset('Trả tối đa phí Import')}
-                                    className="h-3.5 w-3.5 rounded text-sky-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-sky-500"
+                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
                                 />
                                 <label htmlFor="note-import-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Import</label>
                             </div>
@@ -648,7 +648,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     <div className="flex justify-between items-end pt-1.5 border-t-2 border-double border-slate-200 dark:border-slate-600">
                         <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-tighter">Tổng cộng:</span>
                         <div className="text-right flex items-baseline leading-none">
-                            <span className="text-xl font-black text-sky-600 dark:text-sky-400">{formatCurrency(finalAmount)}</span>
+                            <span className="text-xl font-black text-opella-green dark:text-sky-400">{formatCurrency(finalAmount)}</span>
                             <span className="text-[8px] font-bold text-slate-400 ml-1 uppercase">(VAT)</span>
                         </div>
                     </div>
@@ -660,7 +660,7 @@ const Cart: React.FC<CartProps> = (props) => {
                         value={note}
                         onChange={(e) => onNoteChange(e.target.value)}
                         placeholder="Ghi chú đơn hàng..."
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-sky-500 min-h-[36px] bg-slate-50 dark:bg-slate-700 dark:text-white resize-none leading-normal"
+                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] outline-none focus:ring-1 focus:ring-opella-green min-h-[36px] bg-slate-50 dark:bg-slate-700 dark:text-white resize-none leading-normal"
                         rows={1}
                     ></textarea>
 
@@ -693,7 +693,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     )}
                     <div className="flex gap-2">
                         <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded-lg font-bold text-[10px] transition-all uppercase border border-slate-200 dark:border-slate-600"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
-                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading || isSubmitBlocked} className="flex-[2] flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading || isSubmitBlocked} className="flex-[2] flex items-center justify-center bg-opella-green hover:bg-opella-green/90 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
                             {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
                         </button>
                     </div>

@@ -198,7 +198,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                 value={quickSearchTerm}
                                 onChange={(e) => setQuickSearchTerm(e.target.value)}
                                 placeholder="Tìm khách hàng khác..."
-                                className="w-full py-2 px-4 rounded-full border-2 border-sky-500 bg-white dark:bg-slate-700 dark:text-white dark:border-sky-400 outline-none text-sm font-bold shadow-sm"
+                                className="w-full py-2 px-4 rounded-full border-2 border-opella-green bg-white dark:bg-slate-700 dark:text-white dark:border-opella-green outline-none text-sm font-bold shadow-sm"
                                 onBlur={() => setTimeout(() => setShowQuickSearch(false), 200)}
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" onClick={() => { setShowQuickSearch(false); setQuickSearchTerm(''); }}>
@@ -216,7 +216,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                                 setShowQuickSearch(false);
                                                 setQuickSearchTerm('');
                                             }}
-                                            className="px-4 py-3 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0"
+                                            className="px-4 py-3 hover:bg-opella-beige/50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0"
                                         >
                                             <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-1">{res.CustomerName}</p>
                                             <div className="flex justify-between mt-1">
@@ -231,12 +231,12 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                     ) : (
                         <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setShowQuickSearch(true)}>
                             <div className="flex-1">
-                                <h2 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-opella-green dark:group-hover:text-opella-green transition-colors">
                                     {record.CustomerName}
                                 </h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{record.CustomerCode}</p>
                             </div>
-                            <button className="p-2 text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition-colors">
+                            <button className="p-2 text-slate-400 hover:text-opella-green dark:text-slate-500 dark:hover:text-opella-green transition-colors">
                                 <SearchIcon />
                             </button>
                         </div>
@@ -352,9 +352,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                         <span className="text-[9px] font-black text-pink-700 dark:text-pink-400 uppercase tracking-wide">BuyMed</span>
                                     </div>
                                 )}
-                                <div className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex items-center gap-1 shadow-sm">
-                                    <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-300">CounterTop:</span>
-                                    <span className="text-[9px] font-black text-indigo-800 dark:text-indigo-200">{record.CounterTop || 'N/A'}</span>
+                                <div className="px-2 py-1 rounded-lg bg-opella-beige/50 dark:bg-opella-green/20 border border-opella-green/30 dark:border-opella-green/50 flex items-center gap-1 shadow-sm">
+                                    <span className="text-[9px] font-bold text-opella-green dark:text-opella-green">CounterTop:</span>
+                                    <span className="text-[9px] font-black text-opella-green dark:text-opella-green">{record.CounterTop || 'N/A'}</span>
                                 </div>
                                 <div className="px-2 py-1 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 flex items-center gap-1 shadow-sm">
                                     <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300">CDU:</span>
@@ -412,9 +412,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
                 <div className="lg:col-span-3 flex flex-col gap-6">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div onClick={() => setActiveDetailModal('T1')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-sky-300 dark:hover:border-sky-600 transition-colors group relative">
-                            <div className="absolute top-2 right-2 text-slate-300 group-hover:text-sky-500 transition-colors"><ClockIcon /></div>
-                            <div className="w-10 h-10 rounded-full bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400"><GiftIcon /></div>
+                        <div onClick={() => setActiveDetailModal('T1')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-opella-green/50 dark:hover:border-opella-green transition-colors group relative">
+                            <div className="absolute top-2 right-2 text-slate-300 group-hover:text-opella-green transition-colors"><ClockIcon /></div>
+                            <div className="w-10 h-10 rounded-full bg-opella-beige/50 dark:bg-opella-green/20 flex items-center justify-center text-opella-green dark:text-opella-green"><GiftIcon /></div>
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">Doanh số hiện tại</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalActual)}</p>
@@ -430,9 +430,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                 </p>
                             </div>
                         </div>
-                        <div onClick={() => setActiveDetailModal('Products')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group relative">
+                        <div onClick={() => setActiveDetailModal('Products')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-opella-green/50 dark:hover:border-opella-green transition-colors group relative">
                             <div className="absolute top-2 right-2 text-slate-300 group-hover:text-indigo-500 transition-colors"><CubeIcon /></div>
-                            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"><CubeIcon /></div>
+                            <div className="w-10 h-10 rounded-full bg-opella-beige/50 dark:bg-opella-green/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400"><CubeIcon /></div>
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">SP Đã Mua ({uniqueProductStats.length})</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalHistoryValue)}</p>
@@ -604,7 +604,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                         {activeDetailModal === 'T1' ? (
                             <div className="overflow-y-auto custom-scrollbar">
                                 <div className="mb-4 text-center">
-                                    <h3 className="text-lg font-black uppercase text-sky-600 dark:text-sky-400">Lịch sử Sale T1</h3>
+                                    <h3 className="text-lg font-black uppercase text-opella-green dark:text-opella-green">Lịch sử Sale T1</h3>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Chi tiết thưởng doanh số tháng trước</p>
                                 </div>
                                 <div className="space-y-4">
@@ -673,7 +673,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                     </table>
                                 </div>
                                 <div className="mt-2 text-right text-xs font-bold text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-700">
-                                    Tổng cộng: <span className="text-base text-indigo-700 dark:text-indigo-400 font-black">{formatCurrency(totalHistoryValue)}</span>
+                                    Tổng cộng: <span className="text-base text-opella-green dark:text-opella-green font-black">{formatCurrency(totalHistoryValue)}</span>
                                 </div>
                             </div>
                         ) : (
@@ -705,7 +705,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             {/* Forecast Section */}
             {isCoverQ1(record) && (
                 <div className="mt-8 mx-4 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-fade-in">
-                    <h3 className="text-lg font-black uppercase text-sky-600 dark:text-sky-400 mb-6 flex items-center gap-2">
+                    <h3 className="text-lg font-black uppercase text-opella-green dark:text-opella-green mb-6 flex items-center gap-2">
                         <TrendingUpIcon />
                         <span>Dự Báo Sale T3</span>
                     </h3>

@@ -688,14 +688,14 @@ const App: React.FC = () => {
       <main className="container mx-auto p-4 flex-1">
         {viewMode === 'order' && (
           <>
-            <div className="flex flex-col lg:flex-row gap-6 mt-2">
-              <div className="lg:w-2/3 space-y-4">
+            <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
+              <div className="lg:w-2/3 space-y-4 lg:order-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {filteredProducts.map(p => <ProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
                 </div>
               </div>
-              <div className="lg:w-1/3">
-                <div className="sticky top-[180px] transition-all">
+              <div className="lg:w-1/3 lg:order-2">
+                <div className="lg:sticky lg:top-[180px] transition-all">
                   <Cart
                     items={cart} employeeName={loggedInEmployee.name} customerCode={customerCode}
                     onCustomerCodeChange={handleCustomerCodeChange} customerName={customerName}

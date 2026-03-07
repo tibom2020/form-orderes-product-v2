@@ -46,7 +46,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     record, allRecords, rebates, purchaseHistory, onBack, onGoToOrder, onSwitchCustomer,
     currentEmployee, forecastData, onUpdateForecast
 }) => {
-    const [activeDetailModal, setActiveDetailModal] = useState<'Import' | 'Local' | 'T1' | 'Products' | null>(null);
+    const [activeDetailModal, setActiveDetailModal] = useState<'Import' | 'Local' | 'T1' | 'Products' | 'ĐiềuKiệnTB' | null>(null);
     const [showQuickSearch, setShowQuickSearch] = useState(false);
     const [quickSearchTerm, setQuickSearchTerm] = useState('');
     const quickSearchInputRef = useRef<HTMLInputElement>(null);
@@ -365,29 +365,36 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                             <div className="w-full mt-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-3 shadow-sm">
                                 <h3 className="text-[10px] font-bold text-slate-800 dark:text-white uppercase flex items-center gap-1 mb-2">
                                     <StarIcon />
-                                    <span>Cập nhật trả thường ({customerRebates.length})</span>
+                                    <span>Cập nhật trả thưởng</span>
                                 </h3>
                                 {customerRebates.length > 0 ? (
-                                    <div className="flex gap-2 overflow-x-auto pb-2 snap-x custom-scrollbar">
-                                        {customerRebates.map((rb, idx) => (
-                                            <div key={idx} className="snap-center flex-shrink-0 w-full bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors">
-                                                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                                                <div className="flex items-start justify-between mb-1 pl-2">
-                                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded uppercase">Ưu đãi</span>
-                                                    {rb.Group === 'IMPORT' ? <span className="text-[9px] text-blue-500 font-black">IMP</span> : <span className="text-[9px] text-green-500 font-black">LOC</span>}
-                                                </div>
-                                                <p className="text-[10px] font-bold text-slate-800 dark:text-slate-200 line-clamp-2 min-h-[2.4em] mb-1 pl-2" title={rb["PromotionID#program"]}>
-                                                    {rb["PromotionID#program"]}
-                                                </p>
-                                                <div className="flex justify-between items-end border-t border-slate-100 dark:border-slate-700 pt-1 pl-2">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[8px] text-slate-400">Còn lại</span>
-                                                        <span className="text-xs font-black text-red-500">-{formatCompact(rb.RemainAmount)}</span>
+                                    <div className="space-y-3 text-[10px]">
+                                        {(() => {
+                                            const importRebates = customerRebates.filter(r => r.Group === 'IMPORT');
+                                            const localRebates = customerRebates.filter(r => r.Group === 'LOCAL');
+                                            const totalImport = importRebates.reduce((s, r) => s + (r.RemainAmount || 0), 0);
+                                            const totalLocal = localRebates.reduce((s, r) => s + (r.RemainAmount || 0), 0);
+                                            return (
+                                                <>
+                                                    <div>
+                                                        <p className="font-black text-blue-700 dark:text-blue-300 mb-1">Tổng phí Import: {formatCurrency(totalImport)}</p>
+                                                        <ul className="space-y-0.5 pl-2 text-slate-700 dark:text-slate-300">
+                                                            {importRebates.map((rb, idx) => (
+                                                                <li key={idx}>{rb["PromotionID#program"]} - {formatCurrency(rb.RemainAmount)}</li>
+                                                            ))}
+                                                        </ul>
                                                     </div>
-                                                    <span className="text-[8px] text-slate-400 italic">Hạn: {formatDateVal(rb.EndDate || rb.Endate)}</span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                    <div>
+                                                        <p className="font-black text-green-700 dark:text-green-300 mb-1">Tổng phí Local: {formatCurrency(totalLocal)}</p>
+                                                        <ul className="space-y-0.5 pl-2 text-slate-700 dark:text-slate-300">
+                                                            {localRebates.map((rb, idx) => (
+                                                                <li key={idx}>{rb["PromotionID#program"]} - {formatCurrency(rb.RemainAmount)}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 ) : (
                                     <div className="text-center py-2 text-slate-400 dark:text-slate-500 italic text-[10px] bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
@@ -498,10 +505,11 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400"><FaceSmileIcon /></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">Điều kiện TB</p>
+                        <div onClick={() => setActiveDetailModal('ĐiềuKiệnTB')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-pink-300 dark:hover:border-pink-600 transition-colors group relative">
+                            <div className="absolute top-2 right-2 text-slate-300 group-hover:text-pink-500 transition-colors"><FaceSmileIcon /></div>
+                            <div className="w-10 h-10 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400 shrink-0"><FaceSmileIcon /></div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">Điều kiện TB</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white truncate max-w-[80px]" title={record.Check}>{record.Check || 'N/A'}</p>
                             </div>
                         </div>
@@ -674,6 +682,31 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                 </div>
                                 <div className="mt-2 text-right text-xs font-bold text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-700">
                                     Tổng cộng: <span className="text-base text-opella-green dark:text-opella-green font-black">{formatCurrency(totalHistoryValue)}</span>
+                                </div>
+                            </div>
+                        ) : activeDetailModal === 'ĐiềuKiệnTB' ? (
+                            <div className="overflow-y-auto custom-scrollbar">
+                                <div className="mb-4 text-center">
+                                    <h3 className="text-lg font-black uppercase text-pink-600 dark:text-pink-400">Điều kiện trưng bày</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Chi tiết điều kiện & kết quả</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">FinalStoreType</p>
+                                        <p className="text-sm font-black text-slate-800 dark:text-white">{record.FinalStoreType || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">DieuKienSale</p>
+                                        <p className="text-sm font-black text-slate-800 dark:text-white">{record.DieuKienSale != null ? formatCurrency(record.DieuKienSale) : 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Sale</p>
+                                        <p className="text-sm font-black text-slate-800 dark:text-white">{record.Sale != null ? formatCurrency(record.Sale) : 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Todo</p>
+                                        <p className="text-sm font-black text-slate-800 dark:text-white">{record.Todo != null ? formatCurrency(record.Todo) : 'N/A'}</p>
+                                    </div>
                                 </div>
                             </div>
                         ) : (

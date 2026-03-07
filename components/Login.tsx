@@ -51,6 +51,7 @@ const Login: React.FC<LoginProps> = ({ employees, onLoginSuccess }) => {
     <div className="flex items-center justify-center min-h-screen bg-opella-beige dark:bg-slate-900 font-sans transition-colors duration-200">
       <div className="w-full max-w-sm p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700">
         <div className="text-center">
+            <img src="https://i.postimg.cc/D0p4bsQD/logo.webp" alt="Smart Orders Pharmacy Fulfillment" className="mx-auto h-24 sm:h-28 w-auto object-contain mb-4" />
             <h1 className="text-3xl font-bold text-opella-green">Đăng Nhập</h1>
             <p className="mt-2 text-slate-500 dark:text-slate-400">Vui lòng nhập mã nhân viên của bạn</p>
         </div>

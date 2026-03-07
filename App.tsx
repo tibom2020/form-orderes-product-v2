@@ -543,9 +543,12 @@ const App: React.FC = () => {
 
       <header className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 transition-colors duration-200">
         <div className="container mx-auto px-4 py-1.5 sm:py-3 flex justify-between items-center">
-          <div className="flex flex-col">
-            <h1 className="text-base sm:text-xl font-black text-opella-green dark:text-opella-green uppercase leading-none whitespace-nowrap">Hệ Thống Đặt Hàng</h1>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 sm:mt-1 uppercase tracking-tight italic hidden sm:block">Ngày cập nhật CTKM: {PROMO_UPDATE_DATE}</p>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <img src="https://i.postimg.cc/D0p4bsQD/logo.webp" alt="Smart Orders" className="h-12 sm:h-14 w-auto object-contain flex-shrink-0" />
+            <div className="flex flex-col">
+              <h1 className="text-base sm:text-xl font-black text-opella-green dark:text-opella-green uppercase leading-none whitespace-nowrap">Smart Orders</h1>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 sm:mt-1 uppercase tracking-tight italic hidden sm:block">Ngày cập nhật CTKM: {PROMO_UPDATE_DATE}</p>
+            </div>
           </div>
           <div className="flex items-center space-x-1.5 sm:space-x-4">
             {isSuperUser ? (

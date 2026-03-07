@@ -3,6 +3,8 @@ import React, { useState, useMemo } from 'react';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
+import { getMaxDiscountPercent } from '../utils/calculations';
+import { REBATE_TIERS } from './dashboard/DashboardUtils';
 
 interface ProductCardProps {
     product: Product;
@@ -78,6 +80,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         return [];
     }, [product.promotion, product.price]);
 
+    // Giá cuối tháng ở mức 5% (Lv5) - đã bao gồm CK + VAT
+    const LEVEL_5_INDEX = 4;
+    const giaCuoiThang = useMemo(() => {
+        const maxCk = getMaxDiscountPercent(product.promotion);
+        const giaHD = Math.round(product.price * (1 - (maxCk ?? 0) / 100));
+        return Math.round(giaHD * (1 - REBATE_TIERS[LEVEL_5_INDEX].percent / 100));
+    }, [product.price, product.promotion]);
+
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
             {/* Product Image Section */}
@@ -110,15 +120,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
 
             <div className="flex-1 flex flex-col justify-between">
                 <div>
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex justify-between items-start gap-2 mb-1">
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase flex-shrink-0 ${product.type === 'Import' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'}`}>
                             {product.type}
                         </span>
-                        {product.originalPrice && (
-                            <span className="text-[10px] text-slate-400 line-through">
-                                {formatCurrency(product.originalPrice)}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase ${product.type === 'Import' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'}`}>
+                                Giá cuối Tháng: {formatCurrency(giaCuoiThang)}
                             </span>
-                        )}
+                            {product.originalPrice && (
+                                <span className="text-[10px] text-slate-400 line-through">
+                                    {formatCurrency(product.originalPrice)}
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm line-clamp-2 leading-tight uppercase min-h-[2.5em] mb-1" title={product.name}>{product.name}</h3>

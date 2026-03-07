@@ -1,3 +1,14 @@
+/** Lấy % CK lớn nhất từ chuỗi promotion (ví dụ 4.9 từ "Mua 5h ck 4.9%") - dùng cho Giá HĐ, Giá cuối tháng */
+export const getMaxDiscountPercent = (promotion: string | undefined): number | null => {
+    if (!promotion) return null;
+    const matches = promotion.matchAll(/(\d+(?:\.\d+)?)\s*%/g);
+    let max = 0;
+    for (const m of matches) {
+        const p = parseFloat(m[1]);
+        if (p > max) max = p;
+    }
+    return max > 0 ? max : null;
+};
 
 export const getDiscountPercent = (promotion: string | undefined, quantity: number, value?: number): number => {
     if (!promotion) return 0;

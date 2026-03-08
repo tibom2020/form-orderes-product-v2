@@ -13,10 +13,8 @@ import {
     DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID,
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
+    TELFAST_GROUP_IDS,
 } from '../constants';
-
-// Nhóm sản phẩm Telfast áp dụng KM theo doanh số đơn hàng
-const TELFAST_GROUP_IDS = [7, 8];
 
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;

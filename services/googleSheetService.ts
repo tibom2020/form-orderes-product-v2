@@ -151,6 +151,26 @@ export const submitAdminNews = async (
   }
 };
 
+/** Gửi cập nhật Product Quota khi đơn hàng có SP Enterogermina 2B/20 hoặc NOSPA 80 V */
+export const submitProductQuota = async (
+  url: string,
+  payload: { employeeName: string; employeeCode: string; items: { id: number; name: string; quantity: number; price: number }[] }
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'updateProductQuota', ...payload }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting Product Quota:', error);
+    return { status: 'error', message: 'Không thể cập nhật Product Quota.' };
+  }
+};
+
 export const submitRebateCustomerNotice = async (
   url: string,
   payload: RebateCustomerNoticePayload

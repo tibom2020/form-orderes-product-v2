@@ -274,6 +274,15 @@ export interface RebateNoticeProgramItem {
   dueDate: string;
 }
 
+/** Dòng dữ liệu Product Quota từ sheet ProductQuota (theo dõi SL đặt hàng theo Rep) */
+export interface ProductQuotaRow {
+    EmployeeName: string;
+    ProductId: number;
+    ProductName?: string;
+    Quantity: number;
+    TotalAmount: number;
+}
+
 export interface RebateCustomerNoticePayload {
   code: string;
   customerName: string;

@@ -10,6 +10,7 @@ import {
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
     DocumentTextIcon, ChartBarIcon, FunnelIcon
 } from './icons';
+import DummyBoxCalculator from './DummyBoxCalculator';
 
 
 interface LandingPageProps {
@@ -20,6 +21,8 @@ interface LandingPageProps {
     onReloadData: () => void;
     onCustomerSelect: (code: string) => void;
     onUpdateRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
+    showReportOnMount?: boolean;
+    onReminderShown?: () => void;
 }
 
 
@@ -30,13 +33,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
     salesRecords,
     forecastData,
     onCustomerSelect,
-    onUpdateRecord
+    onUpdateRecord,
+    showReportOnMount = false,
+    onReminderShown
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<MarketingRecord | null>(null);
     const [showReport, setShowReport] = useState(false);
     const [showConditionsModal, setShowConditionsModal] = useState(false);
-    const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE'>('ALL');
+    const [showCalculatorModal, setShowCalculatorModal] = useState(false);
+    const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE' | 'PACKAGE_NO_IMAGE'>('ALL');
     // State lọc theo Rep
     const [selectedRepFilter, setSelectedRepFilter] = useState<string | null>(null);
 
@@ -53,6 +59,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [localStatus, setLocalStatus] = useState<{ upHinh: string; upHinh2: string; goiLocal: string; goiImport: string } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Khi mount với showReportOnMount (nhắc nhở KPI sau đăng nhập): mở báo cáo DummyBox
+    useEffect(() => {
+        if (showReportOnMount) {
+            setShowReport(true);
+            onReminderShown?.();
+        }
+    }, [showReportOnMount, onReminderShown]);
 
     // Chỉ cho phép chỉnh sửa gói nếu mã nhân viên là 20043741
     const canEditPackages = currentEmployee.code === '20043741';
@@ -93,10 +107,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
             if (record.GoiImport === 'YES') stats[repName].import += 1;
         });
 
-        // Chuyển về mảng và sort theo tổng số KH giảm dần
+        // Chuyển về mảng và sort: ưu tiên ảnh cao→thấp, rồi tổng đơn hàng (local+import) cao→thấp
         return Object.entries(stats)
             .map(([rep, data]) => ({ rep, ...data }))
-            .sort((a, b) => b.total - a.total);
+            .sort((a, b) => {
+                if (b.upHinh !== a.upHinh) return b.upHinh - a.upHinh;
+                return (b.local + b.import) - (a.local + a.import);
+            });
     }, [uniqueMarketingData]);
 
     // Tổng số cho các ô thống kê phía trên báo cáo (tương tự Forecast)
@@ -110,6 +127,21 @@ const LandingPage: React.FC<LandingPageProps> = ({
             }),
             { total: 0, upHinh: 0, local: 0, import: 0 }
         );
+    }, [reportData]);
+
+    // Top performers cho báo cáo: Top 1 Ảnh, Top 1 Đơn hàng (local + import)
+    const { topRepByHinh, topRepByOrder } = useMemo(() => {
+        if (reportData.length === 0) return { topRepByHinh: null as string | null, topRepByOrder: null as string | null };
+        const byHinh = reportData.reduce((best, r) => (r.upHinh > (best?.upHinh ?? -1) ? r : best), reportData[0]);
+        const byOrder = reportData.reduce((best, r) => {
+            const sum = r.local + r.import;
+            const bestSum = (best?.local ?? 0) + (best?.import ?? 0);
+            return sum > bestSum ? r : best;
+        }, reportData[0]);
+        return {
+            topRepByHinh: byHinh.upHinh > 0 ? byHinh.rep : null,
+            topRepByOrder: (byOrder.local + byOrder.import) > 0 ? byOrder.rep : null
+        };
     }, [reportData]);
 
     const currentDate = new Date().toLocaleDateString('vi-VN');
@@ -180,6 +212,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         if (imageFilterMode === 'HAS_IMAGE' && !hasImage) return false;
         if (imageFilterMode === 'NO_IMAGE' && hasImage) return false;
+        if (imageFilterMode === 'PACKAGE_NO_IMAGE') {
+            const hasPackage = c.GoiLocal === 'YES' || c.GoiImport === 'YES';
+            if (!hasPackage || hasImage) return false;
+        }
 
         return true;
     })
@@ -515,7 +551,27 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                         className="hover:bg-opella-beige/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
                                         title="Click để lọc theo Rep này"
                                     >
-                                        <td className="px-4 py-3 font-bold group-hover:text-opella-green transition-colors">{row.rep}</td>
+                                        <td className="px-4 py-3 font-bold group-hover:text-opella-green transition-colors">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span>{row.rep}</span>
+                                                {row.rep === topRepByHinh && (
+                                                    <>
+                                                        <span className="text-yellow-500 dark:text-yellow-400 shrink-0 inline-flex" title="Top 1 Ảnh">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                                        </span>
+                                                        <span className="text-[10px] bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap">Top 1 Ảnh</span>
+                                                    </>
+                                                )}
+                                                {row.rep === topRepByOrder && (
+                                                    <>
+                                                        <span className="text-amber-500 dark:text-amber-400 shrink-0 inline-flex" title="Top 1 Đơn hàng">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                                        </span>
+                                                        <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap">Top 1 Đơn hàng</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-4 py-3 text-center font-bold bg-slate-50 dark:bg-slate-800/50">{row.total}</td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.upHinh > 0 ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'text-slate-400'}`}>
@@ -606,6 +662,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
             {renderReportModal()}
             {renderConditionsModal()}
+            {showCalculatorModal && <DummyBoxCalculator onClose={() => setShowCalculatorModal(false)} />}
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -628,23 +685,19 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                     <div className="flex gap-2">
                         {/* Nút Lọc Ảnh */}
-                        <button
-                            onClick={() => {
-                                if (imageFilterMode === 'ALL') setImageFilterMode('HAS_IMAGE');
-                                else if (imageFilterMode === 'HAS_IMAGE') setImageFilterMode('NO_IMAGE');
-                                else setImageFilterMode('ALL');
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${imageFilterMode === 'HAS_IMAGE' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800' :
-                                imageFilterMode === 'NO_IMAGE' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800' :
-                                    'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                }`}
-                        >
+                        <div className="flex items-center gap-2">
                             <FunnelIcon />
-                            <span>
-                                {imageFilterMode === 'ALL' ? 'Lọc Ảnh' :
-                                    imageFilterMode === 'HAS_IMAGE' ? 'Đã có ảnh' : 'Chưa có ảnh'}
-                            </span>
-                        </button>
+                            <select
+                                value={imageFilterMode}
+                                onChange={(e) => setImageFilterMode(e.target.value as typeof imageFilterMode)}
+                                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-opella-green outline-none cursor-pointer"
+                            >
+                                <option value="ALL">Tất cả</option>
+                                <option value="HAS_IMAGE">Đã có ảnh</option>
+                                <option value="NO_IMAGE">Chưa có ảnh</option>
+                                <option value="PACKAGE_NO_IMAGE">Có gói chưa ảnh</option>
+                            </select>
+                        </div>
 
                         <button
                             onClick={() => setShowReport(true)}
@@ -660,6 +713,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         >
                             <DocumentTextIcon />
                             <span>Điều kiện đặt hàng</span>
+                        </button>
+                        <button
+                            onClick={() => setShowCalculatorModal(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold transition-all border border-green-200 dark:border-green-800"
+                            title="Tính toán gói DummyBox Local & Import"
+                        >
+                            <ChartBarIcon />
+                            <span>Tính toán gói DummyBox</span>
                         </button>
                     </div>
                 </div>

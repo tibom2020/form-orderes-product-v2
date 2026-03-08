@@ -56,6 +56,9 @@ export const PRODUCTS: Product[] = [
   { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
+// Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
+export const TELFAST_GROUP_IDS = [7, 8] as const;
+
 // CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
 export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml
 export const DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID = 1; // CORBIERE CALCIUM PLUS 3SUPX10 10ML
@@ -63,9 +66,15 @@ export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
 
 // CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
 // Pharmaton Energy (id 17): tính giá gốc, ko tính chiết khấu 29.5%
-export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [17, 18, 20, 27, 11, 12, 30] as const; // Pharmaton Energy, Essent, Fizzi, Vitality + Enterogermina (GUT 2B, 4B, 2B/20)
+export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [17, 18, 20, 27, 12, 30] as const; // Pharmaton Energy, Essent, Fizzi, Vitality + Enterogermina (GUT 4B, 2B/20)
 export const DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID = 17; // Khi tính tổng điều kiện: dùng originalPrice (ko áp CK 29.5%)
 export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
 export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;
+
+// Product Quota: theo dõi số lượng đặt hàng theo Rep
+export const PRODUCT_QUOTA_ENTEROGERMINA_ID = 30; // ENTEROGERMINA 2 billion/5ml B/20 bottle
+export const PRODUCT_QUOTA_NOSPA_ID = 16;        // NOSPA 80 V
+export const PRODUCT_QUOTA_ENTEROGERMINA_QUOTA = 4000; // box
+export const PRODUCT_QUOTA_NOSPA_QUOTA = 400;         // box

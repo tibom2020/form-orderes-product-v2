@@ -76,7 +76,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
 
     const rowsWithFinal = useMemo(() => {
         return rows.map(r => {
-            const giaHoaDon = r.giaSau * (1 - percentGiam / 100) * (1 + r.vatPercent);
+            const giaHoaDon = r.qty === 0 ? 0 : r.giaSau * (1 - percentGiam / 100) * (1 + r.vatPercent);
             const tongDonItem = giaHoaDon * r.qty;
             return { ...r, giaHoaDon, tongDonItem };
         });

@@ -290,12 +290,14 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
 
     const [showExportGppModal, setShowExportGppModal] = useState(false);
     const [showRepStatsModal, setShowRepStatsModal] = useState(false);
+    const [repStatsGroupFilter, setRepStatsGroupFilter] = useState<'TOTAL' | 'LOCAL' | 'IMPORT'>('TOTAL');
     const [isPublishingGpp, setIsPublishingGpp] = useState(false);
     const [publishingCustomerCode, setPublishingCustomerCode] = useState<string | null>(null);
 
     // Pivot: Rep (rows) x Ngày hết hạn (columns) - tương tự ảnh đính kèm
     const repStatsPivot = useMemo(() => {
-        const data = mergedData;
+        const data = repStatsGroupFilter === 'TOTAL' ? mergedData
+            : mergedData.filter(i => repStatsGroupFilter === 'LOCAL' ? i.groupTag.includes('LOCAL') : i.groupTag.includes('IMPORT'));
         const dateSet = new Set<string>();
         const repMap = new Map<string, Map<string, number>>(); // rep -> (dateStr -> sum)
         data.forEach(item => {
@@ -327,7 +329,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             overallTotal += colSum;
         });
         return { dateColumns, repRows, grandTotalRow, overallTotal };
-    }, [mergedData]);
+    }, [mergedData, repStatsGroupFilter]);
 
     const buildGppNoticeText = useMemo(() => {
         const lines: string[] = ['📋 THÔNG BÁO: KH CÓ GPP SẮP HẾT HẠN', ''];
@@ -687,12 +689,23 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             {showRepStatsModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowRepStatsModal(false)}>
                     <div className="bg-white dark:bg-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
-                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
                             <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase flex items-center gap-2">
                                 <ChartBarIcon />
                                 Thống kê phí còn lại theo Rep
                             </h3>
-                            <button type="button" onClick={() => setShowRepStatsModal(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">✕</button>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={repStatsGroupFilter}
+                                    onChange={(e) => setRepStatsGroupFilter(e.target.value as 'TOTAL' | 'LOCAL' | 'IMPORT')}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-opella-green outline-none cursor-pointer"
+                                >
+                                    <option value="TOTAL">Tổng</option>
+                                    <option value="LOCAL">Local</option>
+                                    <option value="IMPORT">Import</option>
+                                </select>
+                                <button type="button" onClick={() => setShowRepStatsModal(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">✕</button>
+                            </div>
                         </div>
                         <div className="p-4 overflow-auto flex-1">
                             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Click vào ô số tiền để lọc danh sách KH có phí tương ứng</p>

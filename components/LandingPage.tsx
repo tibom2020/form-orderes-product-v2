@@ -665,13 +665,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
             {showCalculatorModal && <DummyBoxCalculator onClose={() => setShowCalculatorModal(false)} />}
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                {/* Mobile: stack dọc; Desktop: hàng ngang */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                     <div className="flex items-center gap-2 text-opella-green dark:text-opella-green font-black uppercase text-sm tracking-tight">
                         <div className="p-2 bg-opella-beige/50 dark:bg-opella-green/20 rounded-lg">
                             <UserGroupIcon />
                         </div>
                         <span>Danh mục khách hàng ({filteredCustomers.length})</span>
-
                         {selectedRepFilter && (
                             <button
                                 onClick={() => setSelectedRepFilter(null)}
@@ -683,14 +683,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         )}
                     </div>
 
-                    <div className="flex gap-2">
-                        {/* Nút Lọc Ảnh */}
-                        <div className="flex items-center gap-2">
-                            <FunnelIcon />
+                    {/* Hàng 2 (mobile) / Cùng hàng (desktop): Lọc + Nút chức năng */}
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        {/* Lọc: full width trên mobile */}
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex-shrink-0"><FunnelIcon /></div>
                             <select
                                 value={imageFilterMode}
                                 onChange={(e) => setImageFilterMode(e.target.value as typeof imageFilterMode)}
-                                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-opella-green outline-none cursor-pointer"
+                                className="flex-1 sm:flex-none min-w-0 px-3 py-2.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-opella-green outline-none cursor-pointer"
                             >
                                 <option value="ALL">Tất cả</option>
                                 <option value="HAS_IMAGE">Đã có ảnh</option>
@@ -699,29 +700,32 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             </select>
                         </div>
 
-                        <button
-                            onClick={() => setShowReport(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-opella-beige/50 hover:bg-opella-beige dark:bg-opella-green/20 dark:hover:bg-opella-green/30 text-opella-green dark:text-opella-green rounded-lg text-xs font-bold transition-all border border-opella-green/30 dark:border-opella-green/50"
-                        >
-                            <ChartBarIcon />
-                            <span>Báo Cáo</span>
-                        </button>
-                        <button
-                            onClick={() => setShowConditionsModal(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition-all border border-amber-200 dark:border-amber-800"
-                            title="Xem điều kiện đặt hàng DummyBox Local & Import"
-                        >
-                            <DocumentTextIcon />
-                            <span>Điều kiện đặt hàng</span>
-                        </button>
-                        <button
-                            onClick={() => setShowCalculatorModal(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold transition-all border border-green-200 dark:border-green-800"
-                            title="Tính toán gói DummyBox Local & Import"
-                        >
-                            <ChartBarIcon />
-                            <span>Tính toán gói DummyBox</span>
-                        </button>
+                        {/* Nút chức năng: grid 2 cột mobile, hàng ngang desktop */}
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                            <button
+                                onClick={() => setShowReport(true)}
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-opella-beige/50 hover:bg-opella-beige dark:bg-opella-green/20 dark:hover:bg-opella-green/30 text-opella-green dark:text-opella-green rounded-lg text-xs font-bold transition-all border border-opella-green/30 dark:border-opella-green/50"
+                            >
+                                <ChartBarIcon />
+                                <span>Báo Cáo</span>
+                            </button>
+                            <button
+                                onClick={() => setShowConditionsModal(true)}
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition-all border border-amber-200 dark:border-amber-800"
+                                title="Xem điều kiện đặt hàng DummyBox Local & Import"
+                            >
+                                <DocumentTextIcon />
+                                <span>Điều kiện</span>
+                            </button>
+                            <button
+                                onClick={() => setShowCalculatorModal(true)}
+                                className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold transition-all border border-green-200 dark:border-green-800"
+                                title="Tính toán gói DummyBox Local & Import"
+                            >
+                                <ChartBarIcon />
+                                <span>Tính DummyBox</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

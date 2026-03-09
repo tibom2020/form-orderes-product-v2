@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { SalesRecord } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { FaceFrownIcon, FaceSmileIcon } from '../icons';
@@ -10,13 +10,16 @@ interface CustomerListItemProps {
     record: SalesRecord;
     onViewDetail: (record: SalesRecord) => void;
     onGoToOrder: (code: string) => void;
+    onExportSales?: (record: SalesRecord) => Promise<void>;
 }
 
 const CustomerListItem: React.FC<CustomerListItemProps> = ({
     record,
     onViewDetail,
-    onGoToOrder
+    onGoToOrder,
+    onExportSales
 }) => {
+    const [isExporting, setIsExporting] = useState(false);
     const checkStatus = record.Check || '';
     const isFail = checkStatus.toLowerCase().includes('rớt') || checkStatus.toLowerCase() === 'fail';
     const isPass = checkStatus.toLowerCase().includes('đạt') || checkStatus.toLowerCase() === 'pass';
@@ -29,6 +32,29 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
             <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 mr-2">
                     <div className="flex items-center gap-2">
+                        {onExportSales && (
+                            <button
+                                type="button"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (isExporting) return;
+                                    setIsExporting(true);
+                                    try {
+                                        await onExportSales(record);
+                                        alert('Đã gửi thông tin doanh số qua n8n/Telegram.');
+                                    } catch {
+                                        alert('Gửi thất bại. Vui lòng thử lại.');
+                                    } finally {
+                                        setIsExporting(false);
+                                    }
+                                }}
+                                disabled={isExporting}
+                                className="text-[9px] font-bold px-2 py-0.5 rounded border bg-opella-green text-white border-opella-green hover:bg-opella-green/90 dark:bg-opella-green dark:text-white dark:border-opella-green dark:hover:bg-opella-green/90 disabled:opacity-50 transition-colors"
+                                title="Xuất thông tin Doanh số KH"
+                            >
+                                {isExporting ? '...' : 'XUẤT DOANH SỐ'}
+                            </button>
+                        )}
                         <span
                             onClick={() => onViewDetail(record)}
                             className="font-bold text-slate-800 dark:text-slate-200 text-sm cursor-pointer hover:text-opella-green dark:hover:text-opella-green"
@@ -62,7 +88,7 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                         {record.Address}{record.District ? `, ${record.District}` : ''}{record.Province ? `, ${record.Province}` : ''}
                     </p>
 
-                    <div className="flex gap-1 mt-1.5 flex-wrap">
+                    <div className="flex gap-1 mt-1.5 flex-wrap items-center">
                         {record.CoverQ1 === 'YES' && <span className="text-[9px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded shadow-sm">Cover Q1: YES</span>}
                         {record.BuyMed === 'YES' && <span className="text-[9px] font-bold bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-800 px-2 py-1 rounded shadow-sm">BuyMed: YES</span>}
                         {record.CounterTop && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border ${String(record.CounterTop).toLowerCase().includes('rớt') ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-opella-beige/50 dark:bg-opella-green/20 text-opella-green dark:text-opella-green border-opella-green/30 dark:border-opella-green/50'}`}>CounterTop: {record.CounterTop}</span>}

@@ -66,6 +66,7 @@ export interface DashboardProps {
     }
   ) => void;
   onBack?: () => void;
+  onExportSales?: (record: SalesRecord) => Promise<void>;
 }
 
 export interface SalesRecord {
@@ -294,5 +295,15 @@ export interface RebateCustomerNoticePayload {
   totalLocalAmount: number;
   totalImportAmount: number;
   totalAmount: number;
+  message: string;
+}
+
+/** Payload xuất thông tin Doanh số KH qua n8n/Telegram */
+export interface CustomerSalesNoticePayload {
+  code: string;
+  codeGiga: string;
+  codeBM: string;
+  customerName: string;
+  employeeName: string;
   message: string;
 }

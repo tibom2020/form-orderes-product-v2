@@ -15,10 +15,10 @@ import ProductQuotaTab from './components/ProductQuotaTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitProductQuota } from './services/googleSheetService';
+import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice, submitProductQuota } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
-import { generateCustomerSummary } from './utils/customerSummarizer';
+import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
@@ -250,6 +250,16 @@ const App: React.FC = () => {
     const result = await submitRebateCustomerNotice(GOOGLE_SCRIPT_URL, payload);
     if (result.status !== 'success') {
       throw new Error(result.message || 'Gửi thông báo thất bại.');
+    }
+  };
+
+  const handleExportSales = async (record: SalesRecord) => {
+    const employeeName = loggedInEmployee?.name || record.Rep || '';
+    const payload = buildCustomerSalesNoticePayload(record, employeeName);
+    if (!payload) throw new Error('Không có dữ liệu khách hàng.');
+    const result = await submitCustomerSalesNotice(GOOGLE_SCRIPT_URL, payload);
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Gửi thông tin doanh số thất bại.');
     }
   };
 
@@ -787,6 +797,7 @@ const App: React.FC = () => {
               setViewMode('order');
               setDashboardCustomerCode(null);
             }}
+            onExportSales={handleExportSales}
           />
         )}
 

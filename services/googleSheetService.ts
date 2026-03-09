@@ -1,6 +1,6 @@
 
 import type { CartItem } from '../types';
-import type { RebateCustomerNoticePayload } from '../types';
+import type { RebateCustomerNoticePayload, CustomerSalesNoticePayload } from '../types';
 
 interface OrderPayload {
   employeeName: string;
@@ -192,6 +192,31 @@ export const submitRebateCustomerNotice = async (
   } catch (error) {
     console.error('Error submitting rebate customer notice:', error);
     return { status: 'error', message: 'Không thể gửi thông báo khách hàng qua webhook.' };
+  }
+};
+
+/** Gửi thông tin Doanh số KH qua n8n/Telegram (tương tự Rebate) */
+export const submitCustomerSalesNotice = async (
+  url: string,
+  payload: CustomerSalesNoticePayload
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify({
+        action: 'customerSalesNotice',
+        ...payload,
+      }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting customer sales notice:', error);
+    return { status: 'error', message: 'Không thể gửi thông tin doanh số qua webhook.' };
   }
 };
 

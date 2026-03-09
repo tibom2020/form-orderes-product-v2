@@ -11,7 +11,8 @@ import KpiModals from './dashboard/KpiModals';
 import CustomerListItem from './dashboard/CustomerListItem';
 import { NeonCircularProgress, NeonLinearProgress } from './dashboard/NeonStats';
 import {
-    ADMIN_CODE, ADMIN_NAME, KPI_TARGETS, REBATE_TIERS, calculatePercent, formatCompact
+    ADMIN_CODE, ADMIN_NAME, KPI_TARGETS, REBATE_TIERS, calculatePercent, formatCompact,
+    AO_TODO_PERCENT, MSO_TODO_PERCENT, calculateAoTodo, calculateMsoTodo
 } from './dashboard/DashboardUtils';
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -23,7 +24,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     initialCustomerCode,
     forecastData,
     onUpdateForecast,
-    onBack
+    onBack,
+    onExportSales
 }) => {
     // ... rest of component
     const [inputValue, setInputValue] = useState('');
@@ -41,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     // KPI Detail Modal State
     const [activeKpiModal, setActiveKpiModal] = useState<string | null>(null);
-    const [kpiViewMode, setKpiViewMode] = useState<'pass' | 'fail'>('pass');
+    const [kpiViewMode, setKpiViewMode] = useState<'pass' | 'fail' | 'ao_2to3' | 'ao_under2'>('pass');
     const [kpiGroupBy, setKpiGroupBy] = useState<'customer' | 'group'>('customer');
 
     // 1. Authorization Logic & Data Filtering
@@ -55,6 +57,11 @@ const Dashboard: React.FC<DashboardProps> = ({
             return matchCode || matchName;
         });
     }, [salesData, currentEmployee]);
+
+    // Reset KPI view mode when switching modal
+    useEffect(() => {
+        if (activeKpiModal) setKpiViewMode('pass');
+    }, [activeKpiModal]);
 
     // Handle external selection (e.g. from Rebate Tab)
     useEffect(() => {
@@ -295,6 +302,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 color="yellow"
                                 onClick={() => setActiveKpiModal('MSO')}
                             />
+                            <div className="flex justify-center gap-6 pt-2 pb-1">
+                                <span className="text-[10px] font-bold text-pink-400/90 bg-pink-500/20 px-2.5 py-1 rounded border border-pink-500/30">
+                                    To do {AO_TODO_PERCENT}% AO: +{calculateAoTodo(kpiStats.actual.AO, kpiStats.targets.AO)}
+                                </span>
+                                <span className="text-[10px] font-bold text-yellow-400/90 bg-yellow-500/20 px-2.5 py-1 rounded border border-yellow-500/30">
+                                    To do {MSO_TODO_PERCENT}% MSO: +{calculateMsoTodo(kpiStats.actual.MSO, kpiStats.targets.MSO)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -522,6 +537,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 record={record}
                                 onViewDetail={setSelectedCustomer}
                                 onGoToOrder={onCustomerSelect}
+                                onExportSales={onExportSales}
                             />
                         ))
                     )}

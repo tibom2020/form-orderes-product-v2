@@ -12,7 +12,10 @@ import {
 } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
 
-const CALC_PRODUCTS = DUMMY_BOX_LOCAL_PRODUCT_IDS.map(id => PRODUCTS.find(p => p.id === id)!).filter(Boolean);
+const REQUIRED_PRODUCT = PRODUCTS.find(p => p.id === DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID)!;
+const OPTIONAL_PRODUCTS = DUMMY_BOX_LOCAL_PRODUCT_IDS.filter(id => id !== DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID)
+    .map(id => PRODUCTS.find(p => p.id === id)!)
+    .filter(Boolean);
 
 /** VAT % cố định: CORBIERE CALCIUM PLUS (id 1) = 8%, còn lại = 5% */
 const VAT_BY_PRODUCT_ID: Record<number, number> = {
@@ -29,9 +32,23 @@ interface DummyBoxLocalCalculatorProps {
 }
 
 const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClose, embedded = false }) => {
-    const [quantities, setQuantities] = useState<Record<number, number>>(() =>
-        Object.fromEntries(CALC_PRODUCTS.map(p => [p.id, 0]))
-    );
+    const [addedOptionalIds, setAddedOptionalIds] = useState<number[]>([]);
+    const [dropdownValue, setDropdownValue] = useState('');
+    const [quantities, setQuantities] = useState<Record<number, number>>(() => {
+        const base = Object.fromEntries([REQUIRED_PRODUCT, ...OPTIONAL_PRODUCTS].map(p => [p.id, 0]));
+        base[DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID] = 1;
+        return base;
+    });
+
+    const visibleProducts = useMemo(() => {
+        const added = addedOptionalIds.map(id => OPTIONAL_PRODUCTS.find(p => p.id === id)!).filter(Boolean);
+        return [REQUIRED_PRODUCT, ...added];
+    }, [addedOptionalIds]);
+
+    const removeProduct = (id: number) => {
+        setAddedOptionalIds(prev => prev.filter(x => x !== id));
+        setQuantities(prev => ({ ...prev, [id]: 0 }));
+    };
 
     const setQty = (id: number, qty: number) => {
         setQuantities(prev => ({ ...prev, [id]: Math.max(0, qty) }));
@@ -39,13 +56,13 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
 
     // Tổng Telfast group (basePrice * qty) cho compareValue của Telfast BD
     const telfastGroupTotal = useMemo(() => {
-        return CALC_PRODUCTS
+        return visibleProducts
             .filter(p => TELFAST_GROUP_IDS.includes(p.id as 7 | 8))
             .reduce((s, p) => s + (p.basePrice ?? p.price) * (quantities[p.id] ?? 0), 0);
-    }, [quantities]);
+    }, [quantities, visibleProducts]);
 
     const rows = useMemo(() => {
-        return CALC_PRODUCTS.map((p, idx) => {
+        return visibleProducts.map((p, idx) => {
             const qty = quantities[p.id] ?? 0;
             const basePrice = p.basePrice ?? p.price;
             const isTelfast = TELFAST_GROUP_IDS.includes(p.id as 7 | 8);
@@ -63,7 +80,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                 vatPercent  // 0.08 hoặc 0.05 (decimal) - dùng cho công thức (1 + vatPercent)
             };
         });
-    }, [quantities, telfastGroupTotal]);
+    }, [quantities, telfastGroupTotal, visibleProducts]);
 
     const tongDonSauCk = useMemo(() =>
         rows.reduce((s, r) => s + r.giaSau * r.qty, 0),
@@ -107,7 +124,21 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                 {rowsWithFinal.map((r) => (
                                     <tr key={r.id} className="text-slate-700 dark:text-slate-300">
                                         <td className="px-2 py-2 text-center">{r.stt}</td>
-                                        <td className="px-2 py-2 font-medium">{r.name}</td>
+                                        <td className="px-2 py-2 font-medium">
+                                            <div className="flex items-center gap-1">
+                                                {r.name}
+                                                {r.id !== DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); removeProduct(r.id); }}
+                                                        className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs"
+                                                        title="Xóa sản phẩm"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-2 py-2">
                                             <div className="flex items-center justify-center gap-1">
                                                 <button
@@ -135,6 +166,39 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                         <td className="px-2 py-2 text-right font-bold bg-yellow-50 dark:bg-yellow-900/20">{formatCurrency(r.giaHoaDon)}</td>
                                     </tr>
                                 ))}
+                                {OPTIONAL_PRODUCTS.some(p => !addedOptionalIds.includes(p.id)) && (
+                                    <tr className="bg-slate-50 dark:bg-slate-800/50">
+                                        <td colSpan={8} className="px-2 py-2">
+                                                <div className="flex items-center gap-2">
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">Thêm sản phẩm:</span>
+                                                <select
+                                                    value={dropdownValue}
+                                                    onChange={(e) => setDropdownValue(e.target.value)}
+                                                    className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 min-w-[180px]"
+                                                >
+                                                    <option value="">-- Chọn sản phẩm --</option>
+                                                    {OPTIONAL_PRODUCTS.filter(p => !addedOptionalIds.includes(p.id)).map(p => (
+                                                        <option key={p.id} value={String(p.id)}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const id = dropdownValue ? Number(dropdownValue) : 0;
+                                                        if (id && !addedOptionalIds.includes(id)) {
+                                                            setAddedOptionalIds(prev => [...prev, id]);
+                                                            setDropdownValue('');
+                                                        }
+                                                    }}
+                                                    disabled={!dropdownValue}
+                                                    className="px-2 py-1 text-xs font-bold rounded bg-green-600 hover:bg-green-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+                                                >
+                                                    Thêm
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

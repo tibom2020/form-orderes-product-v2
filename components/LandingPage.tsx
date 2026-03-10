@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { submitMarketingData } from '../services/googleSheetService';
 
 import { GOOGLE_SCRIPT_URL } from '../constants';
-import { removeVietnameseTones } from '../utils/formatters';
+import { removeVietnameseTones, formatCurrency } from '../utils/formatters';
 import { generateCustomerSummary } from '../utils/customerSummarizer';
 import type { MarketingRecord, Employee, SalesRecord, ForecastItem } from '../types';
 import {
@@ -147,6 +147,17 @@ const LandingPage: React.FC<LandingPageProps> = ({
     }, [reportData]);
 
     const currentDate = new Date().toLocaleDateString('vi-VN');
+
+    // Map CustomerCode -> Tổng MW + Other (Sale Q1)
+    const salesByCode = useMemo(() => {
+        const map = new Map<string, number>();
+        salesRecords.forEach(r => {
+            const code = String(r.CustomerCode || '').trim();
+            const total = (Number(r.MustWin) || 0) + (Number(r.Other) || 0);
+            map.set(code, total);
+        });
+        return map;
+    }, [salesRecords]);
     // --------------------
 
     // Sync selectedCustomer with marketingData updates
@@ -761,7 +772,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             <div className="flex-1 min-w-0 pr-4">
                                                 <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green dark:group-hover:text-opella-green transition-colors">{c.CustomerName}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{c.CustomerCode} • {c.District}</p>
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                                                    {c.CustomerCode} • {c.District}
+                                                    <span className="text-red-600 dark:text-red-400 font-bold"> • Sale Q1: {formatCurrency(salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0)}</span>
+                                                </p>
                                                     {/* Hiển thị Rep Name nếu đang xem ở chế độ Admin */}
                                                     {currentEmployee.code === '20043741' && c.Rep && (
                                                         <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">

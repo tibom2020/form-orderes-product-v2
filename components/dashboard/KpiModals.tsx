@@ -223,7 +223,13 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                                             </div>
                                             <div className="flex gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
                                                 {item.code !== 'GROUP' ? (
-                                                    <><span>{item.code}</span><span>• {item.district}</span></>
+                                                    <>
+                                                        <span>{item.code}</span>
+                                                        <span>• {item.district}</span>
+                                                        {item.originalRecord.FinalStoreType && (
+                                                            <span className="text-red-600 dark:text-red-400">• {item.originalRecord.FinalStoreType}</span>
+                                                        )}
+                                                    </>
                                                 ) : (
                                                     <span>Nhóm sản phẩm</span>
                                                 )}

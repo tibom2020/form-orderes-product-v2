@@ -7,10 +7,10 @@ import { formatCompact } from './DashboardUtils';
 interface KpiModalsProps {
     activeKpiModal: string | null;
     userSalesData: SalesRecord[];
-    kpiViewMode: 'pass' | 'fail';
+    kpiViewMode: 'pass' | 'fail' | 'ao_2to3' | 'ao_under2';
     kpiGroupBy: 'customer' | 'group';
     onClose: () => void;
-    onSetViewMode: (mode: 'pass' | 'fail') => void;
+    onSetViewMode: (mode: 'pass' | 'fail' | 'ao_2to3' | 'ao_under2') => void;
     onSetGroupBy: (mode: 'customer' | 'group') => void;
     onCustomerSelectFromModal: (record: SalesRecord) => void;
 }
@@ -105,11 +105,20 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                 data = allKpiData.filter(item => kpiViewMode === 'pass' ? item.value > 0 : item.value === 0);
                 break;
             case 'AO':
-                title = kpiViewMode === 'pass' ? 'Danh sách AO (>3 Tr)' : 'Danh sách Chưa đạt AO (<=3 Tr)';
-                data = allKpiData.filter(item => {
-                    if (kpiViewMode === 'pass') return item.value > 3000000;
-                    return item.value <= 3000000;
-                });
+                title = kpiViewMode === 'pass' ? 'Danh sách AO (>3 Tr)'
+                    : kpiViewMode === 'ao_2to3' ? 'Danh sách Chưa đạt AO - Từ 2tr - dưới 3tr'
+                    : kpiViewMode === 'ao_under2' ? 'Danh sách Chưa đạt AO - Dưới 2tr'
+                    : 'Danh sách Chưa đạt AO - Từ 2tr - dưới 3tr';
+                if (kpiViewMode === 'pass') {
+                    data = allKpiData.filter(item => item.value > 3000000);
+                } else if (kpiViewMode === 'ao_2to3') {
+                    data = allKpiData.filter(item => item.value >= 2000000 && item.value < 3000000).sort((a, b) => b.value - a.value);
+                } else if (kpiViewMode === 'ao_under2') {
+                    data = allKpiData.filter(item => item.value < 2000000).sort((a, b) => b.value - a.value);
+                } else {
+                    // fail (legacy): default to ao_2to3
+                    data = allKpiData.filter(item => item.value >= 2000000 && item.value < 3000000).sort((a, b) => b.value - a.value);
+                }
                 break;
             case 'MSO':
                 title = kpiViewMode === 'pass' ? 'Danh sách MSO (>9 Tr)' : 'Danh sách Chưa đạt MSO (<=9 Tr)';
@@ -124,6 +133,7 @@ const KpiModals: React.FC<KpiModalsProps> = ({
     data.sort((a, b) => b.value - a.value);
 
     const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+    const totalCount = data.length;
     const showToggle = ['Active', 'AO', 'MSO'].includes(activeKpiModal);
 
     return (
@@ -135,26 +145,43 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {kpiViewMode === 'pass' ? 'Tổng cộng đạt: ' : 'Số lượng: '}
                             <span className="font-bold text-opella-green dark:text-opella-green">
-                                {kpiViewMode === 'pass' ? formatCompact(totalValue) : `${data.length} KH`}
+                                {kpiViewMode === 'pass' ? formatCompact(totalValue) : `${totalCount} KH`}
                             </span>
                         </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                         <button onClick={onClose} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors">✕</button>
                         {showToggle && (
-                            <div className="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-300 dark:border-slate-600">
+                            <div className="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-300 dark:border-slate-600 flex-wrap gap-0.5">
                                 <button
                                     onClick={() => onSetViewMode('pass')}
                                     className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'pass' ? 'bg-white dark:bg-slate-600 text-opella-green dark:text-opella-green shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                 >
                                     Đạt
                                 </button>
-                                <button
-                                    onClick={() => onSetViewMode('fail')}
-                                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'fail' ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                                >
-                                    Chưa đạt
-                                </button>
+                                {activeKpiModal === 'AO' ? (
+                                    <>
+                                        <button
+                                            onClick={() => onSetViewMode('ao_2to3')}
+                                            className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'ao_2to3' ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                        >
+                                            Từ 2tr-3tr
+                                        </button>
+                                        <button
+                                            onClick={() => onSetViewMode('ao_under2')}
+                                            className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'ao_under2' ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                        >
+                                            Dưới 2tr
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => onSetViewMode('fail')}
+                                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${kpiViewMode === 'fail' ? 'bg-white dark:bg-slate-600 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        Chưa đạt
+                                    </button>
+                                )}
                             </div>
                         )}
                         {isGroupViewPossible && (
@@ -177,39 +204,39 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
                     <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th className="px-3 py-2">Khách Hàng</th>
-                                <th className="px-3 py-2 text-right">Doanh Số</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {data.map((item, idx) => (
-                                <tr
-                                    key={idx}
-                                    className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${item.code !== 'GROUP' ? 'cursor-pointer group' : ''}`}
-                                    onClick={() => item.code !== 'GROUP' && onCustomerSelectFromModal(item.originalRecord)}
-                                >
-                                    <td className="px-3 py-2">
-                                        <div className={`font-bold text-slate-700 dark:text-slate-200 ${item.code !== 'GROUP' ? 'group-hover:text-opella-green dark:group-hover:text-opella-green' : ''} transition-colors`}>
-                                            {item.name}
-                                        </div>
-                                        <div className="flex gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
-                                            {item.code !== 'GROUP' ? (
-                                                <><span>{item.code}</span><span>• {item.district}</span></>
-                                            ) : (
-                                                <span>Nhóm sản phẩm</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-bold text-slate-800 dark:text-white truncate">
-                                        {formatCurrency(item.value)}
-                                    </td>
+                            <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th className="px-3 py-2">Khách Hàng</th>
+                                    <th className="px-3 py-2 text-right">Doanh Số</th>
                                 </tr>
-                            ))}
-                            {data.length === 0 && <tr><td colSpan={2} className="text-center py-4 text-slate-400 italic">Không có dữ liệu</td></tr>}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {data.map((item, idx) => (
+                                    <tr
+                                        key={idx}
+                                        className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${item.code !== 'GROUP' ? 'cursor-pointer group' : ''}`}
+                                        onClick={() => item.code !== 'GROUP' && onCustomerSelectFromModal(item.originalRecord)}
+                                    >
+                                        <td className="px-3 py-2">
+                                            <div className={`font-bold text-slate-700 dark:text-slate-200 ${item.code !== 'GROUP' ? 'group-hover:text-opella-green dark:group-hover:text-opella-green' : ''} transition-colors`}>
+                                                {item.name}
+                                            </div>
+                                            <div className="flex gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
+                                                {item.code !== 'GROUP' ? (
+                                                    <><span>{item.code}</span><span>• {item.district}</span></>
+                                                ) : (
+                                                    <span>Nhóm sản phẩm</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-bold text-slate-800 dark:text-white truncate">
+                                            {formatCurrency(item.value)}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {data.length === 0 && <tr><td colSpan={2} className="text-center py-4 text-slate-400 italic">Không có dữ liệu</td></tr>}
+                            </tbody>
+                        </table>
                 </div>
                 <div className="p-3 border-t border-slate-100 dark:border-slate-700 text-center">
                     <button onClick={onClose} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-900 transition-colors">Đóng</button>

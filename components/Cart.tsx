@@ -1,7 +1,9 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import type { CartItem, Rebate, Customer } from '../types';
+import { createPortal } from 'react-dom';
+import type { CartItem, Rebate, Customer, SalesRecord } from '../types';
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
+import { buildCustomerSalesNoticePayload } from '../utils/customerSummarizer';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import {
@@ -149,22 +151,26 @@ interface CartProps {
     rebates: Rebate[];
     selectedRebateIds: string[];
     onToggleRebate: (id: string) => void;
-    // New Prop
     customers?: Customer[];
-    onQuickView?: (code: string) => void;
+    currentSalesRecord?: SalesRecord | null;
+    onExportSales?: (record: SalesRecord) => Promise<void>;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
     const {
-        items, customerCode, onCustomerCodeChange, customerName,
+        items, employeeName, customerCode, onCustomerCodeChange, customerName,
         onCustomerNameChange, customerAddress, onCustomerAddressChange,
         note, onNoteChange, onUpdateQuantity, onRemoveItem,
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
         isOnTopLiXi, onIsOnTopLiXiChange, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
-        customers = [], // Default empty array
-        onQuickView
+        customers = [],
+        currentSalesRecord,
+        onExportSales
     } = props;
+
+    const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // --- Search Logic ---
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -356,7 +362,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     placeholder="Mã..."
                                 />
                                 <button
-                                    onClick={() => onQuickView?.(customerCode)}
+                                    onClick={() => setShowCustomerDetailModal(true)}
                                     disabled={!customerCode}
                                     type="button"
                                     title="Xem chi tiết khách hàng"
@@ -698,6 +704,59 @@ const Cart: React.FC<CartProps> = (props) => {
                 </div>
                 {successMessage && <div className="mt-1 text-center text-[9px] font-bold text-green-600 dark:text-green-400 animate-bounce">{successMessage}</div>}
             </div>
+
+            {/* Modal thông tin doanh số KH - dùng Portal để tránh bị overflow parent */}
+            {showCustomerDetailModal && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowCustomerDetailModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông tin doanh số khách hàng</h3>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                            {currentSalesRecord
+                                ? (() => {
+                                    try {
+                                        return buildCustomerSalesNoticePayload(currentSalesRecord, employeeName ?? '')?.message ?? 'Không có dữ liệu.';
+                                    } catch (err) {
+                                        console.error('buildCustomerSalesNoticePayload error:', err);
+                                        return 'Lỗi khi tải thông tin. Vui lòng thử lại.';
+                                    }
+                                })()
+                                : 'Không tìm thấy thông tin khách hàng. Vui lòng kiểm tra mã KH.'}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowCustomerDetailModal(false)}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                type="button"
+                                disabled={!currentSalesRecord || !onExportSales || isExporting}
+                                onClick={async () => {
+                                    if (!currentSalesRecord || !onExportSales) return;
+                                    setIsExporting(true);
+                                    try {
+                                        await onExportSales(currentSalesRecord);
+                                        alert('Đã gửi thông tin doanh số qua n8n/Telegram.');
+                                        setShowCustomerDetailModal(false);
+                                    } catch {
+                                        alert('Gửi thất bại. Vui lòng thử lại.');
+                                    } finally {
+                                        setIsExporting(false);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-opella-green hover:bg-opella-green/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isExporting ? 'Đang gửi...' : 'Xuất thông báo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

@@ -111,8 +111,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return Object.entries(stats)
             .map(([rep, data]) => ({ rep, ...data }))
             .sort((a, b) => {
-                if (b.upHinh !== a.upHinh) return b.upHinh - a.upHinh;
-                return (b.local + b.import) - (a.local + a.import);
+                const orderA = a.local + a.import;
+                const orderB = b.local + b.import;
+                if (orderB !== orderA) return orderB - orderA; // Ưu tiên Top 1 đơn hàng
+                return b.upHinh - a.upHinh; // Kế Top 1 ảnh
             });
     }, [uniqueMarketingData]);
 

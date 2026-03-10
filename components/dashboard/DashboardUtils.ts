@@ -22,6 +22,22 @@ export const REBATE_TIERS = [
     { level: 6, amount: 25000000, percent: 5.5 },
 ];
 
+/** Mục tiêu % cần đạt: AO 102%, MSO 90% */
+export const AO_TODO_PERCENT = 102;
+export const MSO_TODO_PERCENT = 90;
+
+/** Số lượng AO cần thêm để đạt 102% (làm tròn lên) */
+export const calculateAoTodo = (actual: number, target: number) => {
+    const targetAt102 = Math.ceil((target * AO_TODO_PERCENT) / 100);
+    return Math.max(0, targetAt102 - actual);
+};
+
+/** Số lượng MSO cần thêm để đạt 90% (làm tròn lên) */
+export const calculateMsoTodo = (actual: number, target: number) => {
+    const targetAt90 = Math.ceil((target * MSO_TODO_PERCENT) / 100);
+    return Math.max(0, targetAt90 - actual);
+};
+
 export const calculatePercent = (actual: number, target: number) => {
     if (!target || target === 0) return actual > 0 ? 100 : 0;
     return Math.min((actual / target) * 100, 100);

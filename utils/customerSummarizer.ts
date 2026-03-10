@@ -55,20 +55,47 @@ export const generateCustomerSummary = (
     const totalQuarterDS = (Number(record.MustWin) || 0) + (Number(record.Other) || 0);
     summary += `💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n\n`;
  
-    summary += `📑 TRẠNG THÁI:\n`;
-    summary += `+ Điều kiện TB: ${record.Check || 'N/A'}\n`;
-    summary += `+ Counter Top: ${record.CounterTop || 'N/A'}\n`;
-    summary += `+ CDU: ${record.CDU || 'N/A'}\n`;
-// Dự báo T3
-    summary += `\n📈 FORECAST T3:\n`;
-    if (forecast) {
-        summary += `+ Import: ${forecast.ImportLevel || 'N/A'}\n`;
-        summary += `+ Local: ${forecast.LocalLevel || 'N/A'}\n`;
-    } else {
-        summary += `- Chưa có dự báo T3.\n`;
+    const hasCheck = record.Check != null && String(record.Check).trim() !== '';
+    const hasCounterTop = record.CounterTop != null && String(record.CounterTop).trim() !== '';
+    const hasCDU = record.CDU != null && String(record.CDU).trim() !== '';
+    if (hasCheck || hasCounterTop || hasCDU) {
+        summary += `📑 TRẠNG THÁI:\n`;
+        if (hasCheck) summary += `+ Điều kiện TB: ${record.Check}\n`;
+        if (hasCounterTop) summary += `+ Counter Top: ${record.CounterTop}\n`;
+        if (hasCDU) summary += `+ CDU: ${record.CDU}\n`;
+    }
+// Dự báo T3 - chỉ hiện khi có dữ liệu
+    const hasImportLevel = forecast && forecast.ImportLevel != null && String(forecast.ImportLevel).trim() !== '';
+    const hasLocalLevel = forecast && forecast.LocalLevel != null && String(forecast.LocalLevel).trim() !== '';
+    if (hasImportLevel || hasLocalLevel) {
+        summary += `\n📈 FORECAST T3:\n`;
+        if (hasImportLevel) summary += `+ Import: ${forecast!.ImportLevel}\n`;
+        if (hasLocalLevel) summary += `+ Local: ${forecast!.LocalLevel}\n`;
     }
     summary += `\nNote : Doanh số chưa bao gồm đơn đã đặt\n`;
     return summary;
+};
+
+/** Helper: lấy số an toàn từ record (sheet có thể dùng tên cột khác, giá trị có thể là chuỗi định dạng VN) */
+const safeNum = (r: Record<string, unknown>, ...keys: string[]): number => {
+    for (const k of keys) {
+        const v = r[k];
+        if (v === null || v === undefined) continue;
+        if (typeof v === 'number' && !isNaN(v)) return v;
+        const s = String(v).replace(/\./g, '').replace(/,/g, '');
+        const n = Number(s);
+        if (!isNaN(n)) return n;
+    }
+    return 0;
+};
+
+/** Helper: lấy chuỗi an toàn */
+const safeStr = (r: Record<string, unknown>, ...keys: string[]): string => {
+    for (const k of keys) {
+        const v = r[k];
+        if (v !== null && v !== undefined) return String(v).trim();
+    }
+    return '';
 };
 
 /**
@@ -84,12 +111,14 @@ export const buildCustomerSalesNoticePayload = (
     record: SalesRecord | undefined,
     employeeName: string
 ): CustomerSalesNoticePayload | null => {
-    if (!record) return null;
+    if (!record || typeof record !== 'object') return null;
 
-    const actualImport = Number(record.ActualImport) || 0;
-    const targetImport = Number(record.TargetImport) || 0;
-    const actualLocal = Number(record.ActualLocal) || 0;
-    const targetLocal = Number(record.TargetLocal) || 0;
+    const r = record as unknown as Record<string, unknown>;
+
+    const actualImport = safeNum(r, 'ActualImport', 'Actual Import');
+    const targetImport = safeNum(r, 'TargetImport', 'Target Import');
+    const actualLocal = safeNum(r, 'ActualLocal', 'Actual Local');
+    const targetLocal = safeNum(r, 'TargetLocal', 'Target Local');
 
     const importPct = targetImport > 0 ? (actualImport / targetImport) * 100 : 0;
     const localPct = targetLocal > 0 ? (actualLocal / targetLocal) * 100 : 0;
@@ -100,35 +129,38 @@ export const buildCustomerSalesNoticePayload = (
     const expectedBonusImport = importTier ? actualImport * (importTier.percent / 100) : 0;
     const expectedBonusLocal = localTier ? actualLocal * (localTier.percent / 100) : 0;
 
-    const todoTotal = Number(record.Todo) || 0;
+    const todoTotal = safeNum(r, 'Todo', 'Todo TB');
+    const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
 
-    const doanhSoDaDat = Number(record.Sale) || 0; // Cột Sale ở sheet DOANH_SO
+    const codeGiga = safeStr(r, 'CustomerCode', 'Customer Code', 'Code');
+    const codeBM = safeStr(r, 'CodeBuyMed', 'Code BM', 'BM');
+    const customerName = safeStr(r, 'CustomerName', 'Customer Name', 'Location Name');
+    const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type');
+    const checkStatus = safeStr(r, 'Check');
+    const counterTopStr = safeStr(r, 'CounterTop', 'Counter Top');
+    const cduStr = safeStr(r, 'CDU');
 
-    const codeGiga = String(record.CustomerCode || '').trim();
-    const codeBM = record.CodeBuyMed ? String(record.CodeBuyMed).trim() : '';
-
-    const counterTopStr = record.CounterTop ? String(record.CounterTop).trim() : '';
-    const cduStr = record.CDU ? String(record.CDU).trim() : '';
+    const mustWin = safeNum(r, 'MustWin', 'Must Win');
+    const other = safeNum(r, 'Other');
+    const totalQuarterDS = mustWin + other;
 
     let message = `📊 THÔNG TIN DOANH SỐ KHÁCH HÀNG\n`;
     message += `--------------------------------\n`;
-    message += `📍 KH: ${record.CustomerName}\n`;
+    message += `📍 KH: ${customerName || 'N/A'}\n`;
     message += `🔢 Code Giga: ${codeGiga || ''}\n`;
     message += `🔢 Code BM: ${codeBM || ''}\n`;
-    message += `🏆 Loại TB: ${record.FinalStoreType || 'Thành viên'}\n`;
-    message += `🧑‍💼 NV: ${employeeName}\n`;
+    message += `🏆 Loại TB: ${finalStoreType || 'Thành viên'}\n`;
+    message += `🧑‍💼 NV: ${employeeName || ''}\n`;
     message += `\n📊 KPI THÁNG HIỆN TẠI:\n`;
     message += `🔹 Import: ${formatCurrency(actualImport)} (${importPct.toFixed(1)}% / ${formatCurrency(targetImport)})\n`;
     message += `   ➔ ${importTier ? `Mức: ${importTier.level} (CK: ${importTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'} | Thưởng dự kiến: ${formatCurrency(expectedBonusImport)}\n`;
     message += `🔹 Local: ${formatCurrency(actualLocal)} (${localPct.toFixed(1)}% / ${formatCurrency(targetLocal)})\n`;
     message += `   ➔ ${localTier ? `Mức: ${localTier.level} (CK: ${localTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'} | Thưởng dự kiến: ${formatCurrency(expectedBonusLocal)}\n`;
 
-    const totalQuarterDS = (Number(record.MustWin) || 0) + (Number(record.Other) || 0);
     message += `\n💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n`;
-    
 
     message += `\n📑 ĐIỀU KIỆN TB:\n`;
-    message += `+ Trạng thái: ${record.Check || ''}\n`;
+    message += `+ Trạng thái: ${checkStatus}\n`;
     message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
     message += `+ Todo TB: ${formatCurrency(todoTotal)}\n`;
     if (counterTopStr) message += `+ Counter Top: ${counterTopStr}\n`;
@@ -140,8 +172,8 @@ export const buildCustomerSalesNoticePayload = (
         code: codeGiga,
         codeGiga,
         codeBM,
-        customerName: record.CustomerName,
-        employeeName,
+        customerName: customerName || 'N/A',
+        employeeName: employeeName || '',
         message,
     };
 };

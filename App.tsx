@@ -764,9 +764,9 @@ const App: React.FC = () => {
                     rebates={currentCustomerRebates}
                     selectedRebateIds={selectedRebateIds}
                     onToggleRebate={handleToggleRebate}
-                    // Add: Truyền danh sách khách hàng vào Cart
                     customers={allCustomers}
-                    onQuickView={handleQuickViewCustomer}
+                    currentSalesRecord={allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim()) ?? null}
+                    onExportSales={handleExportSales}
                   />
                 </div>
               </div>

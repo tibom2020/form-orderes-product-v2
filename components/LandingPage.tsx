@@ -232,7 +232,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         return true;
     })
-    .sort((a, b) => ((a.District || '').trim()).localeCompare((b.District || '').trim(), 'vi'));
+    .sort((a, b) => {
+        const saleA = salesByCode.get(String(a.CustomerCode || '').trim()) ?? 0;
+        const saleB = salesByCode.get(String(b.CustomerCode || '').trim()) ?? 0;
+        return saleB - saleA; // Sale Q1 giảm dần
+    });
 
     const handleBoxClick = (slot: 1 | 2) => {
         resetUploadState();

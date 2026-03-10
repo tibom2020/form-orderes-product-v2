@@ -669,12 +669,12 @@ const App: React.FC = () => {
             <span className="sm:hidden">Dummy</span>
           </button>
           <button
-            onClick={() => setViewMode('forecast')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            onClick={() => setViewMode('aoTracking')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'aoTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <TrendingUpIcon />
-            <span className="hidden sm:inline">Forecast T3</span>
-            <span className="sm:hidden">FC T3</span>
+            <span className="hidden sm:inline">Theo dõi AO</span>
+            <span className="sm:hidden">AO</span>
           </button>
           <button
             onClick={() => setViewMode('priceList')}
@@ -693,12 +693,12 @@ const App: React.FC = () => {
             <span className="sm:hidden">Quota</span>
           </button>
           <button
-            onClick={() => setViewMode('aoTracking')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'aoTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            onClick={() => setViewMode('forecast')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <TrendingUpIcon />
-            <span className="hidden sm:inline">Theo dõi AO</span>
-            <span className="sm:hidden">AO</span>
+            <span className="hidden sm:inline">Forecast T3</span>
+            <span className="sm:hidden">FC T3</span>
           </button>
 
           {/* Tạm thời ẩn Tab Lì xì theo yêu cầu

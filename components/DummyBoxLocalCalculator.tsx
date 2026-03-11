@@ -5,17 +5,13 @@ import { getDiscountPercent } from '../utils/calculations';
 import {
     PRODUCTS,
     DUMMY_BOX_LOCAL_PRODUCT_IDS,
-    DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
     TELFAST_GROUP_IDS
 } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
 
-const REQUIRED_PRODUCT = PRODUCTS.find(p => p.id === DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID)!;
-const OPTIONAL_PRODUCTS = DUMMY_BOX_LOCAL_PRODUCT_IDS.filter(id => id !== DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID)
-    .map(id => PRODUCTS.find(p => p.id === id)!)
-    .filter(Boolean);
+const CALC_PRODUCTS = DUMMY_BOX_LOCAL_PRODUCT_IDS.map(id => PRODUCTS.find(p => p.id === id)!).filter(Boolean);
 
 /** VAT % cố định: CORBIERE CALCIUM PLUS (id 1) = 8%, còn lại = 5% */
 const VAT_BY_PRODUCT_ID: Record<number, number> = {
@@ -32,21 +28,18 @@ interface DummyBoxLocalCalculatorProps {
 }
 
 const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClose, embedded = false }) => {
-    const [addedOptionalIds, setAddedOptionalIds] = useState<number[]>([]);
+    const [addedProductIds, setAddedProductIds] = useState<number[]>([]);
     const [dropdownValue, setDropdownValue] = useState('');
-    const [quantities, setQuantities] = useState<Record<number, number>>(() => {
-        const base = Object.fromEntries([REQUIRED_PRODUCT, ...OPTIONAL_PRODUCTS].map(p => [p.id, 0]));
-        base[DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID] = 1;
-        return base;
-    });
+    const [quantities, setQuantities] = useState<Record<number, number>>(() =>
+        Object.fromEntries(CALC_PRODUCTS.map(p => [p.id, 0]))
+    );
 
     const visibleProducts = useMemo(() => {
-        const added = addedOptionalIds.map(id => OPTIONAL_PRODUCTS.find(p => p.id === id)!).filter(Boolean);
-        return [REQUIRED_PRODUCT, ...added];
-    }, [addedOptionalIds]);
+        return addedProductIds.map(id => CALC_PRODUCTS.find(p => p.id === id)!).filter(Boolean);
+    }, [addedProductIds]);
 
     const removeProduct = (id: number) => {
-        setAddedOptionalIds(prev => prev.filter(x => x !== id));
+        setAddedProductIds(prev => prev.filter(x => x !== id));
         setQuantities(prev => ({ ...prev, [id]: 0 }));
     };
 
@@ -87,8 +80,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
         [rows]
     );
 
-    const hasRequired = (quantities[DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID] ?? 0) >= 1;
-    const eligible = tongDonSauCk >= DUMMY_BOX_LOCAL_MIN_AMOUNT && hasRequired;
+    const eligible = tongDonSauCk >= DUMMY_BOX_LOCAL_MIN_AMOUNT;
     const percentGiam = eligible && tongDonSauCk > 0 ? (DUMMY_BOX_DISCOUNT / tongDonSauCk) * 100 : 0;
 
     const rowsWithFinal = useMemo(() => {
@@ -127,16 +119,14 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                         <td className="px-2 py-2 font-medium">
                                             <div className="flex items-center gap-1">
                                                 {r.name}
-                                                {r.id !== DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => { e.stopPropagation(); removeProduct(r.id); }}
-                                                        className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs"
-                                                        title="Xóa sản phẩm"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); removeProduct(r.id); }}
+                                                    className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs"
+                                                    title="Xóa sản phẩm"
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
                                         </td>
                                         <td className="px-2 py-2">
@@ -166,10 +156,10 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                         <td className="px-2 py-2 text-right font-bold bg-yellow-50 dark:bg-yellow-900/20">{formatCurrency(r.giaHoaDon)}</td>
                                     </tr>
                                 ))}
-                                {OPTIONAL_PRODUCTS.some(p => !addedOptionalIds.includes(p.id)) && (
+                                {(visibleProducts.length === 0 || CALC_PRODUCTS.some(p => !addedProductIds.includes(p.id))) && (
                                     <tr className="bg-slate-50 dark:bg-slate-800/50">
                                         <td colSpan={8} className="px-2 py-2">
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2">
                                                 <span className="text-xs text-slate-500 dark:text-slate-400">Thêm sản phẩm:</span>
                                                 <select
                                                     value={dropdownValue}
@@ -177,7 +167,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                                     className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 min-w-[180px]"
                                                 >
                                                     <option value="">-- Chọn sản phẩm --</option>
-                                                    {OPTIONAL_PRODUCTS.filter(p => !addedOptionalIds.includes(p.id)).map(p => (
+                                                    {CALC_PRODUCTS.filter(p => !addedProductIds.includes(p.id)).map(p => (
                                                         <option key={p.id} value={String(p.id)}>{p.name}</option>
                                                     ))}
                                                 </select>
@@ -185,8 +175,8 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                                                     type="button"
                                                     onClick={() => {
                                                         const id = dropdownValue ? Number(dropdownValue) : 0;
-                                                        if (id && !addedOptionalIds.includes(id)) {
-                                                            setAddedOptionalIds(prev => [...prev, id]);
+                                                        if (id && !addedProductIds.includes(id)) {
+                                                            setAddedProductIds(prev => [...prev, id]);
                                                             setDropdownValue('');
                                                         }
                                                     }}
@@ -222,7 +212,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                         </div>
                         {!eligible && (
                             <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-2">
-                                ⚠️ Điều kiện: Tổng đơn sau CK ≥ 1.000.000 và có ít nhất 1h CORBIERE CALCIUM PLUS 10ML để được giảm 150.000
+                                ⚠️ Điều kiện: Tổng đơn sau CK ≥ 1.000.000 để được giảm 150.000
                             </p>
                         )}
                     </div>

@@ -645,7 +645,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
                                 <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK) của nhóm SP bên dưới).</li>
                                 <li>Sản phẩm tính điều kiện: <strong>Corbiere Calcium Plus</strong>, <strong>Telfast HD</strong>, <strong>Telfast BD</strong>, <strong>Calcium Corbiere Extra 5ml</strong>.</li>
-                                <li>Đơn phải có ít nhất <strong>01 CORBIERE CALCIUM PLUS 3SUPX10 10ML</strong>.</li>
                                 <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
                             </ul>
                         </div>
@@ -654,7 +653,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
                                 <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK); riêng Pharmaton Energy dùng giá gốc, không áp CK 29.5%).</li>
                                 <li>Sản phẩm tính điều kiện: <strong>Pharmaton Energy</strong>, <strong>Essent</strong>, <strong>Vitality</strong>, <strong>Pharmaton Energy Fizzi</strong>, <strong>Enterogermina</strong> (GUT 2B, 4B, 2B/20).</li>
-                                <li>Đơn phải có ít nhất <strong>01 PHARMATON VITALITY 40MG TAB BT30 M24 VN</strong>.</li>
                                 <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
                             </ul>
                         </div>

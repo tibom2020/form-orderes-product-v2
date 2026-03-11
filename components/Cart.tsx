@@ -8,11 +8,9 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import {
     DUMMY_BOX_LOCAL_PRODUCT_IDS,
-    DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
     DUMMY_BOX_IMPORT_PRODUCT_IDS,
     DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
-    DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID,
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
     TELFAST_GROUP_IDS,
@@ -240,8 +238,7 @@ const Cart: React.FC<CartProps> = (props) => {
                 const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
                 return s + lineAfterDiscount;
             }, 0);
-        const hasRequired = items.some(item => item.id === DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID && item.quantity > 0);
-        return sum >= DUMMY_BOX_LOCAL_MIN_AMOUNT && hasRequired;
+        return sum >= DUMMY_BOX_LOCAL_MIN_AMOUNT;
     }, [items, telfastGroupTotal]);
     const eligibleDummyBoxImport = useMemo(() => {
         const importIds: number[] = [...DUMMY_BOX_IMPORT_PRODUCT_IDS];
@@ -257,8 +254,7 @@ const Cart: React.FC<CartProps> = (props) => {
                 const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
                 return s + lineAfterDiscount;
             }, 0);
-        const hasRequired = items.some(item => item.id === DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID && item.quantity > 0);
-        return sum >= DUMMY_BOX_IMPORT_MIN_AMOUNT && hasRequired;
+        return sum >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
     }, [items]);
 
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);

@@ -13,6 +13,7 @@ import RebateTab from './components/RebateTab';
 import PriceListTab from './components/PriceListTab';
 import ProductQuotaTab from './components/ProductQuotaTab';
 import AoTrackingTab from './components/AoTrackingTab';
+import SaleKhPsTab from './components/SaleKhPsTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
@@ -24,7 +25,7 @@ import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './util
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'productQuota' | 'aoTracking' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'productQuota' | 'aoTracking' | 'saleKhPs' | 'lixi';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -97,11 +98,12 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
 
     try {
-      const [customers, rebates, sales, history, marketing, forecasts, , news, productQuota] = await Promise.all([
+      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news, productQuota] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
-        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY"),
+        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_GG"),
+        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_BM"),
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
         fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL"),
@@ -111,7 +113,7 @@ const App: React.FC = () => {
       setAllCustomers(customers);
       setAllRebates(rebates);
       setAllSalesRecords(sales);
-      setAllPurchaseHistory(history);
+      setAllPurchaseHistory([...(historyGG || []), ...(historyBM || [])]);
       setMarketingData(marketing);
       setForecastData(forecasts);
       // setAllLiXiResults(lixiResults); // Tạm ẩn
@@ -677,6 +679,14 @@ const App: React.FC = () => {
             <span className="sm:hidden">AO</span>
           </button>
           <button
+            onClick={() => setViewMode('saleKhPs')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'saleKhPs' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <StarIcon />
+            <span className="hidden sm:inline">Sale KH PS</span>
+            <span className="sm:hidden">PS</span>
+          </button>
+          <button
             onClick={() => setViewMode('priceList')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -746,7 +756,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'productQuota', 'aoTracking'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'productQuota', 'aoTracking', 'saleKhPs'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -776,6 +786,7 @@ const App: React.FC = () => {
                     customers={allCustomers}
                     currentSalesRecord={allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim()) ?? null}
                     onExportSales={handleExportSales}
+                    onViewCustomerDetail={handleQuickViewCustomer}
                   />
                 </div>
               </div>
@@ -857,6 +868,14 @@ const App: React.FC = () => {
 
         {viewMode === 'aoTracking' && (
           <AoTrackingTab
+            salesRecords={allSalesRecords}
+            currentEmployee={loggedInEmployee!}
+            onCustomerSelect={handleCustomerSelectFromDashboard}
+          />
+        )}
+
+        {viewMode === 'saleKhPs' && (
+          <SaleKhPsTab
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}
             onCustomerSelect={handleCustomerSelectFromDashboard}

@@ -1,0 +1,28 @@
+---
+description: Tham chiếu Agent và kho kỹ năng - điều phối theo lĩnh vực, Socratic Gate
+alwaysApply: true
+---
+
+# Agent & Kỹ năng (Luôn tham chiếu)
+
+## Agent chuyên gia (`.agent/agents/`)
+
+- **orchestrator.md** — Điều phối tổng thể, chọn agent theo task.
+- **frontend-specialist.md** — UI/UX, React/Next, Tailwind, components.
+- **backend-specialist.md** — API, server, database.
+- **project-planner.md** — Kế hoạch, phân rã task.
+- **debugger.md** — Gỡ lỗi có hệ thống.
+
+Khi task thuộc một lĩnh vực rõ ràng, đọc file agent tương ứng và áp dụng hướng dẫn trong đó.
+
+## Kỹ năng (`.agent/skills/`)
+
+Mỗi thư mục con chứa `SKILL.md` mô tả kỹ năng. Ví dụ: `react-patterns`, `security-auditor`, `testing-patterns`, `mobile-design`. Khi cần best practice hoặc quy trình chuẩn cho lĩnh vực đó, đọc SKILL.md tương ứng trước khi code.
+
+## Socratic Gate
+
+Trước khi implement tính năng lớn hoặc khi yêu cầu chưa đủ rõ: đặt 1–3 câu hỏi ngắn làm rõ (công nghệ, phạm vi, ràng buộc) rồi mới thực hiện.
+
+## Khởi động
+
+Chi tiết thiết lập và lệnh: đọc `.agent/START_HERE.md`.

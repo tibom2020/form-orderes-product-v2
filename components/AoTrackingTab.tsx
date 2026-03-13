@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { SalesRecord, Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
+import { ADMIN_CODE } from '../constants';
 import { SearchIcon } from './icons';
 import { CartIcon } from './icons';
 
@@ -34,6 +35,7 @@ const formatPhí = (val: unknown): string => {
 };
 
 const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmployee, onCustomerSelect }) => {
+    const showRep = currentEmployee.code === ADMIN_CODE;
     const [searchTerm, setSearchTerm] = useState('');
     const [aoFilter, setAoFilter] = useState<AoFilter>('dat');
 
@@ -41,7 +43,7 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
         return salesRecords.filter(r => {
             const codeMatch = r.StaffCode && String(r.StaffCode).trim() === currentEmployee.code;
             const repMatch = r.Rep && r.Rep.toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
-            if (currentEmployee.code === '20043741') return true;
+            if (currentEmployee.code === ADMIN_CODE) return true;
             return codeMatch || repMatch;
         });
     }, [salesRecords, currentEmployee]);
@@ -130,7 +132,7 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
                                     <th className="px-3 py-2.5 min-w-[90px] border-b border-slate-200 dark:border-slate-600">FinalStoreType</th>
                                     <th className="px-3 py-2.5 min-w-[110px] border-b border-slate-200 dark:border-slate-600">Phí Import</th>
                                     <th className="px-3 py-2.5 min-w-[110px] border-b border-slate-200 dark:border-slate-600">Phí Local</th>
-                                    <th className="px-3 py-2.5 min-w-[100px] border-b border-slate-200 dark:border-slate-600">Rep</th>
+                                    {showRep && <th className="px-3 py-2.5 min-w-[100px] border-b border-slate-200 dark:border-slate-600">Rep</th>}
                                     <th className="px-3 py-2.5 w-24 border-b border-slate-200 dark:border-slate-600">Lên đơn</th>
                                 </tr>
                             </thead>
@@ -164,7 +166,7 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
                                                     <span className="text-opella-green dark:text-opella-green font-bold">{formatPhí(tongPhiLocal)}</span>
                                                 ) : ''}
                                             </td>
-                                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.Rep || ''}</td>
+                                            {showRep && <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.Rep || ''}</td>}
                                             <td className="px-3 py-2">
                                                 <button
                                                     onClick={() => onCustomerSelect(r.CustomerCode)}

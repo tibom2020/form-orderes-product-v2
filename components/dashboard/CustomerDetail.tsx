@@ -4,7 +4,7 @@ import type { SalesRecord, Rebate, PurchaseHistoryItem, ForecastItem, Employee }
 import { formatCurrency } from '../../utils/formatters';
 import {
     ArrowLeftIcon, UserGroupIcon, IdentificationIcon, ClockIcon,
-    CartIcon, TrophyIcon, SearchIcon, DocumentTextIcon, StarIcon, GiftIcon, CubeIcon, ClipboardDocumentListIcon, FaceSmileIcon
+    CartIcon, TrophyIcon, SearchIcon, DocumentTextIcon, StarIcon, GiftIcon, CubeIcon, FaceSmileIcon
 } from '../icons';
 import {
     getRawPercent, formatDateVal, formatCompact, getRebateLevel
@@ -42,6 +42,35 @@ interface CustomerDetailProps {
     ) => void;
 }
 
+const getMonthKeyFromInvoiceDate = (d: string | number | undefined): string | null => {
+    if (d == null || d === '') return null;
+    let date: Date;
+    if (typeof d === 'number') {
+        date = new Date((d - 25569) * 86400 * 1000);
+    } else {
+        const str = String(d);
+        if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts.length === 3) {
+                date = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            } else {
+                date = new Date(str);
+            }
+        } else {
+            date = new Date(str);
+        }
+    }
+    if (isNaN(date.getTime())) return null;
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${y}-${m}`;
+};
+
+const formatMonthLabel = (key: string): string => {
+    const [y, m] = key.split('-');
+    return `${m}/${y}`;
+};
+
 const CustomerDetail: React.FC<CustomerDetailProps> = ({
     record, allRecords, rebates, purchaseHistory, onBack, onGoToOrder, onSwitchCustomer,
     currentEmployee, forecastData, onUpdateForecast
@@ -49,6 +78,9 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     const [activeDetailModal, setActiveDetailModal] = useState<'Import' | 'Local' | 'T1' | 'Products' | 'ĐiềuKiệnTB' | null>(null);
     const [showQuickSearch, setShowQuickSearch] = useState(false);
     const [quickSearchTerm, setQuickSearchTerm] = useState('');
+    const [historyChannelFilter, setHistoryChannelFilter] = useState<'all' | 'gg' | 'bm'>('all');
+    const [historyTypeFilter, setHistoryTypeFilter] = useState<'all' | 'import' | 'local'>('all');
+    const [historyMonthFilter, setHistoryMonthFilter] = useState<string>('all');
     const quickSearchInputRef = useRef<HTMLInputElement>(null);
 
     // Forecast stats: số KH dự báo / tổng KH cần dự báo (cho thông báo)
@@ -130,7 +162,40 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         return [...imp, ...loc];
     }, [allHistory]);
 
-    const uniqueOrderDates = new Set(allHistory.map(h => String(h.InvoiceDate))).size;
+    const mainCode = String(record.CustomerCode).trim();
+    const buyMedCode = record.CodeBuyMed ? String(record.CodeBuyMed).trim() : '';
+
+    const uniqueMonths = useMemo(() => {
+        const set = new Set<string>();
+        mergedHistory.forEach(h => {
+            const key = getMonthKeyFromInvoiceDate(h.InvoiceDate);
+            if (key) set.add(key);
+        });
+        return Array.from(set).sort((a, b) => b.localeCompare(a));
+    }, [mergedHistory]);
+
+    const filteredHistory = useMemo(() => {
+        let list = mergedHistory;
+        if (historyChannelFilter === 'gg') {
+            list = list.filter(h => String(h.CustomerID).trim() === mainCode);
+        } else if (historyChannelFilter === 'bm') {
+            list = list.filter(h => buyMedCode !== '' && String(h.CustomerID).trim() === buyMedCode);
+        }
+        if (historyTypeFilter === 'import') {
+            list = list.filter(h => (h.Group || h.Team || '').toLowerCase().includes('import'));
+        } else if (historyTypeFilter === 'local') {
+            list = list.filter(h => (h.Group || h.Team || '').toLowerCase().includes('local'));
+        }
+        if (historyMonthFilter !== 'all') {
+            list = list.filter(h => getMonthKeyFromInvoiceDate(h.InvoiceDate) === historyMonthFilter);
+        }
+        return list;
+    }, [mergedHistory, historyChannelFilter, historyTypeFilter, historyMonthFilter, mainCode, buyMedCode]);
+
+    const filteredHistoryTotal = useMemo(
+        () => filteredHistory.reduce((sum, h) => sum + (Number(h.Value) || 0), 0),
+        [filteredHistory]
+    );
 
     const actualImport = Number(record.ActualImport) || 0;
     const targetImport = Number(record.TargetImport) || 0;
@@ -141,13 +206,14 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     const progressPercent = getRawPercent(totalActual, totalTarget);
     const todoTotal = Number(record.Todo) || 0;
 
-    // T1 Data
+    // T1 Data (từ DOANH_SO: ActualImportT1 + ActualLocalT1)
     const actualImportT1 = Number(record.ActualImportT1 || record["SALE IMPORT T1"] || record.SaleImportTotalT1) || 0;
     const actualLocalT1 = Number(record.ActualLocalT1 || record["SALE LOCAL T1"] || record.SaleLocalTotalT1) || 0;
+    const totalSaleT1 = actualImportT1 + actualLocalT1;
+    // T2 Data (từ DOANH_SO: ActualImportT2 + ActualLocalT2)
     const actualImportT2 = Number(record.ActualImportT2 || record["SALE IMPORT T2"] || record.ActualImport) || 0;
     const actualLocalT2 = Number(record.ActualLocalT2 || record["SALE LOCAL T2"] || record.ActualLocal) || 0;
-    const totalActualT2 = actualImportT2 + actualLocalT2;
-
+    const totalSaleT2 = actualImportT2 + actualLocalT2;
     const importTierT1 = getRebateLevel(actualImportT1);
     const importBonusT1 = importTierT1 ? actualImportT1 * (importTierT1.percent / 100) : 0;
     const localTierT1 = getRebateLevel(actualLocalT1);
@@ -157,26 +223,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     const isSilver = (record.FinalStoreType ?? '').toLowerCase().includes('silver');
     const badgeColor = isGold ? 'bg-yellow-400 text-yellow-900' : isSilver ? 'bg-slate-300 text-slate-800' : 'bg-orange-300 text-orange-900';
     const badgeIcon = isGold ? '👑' : isSilver ? '🛡️' : '🥉';
-
-    // CALCULATE CHANNEL SHARE (GIGAMED vs BM) - SPLIT BY IMPORT/LOCAL
-    const totalGiga = Number(record.GIGAMED) || 0;
-    const totalBm = Number(record.BM) || 0;
-
-    // Import values
-    const impGiga = Number(record.GIGAMEDImport || record.ActualImportGiga) || 0;
-    const impBm = Number(record.BMImport || record.ActualImportBuyMed) || 0;
-    const totalImpChannel = impGiga + impBm;
-
-    const impGigaPct = totalImpChannel > 0 ? (impGiga / totalImpChannel) * 100 : 0;
-    const impBmPct = totalImpChannel > 0 ? (impBm / totalImpChannel) * 100 : 0;
-
-    // Local values = Total - Import
-    const locGiga = Math.max(0, totalGiga - impGiga);
-    const locBm = Math.max(0, totalBm - impBm);
-    const totalLocChannel = locGiga + locBm;
-
-    const locGigaPct = totalLocChannel > 0 ? (locGiga / totalLocChannel) * 100 : 0;
-    const locBmPct = totalLocChannel > 0 ? (locBm / totalLocChannel) * 100 : 0;
 
     return (
         <div className="bg-slate-100 dark:bg-slate-900 min-h-full pb-10">
@@ -419,22 +465,26 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
                 <div className="lg:col-span-3 flex flex-col gap-6">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div onClick={() => setActiveDetailModal('T1')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-opella-green/50 dark:hover:border-opella-green transition-colors group relative">
-                            <div className="absolute top-2 right-2 text-slate-300 group-hover:text-opella-green transition-colors"><ClockIcon /></div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-opella-beige/50 dark:bg-opella-green/20 flex items-center justify-center text-opella-green dark:text-opella-green"><GiftIcon /></div>
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">Doanh số hiện tại</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Doanh số tháng hiện tại</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalActual)}</p>
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400">Imp: {formatCompact(actualImport)} | Loc: {formatCompact(actualLocal)}</p>
                             </div>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+                        <div onClick={() => setActiveDetailModal('T1')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-opella-green/50 dark:hover:border-opella-green transition-colors group relative">
+                            <div className="absolute top-2 right-2 text-slate-300 group-hover:text-opella-green transition-colors"><ClockIcon /></div>
                             <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400"><ClockIcon /></div>
                             <div className="min-w-0">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">Actual T2 (DOANH_SO)</p>
-                                <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalActualT2)}</p>
-                                <p className="text-[9px] text-slate-500 dark:text-slate-400">
-                                    Imp: {formatCompact(actualImportT2)} | Loc: {formatCompact(actualLocalT2)}
-                                </p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">History Sale</p>
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400">(DOANH_SO)</p>
+                                <div className="mt-1 space-y-0.5">
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Lịch sử Sale T1: <span className="font-black text-slate-800 dark:text-white">{formatCurrency(totalSaleT1)}</span></p>
+                                    <p className="text-[9px] text-slate-500 dark:text-slate-400">Imp: {formatCompact(actualImportT1)} | Loc: {formatCompact(actualLocalT1)}</p>
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-1">Lịch sử Sale T2: <span className="font-black text-slate-800 dark:text-white">{formatCurrency(totalSaleT2)}</span></p>
+                                    <p className="text-[9px] text-slate-500 dark:text-slate-400">Imp: {formatCompact(actualImportT2)} | Loc: {formatCompact(actualLocalT2)}</p>
+                                </div>
                             </div>
                         </div>
                         <div onClick={() => setActiveDetailModal('Products')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-opella-green/50 dark:hover:border-opella-green transition-colors group relative">
@@ -443,66 +493,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase group-hover:underline">SP Đã Mua ({uniqueProductStats.length})</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-white">{formatCurrency(totalHistoryValue)}</p>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full relative group">
-                            <div className="absolute top-2 right-2 text-slate-300"><ClipboardDocumentListIcon /></div>
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0"><ClipboardDocumentListIcon /></div>
-                                <div>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Kênh Bán Hàng</p>
-                                    <p className="text-[10px] font-bold text-slate-800 dark:text-white">{uniqueOrderDates} đơn</p>
-                                </div>
-                            </div>
-
-                            {/* IMPORT CHANNEL */}
-                            <div className="mb-3">
-                                <p className="text-[8px] font-black text-blue-500 uppercase mb-1 tracking-wider border-b border-blue-50 dark:border-blue-900/30 pb-0.5">Import</p>
-                                <div className="space-y-1.5">
-                                    <div>
-                                        <div className="flex justify-between text-[9px]">
-                                            <span className="font-bold text-cyan-600">GIGA</span>
-                                            <span className="text-slate-500 font-medium">{impGigaPct.toFixed(0)}% <span className="text-[8px] opacity-70">({formatCompact(impGiga)})</span></span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1">
-                                            <div className="bg-cyan-500 h-1 rounded-full" style={{ width: `${impGigaPct}%` }}></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-[9px]">
-                                            <span className="font-bold text-pink-600">BM</span>
-                                            <span className="text-slate-500 font-medium">{impBmPct.toFixed(0)}% <span className="text-[8px] opacity-70">({formatCompact(impBm)})</span></span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1">
-                                            <div className="bg-pink-500 h-1 rounded-full" style={{ width: `${impBmPct}%` }}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* LOCAL CHANNEL */}
-                            <div>
-                                <p className="text-[8px] font-black text-green-600 uppercase mb-1 tracking-wider border-b border-green-50 dark:border-green-900/30 pb-0.5">Local</p>
-                                <div className="space-y-1.5">
-                                    <div>
-                                        <div className="flex justify-between text-[9px]">
-                                            <span className="font-bold text-cyan-600">GIGA</span>
-                                            <span className="text-slate-500 font-medium">{locGigaPct.toFixed(0)}% <span className="text-[8px] opacity-70">({formatCompact(locGiga)})</span></span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1">
-                                            <div className="bg-cyan-500 h-1 rounded-full" style={{ width: `${locGigaPct}%` }}></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-[9px]">
-                                            <span className="font-bold text-pink-600">BM</span>
-                                            <span className="text-slate-500 font-medium">{locBmPct.toFixed(0)}% <span className="text-[8px] opacity-70">({formatCompact(locBm)})</span></span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1">
-                                            <div className="bg-pink-500 h-1 rounded-full" style={{ width: `${locBmPct}%` }}></div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         <div onClick={() => setActiveDetailModal('ĐiềuKiệnTB')} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3 cursor-pointer hover:border-pink-300 dark:hover:border-pink-600 transition-colors group relative">
@@ -540,19 +530,66 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                     </div>
 
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
-                                <ClockIcon /> Lịch sử mua hàng
-                            </h4>
-                            <div className="flex gap-2">
-                                <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold">Import</span>
-                                <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded font-bold">Local</span>
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
+                                    <ClockIcon /> Lịch sử mua hàng
+                                </h4>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mr-1">Kênh:</span>
+                                        {(['all', 'gg', 'bm'] as const).map(f => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setHistoryChannelFilter(f)}
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                                    historyChannelFilter === f
+                                                        ? f === 'all' ? 'bg-slate-700 text-white dark:bg-slate-600' : f === 'gg' ? 'bg-cyan-600 text-white dark:bg-cyan-500' : 'bg-pink-600 text-white dark:bg-pink-500'
+                                                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                                                }`}
+                                            >
+                                                {f === 'all' ? 'Tất cả' : f}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <span className="text-slate-300 dark:text-slate-600">+</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mr-1">Loại:</span>
+                                        {(['all', 'import', 'local'] as const).map(f => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setHistoryTypeFilter(f)}
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                                    historyTypeFilter === f
+                                                        ? f === 'all' ? 'bg-slate-700 text-white dark:bg-slate-600' : f === 'import' ? 'bg-blue-600 text-white dark:bg-blue-500' : 'bg-green-600 text-white dark:bg-green-500'
+                                                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                                                }`}
+                                            >
+                                                {f === 'all' ? 'Tất cả' : f.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <span className="text-slate-300 dark:text-slate-600">+</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mr-1">Tháng:</span>
+                                        <select
+                                            value={historyMonthFilter}
+                                            onChange={e => setHistoryMonthFilter(e.target.value)}
+                                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                        >
+                                            <option value="all">Tất cả</option>
+                                            {uniqueMonths.map(key => (
+                                                <option key={key} value={key}>{formatMonthLabel(key)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div className="p-4">
                             <div className="border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden">
                                 <div className="overflow-x-auto max-h-[400px] custom-scrollbar bg-white dark:bg-slate-800">
-                                    {mergedHistory.length > 0 ? (
+                                    {filteredHistory.length > 0 ? (
                                         <table className="w-full text-[10px] text-left">
                                             <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 sticky top-0 z-10">
                                                 <tr>
@@ -564,7 +601,11 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                                                {mergedHistory.map((item, i) => {
+                                                <tr className="bg-slate-100 dark:bg-slate-700/50 font-black text-slate-800 dark:text-white border-b-2 border-slate-200 dark:border-slate-600">
+                                                    <td colSpan={4} className="px-2 py-3 text-right">Tổng doanh số:</td>
+                                                    <td className="px-2 py-3 text-right">{formatCurrency(filteredHistoryTotal)}</td>
+                                                </tr>
+                                                {filteredHistory.map((item, i) => {
                                                     const isImport = (item.Group || item.Team || '').toLowerCase().includes('import');
                                                     const isBuyMed = (record.CodeBuyMed && String(item.CustomerID).trim() === String(record.CodeBuyMed).trim()) || (item.Note && item.Note.toLowerCase().includes('buymed'));
                                                     return (
@@ -713,7 +754,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                             <div className="overflow-y-auto custom-scrollbar">
                                 <div className="mb-4 text-center">
                                     <h3 className={`text-lg font-black uppercase ${activeDetailModal === 'Import' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`}>Chi Tiết {activeDetailModal}</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold">Doanh số hiện tại: <span className="text-slate-800 dark:text-white">{formatCurrency(activeDetailModal === 'Import' ? actualImport : actualLocal)}</span></p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 font-bold">Doanh số tháng hiện tại: <span className="text-slate-800 dark:text-white">{formatCurrency(activeDetailModal === 'Import' ? actualImport : actualLocal)}</span></p>
                                     {(() => {
                                         const currentActual = activeDetailModal === 'Import' ? actualImport : actualLocal;
                                         const currentTier = getRebateLevel(currentActual);

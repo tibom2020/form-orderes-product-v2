@@ -223,7 +223,7 @@ export interface Order {
   totalSales: number;
 }
 
-// Interface cho lịch sử mua hàng từ Sheet HISTORY (khớp với hình ảnh)
+// Interface cho lịch sử mua hàng từ Sheet HISTORY_GG và HISTORY_BM (merged)
 export interface PurchaseHistoryItem {
   CustomerID: string;       // Mã KH
   CustomerName?: string;    // Tên KH (đã sửa thành tùy chọn vì file Excel không có)

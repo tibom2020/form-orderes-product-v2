@@ -152,6 +152,7 @@ interface CartProps {
     customers?: Customer[];
     currentSalesRecord?: SalesRecord | null;
     onExportSales?: (record: SalesRecord) => Promise<void>;
+    onViewCustomerDetail?: (code: string) => void;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
@@ -164,7 +165,8 @@ const Cart: React.FC<CartProps> = (props) => {
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [],
         currentSalesRecord,
-        onExportSales
+        onExportSales,
+        onViewCustomerDetail
     } = props;
 
     const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
@@ -721,6 +723,19 @@ const Cart: React.FC<CartProps> = (props) => {
                                 : 'Không tìm thấy thông tin khách hàng. Vui lòng kiểm tra mã KH.'}
                         </div>
                         <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                            {onViewCustomerDetail && customerCode && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowCustomerDetailModal(false);
+                                        onViewCustomerDetail(customerCode);
+                                    }}
+                                    className="px-4 py-2 rounded-lg font-bold text-sm bg-opella-green hover:bg-opella-green/90 text-white transition-colors flex items-center gap-1.5"
+                                >
+                                    <InfoIcon />
+                                    Xem chi tiết KH
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setShowCustomerDetailModal(false)}

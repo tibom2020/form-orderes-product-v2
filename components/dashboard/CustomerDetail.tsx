@@ -1,10 +1,11 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { SalesRecord, Rebate, PurchaseHistoryItem, ForecastItem, Employee } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import {
     ArrowLeftIcon, UserGroupIcon, IdentificationIcon, ClockIcon,
-    CartIcon, TrophyIcon, SearchIcon, DocumentTextIcon, StarIcon, GiftIcon, CubeIcon, FaceSmileIcon
+    CartIcon, TrophyIcon, SearchIcon, DocumentTextIcon, StarIcon, GiftIcon, CubeIcon, FaceSmileIcon,
+    ClipboardDocumentListIcon
 } from '../icons';
 import {
     getRawPercent, formatDateVal, formatCompact, getRebateLevel
@@ -81,6 +82,10 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     const [historyChannelFilter, setHistoryChannelFilter] = useState<'all' | 'gg' | 'bm'>('all');
     const [historyTypeFilter, setHistoryTypeFilter] = useState<'all' | 'import' | 'local'>('all');
     const [historyMonthFilter, setHistoryMonthFilter] = useState<string>('all');
+    const [historyProductFilter, setHistoryProductFilter] = useState<string>('all');
+    const [showExportNoticeModal, setShowExportNoticeModal] = useState(false);
+    const [isExportingHistory, setIsExportingHistory] = useState(false);
+    const [includeProductInExport, setIncludeProductInExport] = useState(false);
     const quickSearchInputRef = useRef<HTMLInputElement>(null);
 
     // Forecast stats: số KH dự báo / tổng KH cần dự báo (cho thông báo)
@@ -189,13 +194,95 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         if (historyMonthFilter !== 'all') {
             list = list.filter(h => getMonthKeyFromInvoiceDate(h.InvoiceDate) === historyMonthFilter);
         }
+        if (historyProductFilter !== 'all') {
+            list = list.filter(h => (h.Product || '').trim() === historyProductFilter);
+        }
         return list;
-    }, [mergedHistory, historyChannelFilter, historyTypeFilter, historyMonthFilter, mainCode, buyMedCode]);
+    }, [mergedHistory, historyChannelFilter, historyTypeFilter, historyMonthFilter, historyProductFilter, mainCode, buyMedCode]);
 
     const filteredHistoryTotal = useMemo(
         () => filteredHistory.reduce((sum, h) => sum + (Number(h.Value) || 0), 0),
         [filteredHistory]
     );
+
+    const buildHistoryExportMessage = (includeProducts: boolean) => {
+        const empName = currentEmployee?.name || record.Rep || '';
+        const lines: string[] = [
+            '📊 THÔNG TIN LỊCH SỬ MUA HÀNG',
+            '--------------------------------',
+            `📍 KH: ${record.CustomerName || 'N/A'}`,
+            `🔢 Code Giga: ${mainCode}`,
+            `🔢 Code BM: ${record.CodeBuyMed || 'N/A'}`,
+            `🏆 Loại TB: ${record.FinalStoreType || record.Check || 'N/A'}`,
+            `🧑‍💼 NV: ${empName}`,
+            ''
+        ];
+
+        // Group filteredHistory by month, separate import/local products
+        const byMonth = new Map<string, {
+            total: number; import: number; local: number;
+            importProducts: Map<string, number>; localProducts: Map<string, number>;
+        }>();
+        filteredHistory.forEach(h => {
+            const key = getMonthKeyFromInvoiceDate(h.InvoiceDate);
+            if (!key) return;
+            const curr = byMonth.get(key) || {
+                total: 0, import: 0, local: 0,
+                importProducts: new Map<string, number>(), localProducts: new Map<string, number>()
+            };
+            const val = Number(h.Value) || 0;
+            curr.total += val;
+            const isImport = (h.Group || h.Team || '').toLowerCase().includes('import');
+            if (isImport) {
+                curr.import += val;
+            } else {
+                curr.local += val;
+            }
+            if (includeProducts) {
+                const prod = (h.Product || '').trim() || 'N/A';
+                const qty = Number(h.Qty) || 0;
+                const target = isImport ? curr.importProducts : curr.localProducts;
+                target.set(prod, (target.get(prod) || 0) + qty);
+            }
+            byMonth.set(key, curr);
+        });
+
+        const sortedMonths = Array.from(byMonth.keys()).sort((a, b) => a.localeCompare(b)).slice(-3);
+        sortedMonths.forEach(key => {
+            const data = byMonth.get(key)!;
+            const monthNum = parseInt(key.split('-')[1], 10); // key format: YYYY-MM
+            lines.push(`Tháng ${monthNum} : ${formatMonthLabel(key)}`);
+            lines.push(`Tổng doanh số : ${formatCurrency(data.total)}`);
+            lines.push(`IMPORT T${monthNum} : ${formatCurrency(data.import)}`);
+            if (includeProducts && data.importProducts.size > 0) {
+                Array.from(data.importProducts.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .forEach(([prod, qty]) => lines.push(`  + ${prod} x ${qty}`));
+            }
+            lines.push(`LOCAL T${monthNum} : ${formatCurrency(data.local)}`);
+            if (includeProducts && data.localProducts.size > 0) {
+                Array.from(data.localProducts.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .forEach(([prod, qty]) => lines.push(`  + ${prod} x ${qty}`));
+            }
+            lines.push('');
+        });
+
+        return lines.join('\n').trimEnd();
+    };
+
+    const handleExportHistory = async () => {
+        const message = buildHistoryExportMessage(includeProductInExport);
+        setIsExportingHistory(true);
+        try {
+            await navigator.clipboard.writeText(message);
+            alert('Đã sao chép lịch sử mua hàng vào clipboard.');
+        } catch {
+            alert('Không thể sao chép. Bạn có thể chọn và copy thủ công.');
+        } finally {
+            setIsExportingHistory(false);
+        }
+    };
 
     const actualImport = Number(record.ActualImport) || 0;
     const targetImport = Number(record.TargetImport) || 0;
@@ -532,9 +619,19 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
-                                    <ClockIcon /> Lịch sử mua hàng
-                                </h4>
+                                <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
+                                        <ClockIcon /> Lịch sử mua hàng
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowExportNoticeModal(true)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-opella-green/80 hover:bg-opella-green text-white transition-colors"
+                                    >
+                                        <ClipboardDocumentListIcon />
+                                        Xuất thông báo
+                                    </button>
+                                </div>
                                 <div className="flex flex-wrap items-center gap-3">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mr-1">Kênh:</span>
@@ -583,6 +680,20 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                             ))}
                                         </select>
                                     </div>
+                                    <span className="text-slate-300 dark:text-slate-600">+</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mr-1">Sản phẩm:</span>
+                                        <select
+                                            value={historyProductFilter}
+                                            onChange={e => setHistoryProductFilter(e.target.value)}
+                                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 max-w-[140px] truncate"
+                                        >
+                                            <option value="all">Tất cả</option>
+                                            {uniqueProductStats.map(p => (
+                                                <option key={p.name} value={p.name} title={p.name}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -601,7 +712,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                                                <tr className="bg-slate-100 dark:bg-slate-700/50 font-black text-slate-800 dark:text-white border-b-2 border-slate-200 dark:border-slate-600">
+                                                <tr className="bg-red-50 dark:bg-red-900/20 font-black text-red-600 dark:text-red-400 border-b-2 border-slate-200 dark:border-slate-600">
                                                     <td colSpan={4} className="px-2 py-3 text-right">Tổng doanh số:</td>
                                                     <td className="px-2 py-3 text-right">{formatCurrency(filteredHistoryTotal)}</td>
                                                 </tr>
@@ -776,6 +887,59 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Modal Xuất thông báo - Lịch sử mua hàng */}
+            {showExportNoticeModal && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowExportNoticeModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Lịch sử mua hàng</h3>
+                        </div>
+                        <div className="px-4 pt-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={includeProductInExport}
+                                    onChange={(e) => setIncludeProductInExport(e.target.checked)}
+                                    className="rounded border-slate-300 text-opella-green focus:ring-opella-green"
+                                />
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">có sản phẩm</span>
+                            </label>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                            {filteredHistory.length > 0 ? buildHistoryExportMessage(includeProductInExport) : 'Chưa có dữ liệu giao dịch.'}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowExportNoticeModal(false)}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                type="button"
+                                disabled={filteredHistory.length === 0 || isExportingHistory}
+                                onClick={async () => {
+                                    setIsExportingHistory(true);
+                                    try {
+                                        await handleExportHistory();
+                                        setShowExportNoticeModal(false);
+                                    } finally {
+                                        setIsExportingHistory(false);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-opella-green hover:bg-opella-green/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                            >
+                                <ClipboardDocumentListIcon />
+                                {isExportingHistory ? 'Đang xuất...' : 'Xuất thông báo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {/* Forecast Section */}
             {isCoverQ1(record) && (
                 <div className="mt-8 mx-4 p-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-fade-in">

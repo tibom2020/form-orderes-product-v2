@@ -43,6 +43,20 @@ export const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
+/** Lấy 2 chữ cái viết hoa từ tên (VD: "Ly Minh Dat" → "MD", "Le Huu Phuc" → "HP") */
+export const getInitials = (name: string | undefined | null): string => {
+    try {
+        const words = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+        if (words.length === 0) return '??';
+        if (words.length === 1) return (words[0]?.slice(0, 2) || '??').toUpperCase();
+        const last = words[words.length - 1]?.[0] ?? '';
+        const second = words[words.length - 2]?.[0] ?? '';
+        return (second + last).toUpperCase() || '??';
+    } catch {
+        return '??';
+    }
+};
+
 export const removeVietnameseTones = (str: string): string => {
     str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
     str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");

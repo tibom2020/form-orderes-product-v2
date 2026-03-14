@@ -405,7 +405,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
         const formatProgramList = (items: RebateNoticeProgramItem[]): string => {
             if (items.length === 0) return '- Không có';
             return items
-                .map((it, idx) => `${idx + 1}. ${it.program} | ${formatCurrency(it.remainAmount)} | Hạn: ${it.dueDate}`)
+                .map((it, idx) => `${idx + 1}. ${it.program} | ${formatCurrency(it.remainAmount)}`)
                 .join('\n');
         };
 

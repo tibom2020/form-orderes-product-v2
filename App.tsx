@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, PRODUCT_QUOTA_ENTEROGERMINA_ID, PRODUCT_QUOTA_NOSPA_ID } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult, RebateCustomerNoticePayload, ProductQuotaRow } from './types';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS } from './constants';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login from './components/Login';
@@ -11,21 +11,21 @@ import LandingPage from './components/LandingPage';
 import ForecastTab from './components/ForecastTab';
 import RebateTab from './components/RebateTab';
 import PriceListTab from './components/PriceListTab';
-import ProductQuotaTab from './components/ProductQuotaTab';
 import AoTrackingTab from './components/AoTrackingTab';
 import SaleKhPsTab from './components/SaleKhPsTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, UserGroupIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
-import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice, submitProductQuota } from './services/googleSheetService';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
+import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
+import { getInitials } from './utils/formatters';
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'productQuota' | 'aoTracking' | 'saleKhPs' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'lixi';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -37,8 +37,6 @@ const App: React.FC = () => {
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
-  const [productQuotaData, setProductQuotaData] = useState<ProductQuotaRow[]>([]);
-
   const [viewMode, setViewMode] = useState<ViewMode>('order');
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
   const hasShownLoginReminder = useRef(false);
@@ -98,7 +96,7 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
 
     try {
-      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news, productQuota] = await Promise.all([
+      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
@@ -107,8 +105,7 @@ const App: React.FC = () => {
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
         fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL"),
-        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS'),
-        fetchDataFromSheet<ProductQuotaRow>(GOOGLE_SCRIPT_URL, 'ProductQuota')
+        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS')
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
@@ -118,7 +115,6 @@ const App: React.FC = () => {
       setForecastData(forecasts);
       // setAllLiXiResults(lixiResults); // Tạm ẩn
       setNewsItems(news || []);
-      setProductQuotaData(productQuota || []);
     } catch (e) {
       console.error("Data load failed", e);
     }
@@ -319,6 +315,10 @@ const App: React.FC = () => {
       .filter(item => TELFAST_GROUP_IDS.includes(item.id))
       .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+    const ostelinGroupBaseTotal = cart
+      .filter(item => OSTELIN_GROUP_IDS.includes(item.id))
+      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+
     let totalMaxPayableFeeLocal = 0;
     let totalMaxPayableFeeImport = 0;
 
@@ -328,7 +328,10 @@ const App: React.FC = () => {
         const maxTotalDiscountLine = basePriceLine * 0.5;
 
         const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-        let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+        const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
+        let compareValue = isTelfastGroup ? telfastGroupTotal
+          : isOstelinGroup ? ostelinGroupBaseTotal
+          : item.price * item.quantity;
 
         const monthlyDiscountPercent = getDiscountPercent(
           item.promotion,
@@ -355,7 +358,10 @@ const App: React.FC = () => {
 
     const totalAmount = cart.reduce((sum, item) => {
       const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-      let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+      const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
+      let compareValue = isTelfastGroup ? telfastGroupTotal
+        : isOstelinGroup ? ostelinGroupBaseTotal
+        : item.price * item.quantity;
 
       return sum + calculateLineTotal(
         item.price,
@@ -421,23 +427,6 @@ const App: React.FC = () => {
       const newSent: Order = { ...orderObj, id: Date.now().toString(), createdAt: Date.now(), status: 'sent' };
       setSentOrders([newSent, ...sentOrders]);
       saveOrders('sentOrders', [newSent, ...sentOrders]);
-
-      // Cập nhật Product Quota nếu đơn có Enterogermina 2B/20 hoặc NOSPA 80 V
-      const quotaItems = cart.filter(
-        item => item.id === PRODUCT_QUOTA_ENTEROGERMINA_ID || item.id === PRODUCT_QUOTA_NOSPA_ID
-      );
-      if (quotaItems.length > 0) {
-        submitProductQuota(GOOGLE_SCRIPT_URL, {
-          employeeName: loggedInEmployee!.name,
-          employeeCode: loggedInEmployee!.code,
-          items: quotaItems.map(item => ({
-            id: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-        }).then(() => loadInitialData());
-      }
 
       if (activeDraftId) {
         const newDrafts = drafts.filter(d => d.id !== activeDraftId);
@@ -596,9 +585,9 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center space-x-1.5 sm:space-x-4">
             {isSuperUser ? (
-              <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700 p-0.5 sm:p-1 rounded-lg border border-slate-200 dark:border-slate-600">
-                <div className="p-1 bg-sky-100 dark:bg-sky-900/50 rounded text-sky-600 dark:text-sky-400">
-                  <UserGroupIcon />
+              <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-700 p-0.5 sm:p-1 rounded-lg border border-slate-200 dark:border-slate-600">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-opella-green dark:bg-opella-green flex items-center justify-center text-white font-black text-xs sm:text-sm shrink-0 shadow-sm">
+                  {getInitials(loggedInEmployee.name)}
                 </div>
                 <select
                   value={loggedInEmployee.code}
@@ -695,14 +684,6 @@ const App: React.FC = () => {
             <span className="sm:hidden">Báo giá</span>
           </button>
           <button
-            onClick={() => setViewMode('productQuota')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'productQuota' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-          >
-            <ChartBarIcon />
-            <span className="hidden sm:inline">Product Quota</span>
-            <span className="sm:hidden">Quota</span>
-          </button>
-          <button
             onClick={() => setViewMode('forecast')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -756,7 +737,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'productQuota', 'aoTracking', 'saleKhPs'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -860,10 +841,6 @@ const App: React.FC = () => {
 
         {viewMode === 'priceList' && (
           <PriceListTab products={PRODUCTS} />
-        )}
-
-        {viewMode === 'productQuota' && (
-          <ProductQuotaTab data={productQuotaData} />
         )}
 
         {viewMode === 'aoTracking' && (

@@ -2,7 +2,7 @@
 import type { Product, Employee, Customer } from './types';
 
 // NGÀY CẬP NHẬT CTKM - Bạn có thể sửa ngày này thủ công tại đây
-export const PROMO_UPDATE_DATE = '01/03/2026';
+export const PROMO_UPDATE_DATE = '16/03/2026';
 
 // Đường dẫn Google Apps Script (Cập nhật mới nhất)
 export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD5n_kNXKaJhIpfVHW014ZZ4AE8PEz-29d3i6ym-fhNIf2T10Gntq7F13N4CHmb9DTnA/exec';
@@ -37,10 +37,10 @@ export const PRODUCTS: Product[] = [
   { id: 9, name: 'NO-SPA 40mg', minOrder: '1', minOrderQuantity: 1, price: 45700, type: 'Local', basePrice: 43524, requireApproval: true, image: 'https://i.postimg.cc/QMmGZFm3/nospa-40.webp' },
   { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, promotion: 'Mua 1h ck 9.85%, (đến 31.03.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
   { id: 11, name: 'ENTEROGERMINA GUT DEFEND (NEW)', minOrder: '1', minOrderQuantity: 1, price: 188321, type: 'Import', basePrice: 174371, promotion: 'Mua 4h ck 3.94%, 6h ck 5.91% (đến 31.03.2026)', image: 'https://i.postimg.cc/bvgcfZT5/entero-2b.webp' },
-  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 169240, type: 'Import', basePrice: 161181, promotion: 'Mua 4h ck 0.49%, 6h ck 0.99% (đến 14.03.2026)', requireApproval: true, image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
+  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, promotion: 'Mua 4h ck 2.47%, 6h ck 2.96% (đến 31.03.2026)', requireApproval: true, image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
   { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 305130, type: 'Import', basePrice: 290600, promotion: 'Mua 3h ck 4.93% (đến 31.03.2026)', nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
   { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 15.8% (đến 31.03.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },
-  { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 63901, type: 'Import', basePrice: 60858, promotion: 'Mua 5h ck 3.94%, 7h ck 4.43%, 10h ck 4.94% (đến 31.03.2026)', image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
+  { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 63901, type: 'Import', basePrice: 60858, promotion: 'Mua 5h ck 3.94%, 7h ck 4.43%, 10h ck 4.94% (đến 31.03.2026)', nearExpiry: 'HSD: 03/2027', image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
   { id: 15, name: 'BUSCOPAN VIÊN', minOrder: '1', minOrderQuantity: 1, price: 125790, type: 'Import', basePrice: 119800, image: 'https://i.postimg.cc/LsDKFJTw/buscopan-v.webp' },
   { id: 16, name: 'NOSPA 80 V', minOrder: '1', minOrderQuantity: 1, price: 27041, type: 'Import', basePrice: 25753, requireApproval: true, image: 'https://i.postimg.cc/rpjX2Djq/nospa-80-jfif.webp' },
   { id: 29, name: 'NO-SPA 40MG/2ML INJ AM25 VN', minOrder: '1', minOrderQuantity: 1, price: 146628, type: 'Import', basePrice: 139646, requireApproval: true, image: 'https://i.postimg.cc/L5hKr7Zq/no-spa-40mg-2ml-h-25-ong-1-638836122898829134.webp' },
@@ -50,10 +50,10 @@ export const PRODUCTS: Product[] = [
   { id: 19, name: 'PHARMATON KIDDI', minOrder: '1', minOrderQuantity: 1, price: 167400, type: 'Import', promotion: 'Mua 2h ck 4.92%, 4h ck 9.85% (đến 31.03.2026)', basePrice: 155000, image: 'https://i.postimg.cc/Qt7zxVkC/pmt-kiddi.webp' },
   { id: 20, name: 'PHARMATON ENERGY FIZZI SỦI', minOrder: '1', minOrderQuantity: 1, price: 104760, type: 'Import', basePrice: 97000, promotion: 'Mua 6h ck 12.3%, 10h ck 12.5% (đến 31.03.2026)', image: 'https://i.postimg.cc/43PkRYP9/pmt-fizzi.webp' },
   { id: 21, name: 'PHOSPHALUGEL 2.47G/20G GEL SC26 M36 VN', minOrder: '1', minOrderQuantity: 1, price: 120558, type: 'Import', basePrice: 114817, image: 'https://i.postimg.cc/N0DqvKDy/phospha.webp' },
-  { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
-  { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
-  { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua đơn >= 700k ck 5.42%, 1000k ck 5.91% (nhóm Ostelin 130V/275V/30V, basePrice, đến 31.03.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
+  { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua đơn >= 700k ck 5.42%, 1000k ck 5.91% (nhóm Ostelin 130V/275V/30V, basePrice, đến 31.03.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
+  { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'Mua đơn >= 700k ck 5.42%, 1000k ck 5.91% (nhóm Ostelin 130V/275V/30V, basePrice, đến 31.03.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 4h ck 9.85%, 6h ck 11.82% (đến 31.03.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
@@ -73,8 +73,6 @@ export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;
 
-// Product Quota: theo dõi số lượng đặt hàng theo Rep
-export const PRODUCT_QUOTA_ENTEROGERMINA_ID = 30; // ENTEROGERMINA 2 billion/5ml B/20 bottle
-export const PRODUCT_QUOTA_NOSPA_ID = 16;        // NOSPA 80 V
-export const PRODUCT_QUOTA_ENTEROGERMINA_QUOTA = 4000; // box
-export const PRODUCT_QUOTA_NOSPA_QUOTA = 400;         // box
+// Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
+export const OSTELIN_GROUP_IDS = [22, 23, 24] as const;
+

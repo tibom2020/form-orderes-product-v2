@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { SalesRecord, Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
-import { ADMIN_CODE } from '../constants';
-import { SearchIcon } from './icons';
+import { ADMIN_CODE, EMPLOYEES } from '../constants';
+import { SearchIcon, ChartBarIcon } from './icons';
 import { CartIcon } from './icons';
 
 type AoFilter = 'dat' | '2to3' | '1to2' | 'under1';
@@ -34,10 +34,14 @@ const formatPhí = (val: unknown): string => {
     return isNaN(n) ? String(val) : formatCurrency(n);
 };
 
+const AO_TARGET_130 = 130; // % SL Đạt/130 từng NV = SL Đạt / 130 * 100
+const AO_TARGET_DENOM = 130 * 7; // % Đạt tổng = SL Đạt / (130*7) * 100
+
 const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmployee, onCustomerSelect }) => {
     const showRep = currentEmployee.code === ADMIN_CODE;
     const [searchTerm, setSearchTerm] = useState('');
     const [aoFilter, setAoFilter] = useState<AoFilter>('dat');
+    const [showReportByRep, setShowReportByRep] = useState(false);
 
     const myRecords = useMemo(() => {
         return salesRecords.filter(r => {
@@ -70,6 +74,48 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
         return list.sort((a, b) => getSaleQ1(b) - getSaleQ1(a));
     }, [myRecords, aoFilter, searchTerm]);
 
+    const buildReportByRep = (records: SalesRecord[]) => {
+        const byRep = new Map<string, { slDat: number; sl2to3: number; sl1to2: number; slUnder1: number }>();
+        const normalizeName = (s: string) => (s || '').toLowerCase().trim();
+        records.forEach(r => {
+            const repName = (r.Rep || '').toString().trim();
+            const staffCode = String(r.StaffCode || '').trim();
+            const matched = EMPLOYEES.find(e =>
+                normalizeName(e.name) === normalizeName(repName) || e.code === staffCode
+            );
+            const key = matched ? matched.name : (repName || staffCode || 'Unknown');
+            if (!byRep.has(key)) byRep.set(key, { slDat: 0, sl2to3: 0, sl1to2: 0, slUnder1: 0 });
+            const q1 = getSaleQ1(r);
+            const f = getAoFilter(q1);
+            const row = byRep.get(key)!;
+            if (f === 'dat') row.slDat++;
+            else if (f === '2to3') row.sl2to3++;
+            else if (f === '1to2') row.sl1to2++;
+            else row.slUnder1++;
+        });
+        return Array.from(byRep.entries())
+            .map(([name, data]) => ({
+                name,
+                ...data,
+                percentDat130: ((data.slDat / AO_TARGET_130) * 100).toFixed(1),
+            }))
+            .sort((a, b) => b.slDat - a.slDat);
+    };
+
+    const reportByRepTeam = useMemo(() => buildReportByRep(salesRecords), [salesRecords]);
+
+    const reportTotalStats = useMemo(() => {
+        return reportByRepTeam.reduce(
+            (acc, row) => ({
+                slDat: acc.slDat + row.slDat,
+                sl2to3: acc.sl2to3 + row.sl2to3,
+                sl1to2: acc.sl1to2 + row.sl1to2,
+                slUnder1: acc.slUnder1 + row.slUnder1,
+            }),
+            { slDat: 0, sl2to3: 0, sl1to2: 0, slUnder1: 0 }
+        );
+    }, [reportByRepTeam]);
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="flex flex-col gap-4">
@@ -94,7 +140,7 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
                         />
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                         {[
                             { key: 'dat' as AoFilter, label: 'Đạt' },
                             { key: '2to3' as AoFilter, label: '2-3tr' },
@@ -113,6 +159,13 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
                                 {label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setShowReportByRep(true)}
+                            className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-1.5"
+                        >
+                            <ChartBarIcon />
+                            Báo cáo theo nhân viên
+                        </button>
                     </div>
                 </div>
 
@@ -183,6 +236,75 @@ const AoTrackingTab: React.FC<AoTrackingTabProps> = ({ salesRecords, currentEmpl
                         </table>
                     )}
                 </div>
+
+                {showReportByRep && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowReportByRep(false)}>
+                        <div className="bg-white dark:bg-slate-800 w-full max-w-2xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
+                            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white">Báo cáo AO</h3>
+                                <button onClick={() => setShowReportByRep(false)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors">✕</button>
+                            </div>
+
+                            {/* Ô tổng phía trên (tương tự DummyBox) */}
+                            <div className="px-5 pb-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                    <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">SL Đạt</p>
+                                        <p className="text-xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.slDat}</p>
+                                    </div>
+                                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-200 dark:border-red-800">
+                                        <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase">% Đạt</p>
+                                        <p className="text-xl font-black text-red-600 dark:text-red-400">{((reportTotalStats.slDat / AO_TARGET_DENOM) * 100).toFixed(1)}%</p>
+                                    </div>
+                                    <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">SL 2-3tr</p>
+                                        <p className="text-xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.sl2to3}</p>
+                                    </div>
+                                    <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">SL 1-2tr</p>
+                                        <p className="text-xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.sl1to2}</p>
+                                    </div>
+                                    <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">SL dưới 1tr</p>
+                                        <p className="text-xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.slUnder1}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-auto px-4 pb-4">
+                                <table className="w-full text-left text-xs border-collapse">
+                                    <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                                        <tr>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Nhân viên</th>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-center">SL Đạt</th>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-center">% SL Đạt/130</th>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-center">SL 2-3tr</th>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-center">SL 1-2tr</th>
+                                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-center">SL dưới 1tr</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {reportByRepTeam.map(row => (
+                                            <tr key={row.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                                <td className="px-3 py-2 font-bold text-slate-800 dark:text-white">{row.name}</td>
+                                                <td className="px-3 py-2 text-center">{row.slDat}</td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <span className="font-black text-red-600 dark:text-red-400">{row.percentDat130}%</span>
+                                                </td>
+                                                <td className="px-3 py-2 text-center">{row.sl2to3}</td>
+                                                <td className="px-3 py-2 text-center">{row.sl1to2}</td>
+                                                <td className="px-3 py-2 text-center">{row.slUnder1}</td>
+                                            </tr>
+                                        ))}
+                                        {reportByRepTeam.length === 0 && (
+                                            <tr><td colSpan={6} className="text-center py-8 text-slate-400 italic">Không có dữ liệu</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

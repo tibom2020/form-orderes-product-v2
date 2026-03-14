@@ -14,6 +14,7 @@ import {
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
     TELFAST_GROUP_IDS,
+    OSTELIN_GROUP_IDS,
 } from '../constants';
 
 const formatRebateDate = (r: any): string => {
@@ -208,12 +209,22 @@ const Cart: React.FC<CartProps> = (props) => {
             .reduce((sum, item) => sum + item.price * item.quantity, 0);
     }, [items]);
 
+    // 1b. Tổng basePrice nhóm Ostelin (130V, 275V, 30V) — KM theo basePrice
+    const ostelinGroupBaseTotal = useMemo(() => {
+        return items
+            .filter(item => OSTELIN_GROUP_IDS.includes(item.id))
+            .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    }, [items]);
+
     // 2. Tính Tạm tính tổng (đã trừ chiết khấu bậc/nhóm của từng dòng)
     const totalAmount = useMemo(() => {
         return items.reduce((sum, item) => {
             const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+            const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
 
-            let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+            let compareValue = isTelfastGroup ? telfastGroupTotal
+                : isOstelinGroup ? ostelinGroupBaseTotal
+                : item.price * item.quantity;
 
             const lineTotal = calculateLineTotal(
                 item.price,
@@ -223,7 +234,7 @@ const Cart: React.FC<CartProps> = (props) => {
             );
             return sum + lineTotal;
         }, 0);
-    }, [items, telfastGroupTotal]);
+    }, [items, telfastGroupTotal, ostelinGroupBaseTotal]);
 
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
@@ -273,8 +284,11 @@ const Cart: React.FC<CartProps> = (props) => {
                 const maxTotalDiscountLine = basePriceLine * 0.5;
 
                 const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+                const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
 
-                let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+                let compareValue = isTelfastGroup ? telfastGroupTotal
+                    : isOstelinGroup ? ostelinGroupBaseTotal
+                    : item.price * item.quantity;
 
                 const monthlyDiscountPercent = getDiscountPercent(
                     item.promotion,
@@ -292,7 +306,7 @@ const Cart: React.FC<CartProps> = (props) => {
             }
         });
         return { totalMaxPayableFeeLocal: localFee, totalMaxPayableFeeImport: importFee };
-    }, [items, telfastGroupTotal]);
+    }, [items, telfastGroupTotal, ostelinGroupBaseTotal]);
 
     const { rebateDiscount, selectedLocalRebateTotal, selectedImportRebateTotal } = useMemo(() => {
         const selectedLocalRebateAmount = localRebates
@@ -482,8 +496,11 @@ const Cart: React.FC<CartProps> = (props) => {
                                     const maxTotalDiscountLine = basePriceLine * 0.5;
 
                                     const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
+                                    const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
 
-                                    let compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+                                    let compareValue = isTelfastGroup ? telfastGroupTotal
+                                        : isOstelinGroup ? ostelinGroupBaseTotal
+                                        : item.price * item.quantity;
 
                                     const monthlyDiscountPercent = getDiscountPercent(
                                         item.promotion,
@@ -507,7 +524,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                             lineTotal={lineTotal}
                                             maxPayableFeeLine={maxPayableFeeLine}
                                             monthlyDiscountPercent={monthlyDiscountPercent}
-                                            isGrouped={isTelfastGroup}
+                                            isGrouped={isTelfastGroup || isOstelinGroup}
                                             onUpdateQuantity={onUpdateQuantity}
                                             onRemoveItem={onRemoveItem}
                                         />
@@ -535,12 +552,20 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* DS Nhóm đặc biệt - Thu nhỏ tối đa */}
-                    {telfastGroupTotal > 0 && (
+                    {(telfastGroupTotal > 0 || ostelinGroupBaseTotal > 0) && (
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1 italic">
-                            <div className="flex items-center space-x-1">
-                                <span className="text-[8px] font-medium text-slate-400 uppercase">DS Telfast:</span>
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{formatCurrency(telfastGroupTotal)}</span>
-                            </div>
+                            {telfastGroupTotal > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <span className="text-[8px] font-medium text-slate-400 uppercase">DS Telfast:</span>
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{formatCurrency(telfastGroupTotal)}</span>
+                                </div>
+                            )}
+                            {ostelinGroupBaseTotal > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <span className="text-[8px] font-medium text-slate-400 uppercase">DS Ostelin (base):</span>
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{formatCurrency(ostelinGroupBaseTotal)}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 

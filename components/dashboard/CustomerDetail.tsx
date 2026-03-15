@@ -207,6 +207,11 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
     const buildHistoryExportMessage = (includeProducts: boolean) => {
         const empName = currentEmployee?.name || record.Rep || '';
+        const channelLabel = historyChannelFilter === 'all' ? 'Tất cả' : historyChannelFilter === 'gg' ? 'GG' : 'BM';
+        const typeLabel = historyTypeFilter === 'all' ? 'Tất cả' : historyTypeFilter === 'import' ? 'Import' : 'Local';
+        const monthLabel = historyMonthFilter === 'all' ? 'Tất cả' : formatMonthLabel(historyMonthFilter);
+        const filterContent = `Nội dung lọc: ${channelLabel} - ${typeLabel} - ${monthLabel}`;
+
         const lines: string[] = [
             '📊 THÔNG TIN LỊCH SỬ MUA HÀNG',
             '--------------------------------',
@@ -215,6 +220,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             `🔢 Code BM: ${record.CodeBuyMed || 'N/A'}`,
             `🏆 Loại TB: ${record.FinalStoreType || record.Check || 'N/A'}`,
             `🧑‍💼 NV: ${empName}`,
+            filterContent,
             ''
         ];
 
@@ -269,6 +275,76 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         });
 
         return lines.join('\n').trimEnd();
+    };
+
+    const renderHistoryExportContent = (includeProducts: boolean) => {
+        const empName = currentEmployee?.name || record.Rep || '';
+        const channelLabel = historyChannelFilter === 'all' ? 'Tất cả' : historyChannelFilter === 'gg' ? 'GG' : 'BM';
+        const typeLabel = historyTypeFilter === 'all' ? 'Tất cả' : historyTypeFilter === 'import' ? 'Import' : 'Local';
+        const monthLabel = historyMonthFilter === 'all' ? 'Tất cả' : formatMonthLabel(historyMonthFilter);
+        const filterContent = `Nội dung lọc: ${channelLabel} - ${typeLabel} - ${monthLabel}`;
+
+        const byMonth = new Map<string, {
+            total: number; import: number; local: number;
+            importProducts: Map<string, number>; localProducts: Map<string, number>;
+        }>();
+        filteredHistory.forEach(h => {
+            const key = getMonthKeyFromInvoiceDate(h.InvoiceDate);
+            if (!key) return;
+            const curr = byMonth.get(key) || {
+                total: 0, import: 0, local: 0,
+                importProducts: new Map<string, number>(), localProducts: new Map<string, number>()
+            };
+            const val = Number(h.Value) || 0;
+            curr.total += val;
+            const isImport = (h.Group || h.Team || '').toLowerCase().includes('import');
+            if (isImport) curr.import += val; else curr.local += val;
+            if (includeProducts) {
+                const prod = (h.Product || '').trim() || 'N/A';
+                const target = isImport ? curr.importProducts : curr.localProducts;
+                target.set(prod, (target.get(prod) || 0) + (Number(h.Qty) || 0));
+            }
+            byMonth.set(key, curr);
+        });
+
+        const sortedMonths = Array.from(byMonth.keys()).sort((a, b) => a.localeCompare(b)).slice(-3);
+
+        return (
+            <div className="font-mono text-[11px] leading-relaxed space-y-1">
+                <div className="font-black text-opella-green dark:text-opella-green text-sm">📊 THÔNG TIN LỊCH SỬ MUA HÀNG</div>
+                <div className="text-slate-400 dark:text-slate-500">--------------------------------</div>
+                <div><span className="text-slate-500 dark:text-slate-400">📍 KH:</span> <span className="font-bold text-slate-800 dark:text-white">{record.CustomerName || 'N/A'}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🔢 Code Giga:</span> <span className="font-bold text-cyan-600 dark:text-cyan-400">{mainCode}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🔢 Code BM:</span> <span className="font-bold text-cyan-600 dark:text-cyan-400">{record.CodeBuyMed || 'N/A'}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🏆 Loại TB:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{record.FinalStoreType || record.Check || 'N/A'}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🧑‍💼 NV:</span> <span className="font-bold text-slate-800 dark:text-white">{empName}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">{filterContent}</span></div>
+                <div className="h-2" />
+                {sortedMonths.map(key => {
+                    const data = byMonth.get(key)!;
+                    const monthNum = parseInt(key.split('-')[1], 10);
+                    return (
+                        <div key={key} className="space-y-0.5">
+                            <div className="font-bold text-indigo-600 dark:text-indigo-400">Tháng {monthNum} : {formatMonthLabel(key)}</div>
+                            <div><span className="text-slate-500 dark:text-slate-400">Tổng doanh số:</span> <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(data.total)}</span></div>
+                            <div><span className="text-blue-600 dark:text-blue-400 font-bold">IMPORT T{monthNum}:</span> <span className="font-bold text-blue-700 dark:text-blue-300">{formatCurrency(data.import)}</span></div>
+                            {includeProducts && data.importProducts.size > 0 && (
+                                Array.from(data.importProducts.entries()).sort((a, b) => b[1] - a[1]).map(([prod, qty]) => (
+                                    <div key={prod} className="pl-3 text-slate-600 dark:text-slate-400"><span className="text-blue-400 dark:text-blue-500">+</span> {prod} <span className="font-bold text-slate-700 dark:text-slate-300">x {qty}</span></div>
+                                ))
+                            )}
+                            <div><span className="text-green-600 dark:text-green-400 font-bold">LOCAL T{monthNum}:</span> <span className="font-bold text-green-700 dark:text-green-300">{formatCurrency(data.local)}</span></div>
+                            {includeProducts && data.localProducts.size > 0 && (
+                                Array.from(data.localProducts.entries()).sort((a, b) => b[1] - a[1]).map(([prod, qty]) => (
+                                    <div key={prod} className="pl-3 text-slate-600 dark:text-slate-400"><span className="text-green-400 dark:text-green-500">+</span> {prod} <span className="font-bold text-slate-700 dark:text-slate-300">x {qty}</span></div>
+                                ))
+                            )}
+                            <div className="h-1.5" />
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
     const handleExportHistory = async () => {
@@ -626,9 +702,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setShowExportNoticeModal(true)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-opella-green/80 hover:bg-opella-green text-white transition-colors"
+                                        className="px-2 py-1 rounded-md text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90"
                                     >
-                                        <ClipboardDocumentListIcon />
                                         Xuất thông báo
                                     </button>
                                 </div>
@@ -906,8 +981,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200">có sản phẩm</span>
                             </label>
                         </div>
-                        <div className="p-4 overflow-y-auto flex-1 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                            {filteredHistory.length > 0 ? buildHistoryExportMessage(includeProductInExport) : 'Chưa có dữ liệu giao dịch.'}
+                        <div className="p-4 overflow-y-auto flex-1">
+                            {filteredHistory.length > 0 ? renderHistoryExportContent(includeProductInExport) : <span className="text-slate-400 italic">Chưa có dữ liệu giao dịch.</span>}
                         </div>
                         <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
                             <button

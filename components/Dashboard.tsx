@@ -538,6 +538,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 onViewDetail={setSelectedCustomer}
                                 onGoToOrder={onCustomerSelect}
                                 onExportSales={onExportSales}
+                                employeeName={currentEmployee?.name}
                             />
                         ))
                     )}

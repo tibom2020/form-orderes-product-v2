@@ -1,10 +1,11 @@
-
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
 import { getMaxDiscountPercent } from '../utils/calculations';
 import { REBATE_TIERS } from './dashboard/DashboardUtils';
+import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 
 interface ProductCardProps {
     product: Product;
@@ -14,6 +15,10 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     const [quantity, setQuantity] = useState<number | string>(product.minOrderQuantity);
     const [error, setError] = useState('');
+    const [showBmModal, setShowBmModal] = useState(false);
+
+    const bmTiers = useMemo(() => getBmTiers(product), [product]);
+    const showBmButton = isBmProduct(product.id);
 
     const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -185,6 +190,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                                 Min:{product.minOrder}
                             </span>
                         </div>
+                        {showBmButton && (
+                            <button
+                                type="button"
+                                onClick={() => setShowBmModal(true)}
+                                className="px-2 py-2 border border-sky-500 text-sky-600 dark:text-sky-400 dark:border-sky-400 font-bold text-[10px] rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-all uppercase"
+                            >
+                                GIÁ BM
+                            </button>
+                        )}
                         <button
                             onClick={handleAddToCart}
                             className="flex-1 flex items-center justify-center bg-opella-green text-white font-bold py-2 px-3 rounded-lg hover:bg-opella-green/90 active:scale-95 transition-all duration-200 text-xs uppercase shadow-sm"
@@ -195,6 +209,43 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Modal GIÁ BM */}
+            {showBmModal && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowBmModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-md w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white text-sm uppercase">GIÁ BM — {product.name}</h3>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1">
+                            {bmTiers.length === 0 ? (
+                                <p className="text-slate-400 italic text-sm">Không có dữ liệu giá BM.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {bmTiers.map((tier, idx) => (
+                                        <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase">SL tối thiểu: {tier.minQty}</span>
+                                                <span className="text-sm font-black text-opella-green dark:text-sky-400">{formatCurrency(tier.price)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600">
+                            <button
+                                type="button"
+                                onClick={() => setShowBmModal(false)}
+                                className="w-full py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

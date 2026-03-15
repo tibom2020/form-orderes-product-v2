@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Rebate, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem } from '../types';
 import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon, ChartBarIcon } from './icons';
 import { formatCurrency, removeVietnameseTones } from '../utils/formatters';
@@ -84,6 +84,9 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
     // Lọc KH khi click vào ô số tiền trong bảng thống kê (Rep + ngày hết hạn)
     const [statsCellFilter, setStatsCellFilter] = useState<{ rep: string; dateStr: string } | null>(null);
+    // Modal xuất thông báo trả thưởng - review trước khi xuất
+    const [showExportNoticeModal, setShowExportNoticeModal] = useState(false);
+    const [selectedGroupForExport, setSelectedGroupForExport] = useState<RebateGroup | null>(null);
 
     const ADMIN_CODE = '20043741';
 
@@ -440,6 +443,37 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             totalAmount,
             message,
         };
+    };
+
+    const renderRebateNoticeContent = (group: RebateGroup) => {
+        const payload = buildCustomerNoticePayload(group);
+        return (
+            <div className="font-mono text-[11px] leading-relaxed space-y-1">
+                <div className="font-black text-opella-green dark:text-opella-green text-sm">📢 THÔNG BÁO PHÍ TRẢ THƯỞNG KHÁCH HÀNG</div>
+                <div className="text-slate-400 dark:text-slate-500">--------------------------------</div>
+                <div><span className="text-slate-500 dark:text-slate-400">🔢 Code:</span> <span className="font-bold text-cyan-600 dark:text-cyan-400">{payload.code}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🏠 Tên KH:</span> <span className="font-bold text-slate-800 dark:text-white">{payload.customerName}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🧑‍💼 Tên nhân viên:</span> <span className="font-bold text-slate-800 dark:text-white">{payload.employeeName}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">📅 Ngày đến hạn gần nhất:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{payload.nearestDueDate}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🧾 Ngày hết GPP:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{payload.gppExpiryDate}</span></div>
+                <div className="h-2" />
+                <div><span className="text-green-600 dark:text-green-400 font-bold">💚 LOCAL (Tổng: {formatCurrency(payload.totalLocalAmount)}):</span></div>
+                {payload.localPrograms.length > 0 ? (
+                    payload.localPrograms.map((it, idx) => (
+                        <div key={idx} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-green-600 dark:text-green-400">| {formatCurrency(it.remainAmount)}</span></div>
+                    ))
+                ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                <div className="h-1.5" />
+                <div><span className="text-blue-600 dark:text-blue-400 font-bold">💙 IMPORT (Tổng: {formatCurrency(payload.totalImportAmount)}):</span></div>
+                {payload.importPrograms.length > 0 ? (
+                    payload.importPrograms.map((it, idx) => (
+                        <div key={idx} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-blue-600 dark:text-blue-400">| {formatCurrency(it.remainAmount)}</span></div>
+                    ))
+                ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                <div className="h-2" />
+                <div><span className="text-slate-500 dark:text-slate-400">💰 Tổng phí còn lại:</span> <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payload.totalAmount)}</span></div>
+            </div>
+        );
     };
 
     const handlePublishCustomerNotice = async (group: RebateGroup) => {
@@ -816,6 +850,42 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                 </div>
             )}
 
+            {/* Modal Xuất thông báo trả thưởng - review trước khi xuất */}
+            {showExportNoticeModal && selectedGroupForExport && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => { setShowExportNoticeModal(false); setSelectedGroupForExport(null); }}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông báo phí trả thưởng</h3>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1">
+                            {renderRebateNoticeContent(selectedGroupForExport)}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => { setShowExportNoticeModal(false); setSelectedGroupForExport(null); }}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                type="button"
+                                disabled={publishingCustomerCode === selectedGroupForExport.code}
+                                onClick={async () => {
+                                    await handlePublishCustomerNotice(selectedGroupForExport);
+                                    setShowExportNoticeModal(false);
+                                    setSelectedGroupForExport(null);
+                                }}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-opella-green hover:bg-opella-green/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {publishingCustomerCode === selectedGroupForExport.code ? 'Đang xuất...' : 'Xuất thông báo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {/* List with 2 columns on large screens */}
             <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900/50">
                 {groupedData.length === 0 ? (
@@ -848,11 +918,13 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => handlePublishCustomerNotice(group)}
-                                                disabled={publishingCustomerCode === group.code}
-                                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-60"
+                                                onClick={() => {
+                                                    setSelectedGroupForExport(group);
+                                                    setShowExportNoticeModal(true);
+                                                }}
+                                                className="px-2 py-1 rounded-md text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90"
                                             >
-                                                {publishingCustomerCode === group.code ? 'Đang gửi...' : 'Xuất thông báo'}
+                                                Xuất thông báo
                                             </button>
                                         </div>
                                     </div>

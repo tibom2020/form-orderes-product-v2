@@ -1,7 +1,8 @@
-
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { SalesRecord } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { CustomerSalesNoticeContent } from '../CustomerSalesNoticeContent';
 import { FaceFrownIcon, FaceSmileIcon } from '../icons';
 import { formatDateVal } from './DashboardUtils';
 import { ProgressBar, MiniProgressBar } from './ProgressBars';
@@ -11,15 +12,18 @@ interface CustomerListItemProps {
     onViewDetail: (record: SalesRecord) => void;
     onGoToOrder: (code: string) => void;
     onExportSales?: (record: SalesRecord) => Promise<void>;
+    employeeName?: string;
 }
 
 const CustomerListItem: React.FC<CustomerListItemProps> = ({
     record,
     onViewDetail,
     onGoToOrder,
-    onExportSales
+    onExportSales,
+    employeeName = ''
 }) => {
     const [isExporting, setIsExporting] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
     const checkStatus = record.Check || '';
     const isFail = checkStatus.toLowerCase().includes('rớt') || checkStatus.toLowerCase() === 'fail';
     const isPass = checkStatus.toLowerCase().includes('đạt') || checkStatus.toLowerCase() === 'pass';
@@ -35,24 +39,14 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                         {onExportSales && (
                             <button
                                 type="button"
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                     e.stopPropagation();
-                                    if (isExporting) return;
-                                    setIsExporting(true);
-                                    try {
-                                        await onExportSales(record);
-                                        alert('Đã gửi thông tin doanh số qua n8n/Telegram.');
-                                    } catch {
-                                        alert('Gửi thất bại. Vui lòng thử lại.');
-                                    } finally {
-                                        setIsExporting(false);
-                                    }
+                                    setShowExportModal(true);
                                 }}
-                                disabled={isExporting}
-                                className="text-[9px] font-bold px-2 py-0.5 rounded border bg-opella-green text-white border-opella-green hover:bg-opella-green/90 dark:bg-opella-green dark:text-white dark:border-opella-green dark:hover:bg-opella-green/90 disabled:opacity-50 transition-colors"
+                                className="text-[9px] font-bold px-2 py-0.5 rounded border bg-opella-green text-white border-opella-green hover:bg-opella-green/90 dark:bg-opella-green dark:text-white dark:border-opella-green dark:hover:bg-opella-green/90 transition-colors"
                                 title="Xuất thông tin Doanh số KH"
                             >
-                                {isExporting ? '...' : 'XUẤT DOANH SỐ'}
+                                XUẤT DOANH SỐ
                             </button>
                         )}
                         <span
@@ -129,6 +123,49 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                     {todoTotal !== 0 && (<div className={`flex-1 px-2 py-1 rounded font-bold border flex justify-between ${todoTotal > 0 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900'}`}><span>TRUNGBAY TODO:</span><span>{formatCurrency(todoTotal)}</span></div>)}
                     {Number(record.Sale) > 0 && (<div className="flex-1 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-600 flex justify-between"><span>Sale T1:</span><span>{formatCurrency(record.Sale || 0)}</span></div>)}
                 </div>
+            )}
+
+            {/* Modal xem trước nội dung trước khi xuất thông báo doanh số KH */}
+            {showExportModal && onExportSales && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowExportModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông tin doanh số khách hàng</h3>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1">
+                            <CustomerSalesNoticeContent record={record} employeeName={employeeName || record.Rep || ''} />
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowExportModal(false)}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isExporting}
+                                onClick={async () => {
+                                    setIsExporting(true);
+                                    try {
+                                        await onExportSales(record);
+                                        alert('Đã gửi thông tin doanh số qua n8n/Telegram.');
+                                        setShowExportModal(false);
+                                    } catch {
+                                        alert('Gửi thất bại. Vui lòng thử lại.');
+                                    } finally {
+                                        setIsExporting(false);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-lg font-bold text-sm bg-opella-green hover:bg-opella-green/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isExporting ? 'Đang gửi...' : 'Xuất thông báo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );

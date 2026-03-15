@@ -341,6 +341,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                 <tr>
                                     <th className="px-3 py-2.5 min-w-[140px] sticky left-0 bg-slate-100 dark:bg-slate-700 z-30 border-b border-r border-slate-200 dark:border-slate-600">Tên</th>
                                     <th className="px-3 py-2.5 min-w-[100px] border-b border-slate-200 dark:border-slate-600">Code</th>
+                                    <th className="px-3 py-2.5 min-w-[100px] border-b border-slate-200 dark:border-slate-600">Code BM</th>
                                     <th className="px-3 py-2.5 min-w-[100px] border-b border-slate-200 dark:border-slate-600">District</th>
                                     <th className="px-3 py-2.5 min-w-[110px] border-b border-slate-200 dark:border-slate-600">Sale Q1</th>
                                     <th className="px-3 py-2.5 min-w-[90px] border-b border-slate-200 dark:border-slate-600">FinalStoreType</th>
@@ -363,6 +364,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                                 {r.CustomerName}
                                             </td>
                                             <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">{r.CustomerCode}</td>
+                                            <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">{r.CodeBuyMed || ''}</td>
                                             <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.District || ''}</td>
                                             <td className="px-3 py-2">
                                                 <span className="text-red-600 dark:text-red-400 font-bold">{formatCurrency(saleQ1)}</span>

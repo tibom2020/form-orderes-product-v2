@@ -177,3 +177,73 @@ export const buildCustomerSalesNoticePayload = (
         message,
     };
 };
+
+/** Dữ liệu để hiển thị nội dung thông tin doanh số KH (dùng cho UI có màu) */
+export interface CustomerSalesDisplayData {
+    codeGiga: string;
+    codeBM: string;
+    customerName: string;
+    employeeName: string;
+    finalStoreType: string;
+    actualImport: number;
+    targetImport: number;
+    importPct: number;
+    importTier: { level: number; percent: number } | null;
+    expectedBonusImport: number;
+    actualLocal: number;
+    targetLocal: number;
+    localPct: number;
+    localTier: { level: number; percent: number } | null;
+    expectedBonusLocal: number;
+    totalQuarterDS: number;
+    checkStatus: string;
+    doanhSoDaDat: number;
+    todoTotal: number;
+    counterTopStr: string;
+    cduStr: string;
+}
+
+export const getCustomerSalesDisplayData = (
+    record: SalesRecord | undefined,
+    employeeName: string
+): CustomerSalesDisplayData | null => {
+    if (!record || typeof record !== 'object') return null;
+    const r = record as unknown as Record<string, unknown>;
+    const actualImport = safeNum(r, 'ActualImport', 'Actual Import');
+    const targetImport = safeNum(r, 'TargetImport', 'Target Import');
+    const actualLocal = safeNum(r, 'ActualLocal', 'Actual Local');
+    const targetLocal = safeNum(r, 'TargetLocal', 'Target Local');
+    const importPct = targetImport > 0 ? (actualImport / targetImport) * 100 : 0;
+    const localPct = targetLocal > 0 ? (actualLocal / targetLocal) * 100 : 0;
+    const importTier = getRebateLevel(actualImport);
+    const localTier = getRebateLevel(actualLocal);
+    const expectedBonusImport = importTier ? actualImport * (importTier.percent / 100) : 0;
+    const expectedBonusLocal = localTier ? actualLocal * (localTier.percent / 100) : 0;
+    const todoTotal = safeNum(r, 'Todo', 'Todo TB');
+    const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
+    const mustWin = safeNum(r, 'MustWin', 'Must Win');
+    const other = safeNum(r, 'Other');
+    return {
+        codeGiga: safeStr(r, 'CustomerCode', 'Customer Code', 'Code'),
+        codeBM: safeStr(r, 'CodeBuyMed', 'Code BM', 'BM'),
+        customerName: safeStr(r, 'CustomerName', 'Customer Name', 'Location Name') || 'N/A',
+        employeeName: employeeName || '',
+        finalStoreType: safeStr(r, 'FinalStoreType', 'Final Store Type') || 'Thành viên',
+        actualImport,
+        targetImport,
+        importPct,
+        importTier,
+        expectedBonusImport,
+        actualLocal,
+        targetLocal,
+        localPct,
+        localTier,
+        expectedBonusLocal,
+        totalQuarterDS: mustWin + other,
+        checkStatus: safeStr(r, 'Check'),
+        doanhSoDaDat,
+        todoTotal,
+        counterTopStr: safeStr(r, 'CounterTop', 'Counter Top'),
+        cduStr: safeStr(r, 'CDU'),
+    };
+};

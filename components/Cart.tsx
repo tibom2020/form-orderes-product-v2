@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom';
 import type { CartItem, Rebate, Customer, SalesRecord } from '../types';
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
 import { buildCustomerSalesNoticePayload } from '../utils/customerSummarizer';
+import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
     DUMMY_BOX_LOCAL_PRODUCT_IDS,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
@@ -47,6 +49,9 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
     onRemoveItem
 }) => {
     const [inputValue, setInputValue] = useState(item.quantity.toString());
+    const [showBmModal, setShowBmModal] = useState(false);
+    const bmTiers = useMemo(() => getBmTiers(item), [item]);
+    const showBmButton = isBmProduct(item.id);
 
     // Sync state khi props thay đổi (ví dụ khi nhấn nút +/-)
     useEffect(() => {
@@ -82,7 +87,18 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
                 {item.note && (
                     <p className="text-[9px] text-red-600 dark:text-red-400 font-bold italic mt-0.5 leading-tight">{item.note}</p>
                 )}
-                <p className="text-[9px] text-slate-400 mt-0.5">{formatCurrency(item.price)} (VAT)</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[9px] text-slate-400">{formatCurrency(item.price)} (VAT)</p>
+                    {showBmButton && (
+                        <button
+                            type="button"
+                            onClick={() => setShowBmModal(true)}
+                            className="text-[9px] font-bold text-sky-600 dark:text-sky-400 hover:underline"
+                        >
+                            GIÁ BM
+                        </button>
+                    )}
+                </div>
             </td>
             <td className="px-2 py-2.5">
                 <div className="flex items-center justify-center bg-white dark:bg-slate-600 rounded-md overflow-hidden w-[100px] mx-auto border border-slate-200 dark:border-slate-500 shadow-sm">
@@ -118,6 +134,35 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
             </td>
             <td className="px-2 py-2.5 text-right font-bold text-green-600 dark:text-green-400 text-[11px]">{formatCurrency(maxPayableFeeLine)}</td>
             <td className="px-3 py-2.5 text-right"><button onClick={() => onRemoveItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><TrashIcon /></button></td>
+            {showBmModal && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowBmModal(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-md w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                            <h3 className="font-bold text-slate-800 dark:text-white text-sm uppercase">GIÁ BM — {item.name}</h3>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1">
+                            {bmTiers.length === 0 ? (
+                                <p className="text-slate-400 italic text-sm">Không có dữ liệu giá BM.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {bmTiers.map((tier, idx) => (
+                                        <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase">SL tối thiểu: {tier.minQty}</span>
+                                                <span className="text-sm font-black text-opella-green dark:text-sky-400">{formatCurrency(tier.price)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600">
+                            <button type="button" onClick={() => setShowBmModal(false)} className="w-full py-2 rounded-lg font-bold text-sm bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors">Đóng</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </tr>
     );
 };
@@ -735,17 +780,10 @@ const Cart: React.FC<CartProps> = (props) => {
                         <div className="p-4 border-b border-slate-200 dark:border-slate-600">
                             <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông tin doanh số khách hàng</h3>
                         </div>
-                        <div className="p-4 overflow-y-auto flex-1 text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                        <div className="p-4 overflow-y-auto flex-1">
                             {currentSalesRecord
-                                ? (() => {
-                                    try {
-                                        return buildCustomerSalesNoticePayload(currentSalesRecord, employeeName ?? '')?.message ?? 'Không có dữ liệu.';
-                                    } catch (err) {
-                                        console.error('buildCustomerSalesNoticePayload error:', err);
-                                        return 'Lỗi khi tải thông tin. Vui lòng thử lại.';
-                                    }
-                                })()
-                                : 'Không tìm thấy thông tin khách hàng. Vui lòng kiểm tra mã KH.'}
+                                ? <CustomerSalesNoticeContent record={currentSalesRecord} employeeName={employeeName ?? ''} />
+                                : <span className="text-slate-400 italic">Không tìm thấy thông tin khách hàng. Vui lòng kiểm tra mã KH.</span>}
                         </div>
                         <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
                             {onViewCustomerDetail && customerCode && (

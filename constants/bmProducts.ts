@@ -10,6 +10,20 @@ export interface BmProductTier {
   ctkm: string;
 }
 
+/** Giá bán BM theo (productId, minQty) khi SL tối thiểu > 1 (từ file đính kèm). Key: "id-minQty" */
+const BM_PRICE_BY_ID_MIN_QTY: Record<string, number> = {
+  '1-20': 188190,
+  '28-20': 198815,
+  '2-98': 78883,
+  '3-96': 83978,
+  '4-96': 61077,
+  '5-160': 96256,
+  '10-66': 38582,
+  '11-36': 159028,
+  '14-238': 55244,
+  '21-24': 107558,
+};
+
 /** Giá bán BM theo SL tối thiểu 1 (từ file đính kèm - cột Giá bán BM). Cập nhật theo file khi có thay đổi. */
 export const BM_PRICE_BY_ID: Record<number, number> = {
   1: 192420,
@@ -54,7 +68,7 @@ export const isBmProduct = (productId: number): boolean =>
 /**
  * Lấy các mức GIÁ BM theo SL tối thiểu cho sản phẩm
  * Giá SL tối thiểu 1: lấy từ BM_PRICE_BY_ID (file đính kèm)
- * Giá các mức khác: tính từ giá BM 1h + CK theo promotion
+ * Giá SL tối thiểu > 1: lấy từ BM_PRICE_BY_ID_MIN_QTY (file đính kèm)
  */
 export function getBmTiers(product: Product): BmProductTier[] {
   const tiers = BM_TIERS_BY_ID[product.id];
@@ -67,10 +81,8 @@ export function getBmTiers(product: Product): BmProductTier[] {
     if (minQty === 1) {
       price = priceMin1;
     } else {
-      const discountPct = getDiscountForQuantity(product.promotion, minQty);
-      price = discountPct != null
-        ? Math.round(priceMin1 * (1 - discountPct / 100))
-        : priceMin1;
+      const key = `${product.id}-${minQty}`;
+      price = BM_PRICE_BY_ID_MIN_QTY[key] ?? priceMin1;
     }
     const ctkm = product.promotion || '—';
     return { minQty, price, ctkm };
@@ -107,17 +119,3 @@ const BM_TIERS_BY_ID: Record<number, { minQty: number }[]> = {
   24: [{ minQty: 1 }],
   25: [{ minQty: 1 }],
 };
-
-/** Lấy % chiết khấu áp dụng cho số lượng qty (hộp) từ chuỗi promotion */
-function getDiscountForQuantity(promotion: string | undefined, qty: number): number | null {
-  if (!promotion) return null;
-  const tieredMatches = Array.from(promotion.matchAll(/(\d+)\s*h\s*(?:ck|chiết khấu|discount)?\s*(\d+(?:\.\d+)?)\s*%/gi));
-  if (tieredMatches.length === 0) return null;
-  let best: number | null = null;
-  for (const m of tieredMatches) {
-    const threshold = parseInt(m[1]);
-    const percent = parseFloat(m[2]);
-    if (qty >= threshold) best = percent;
-  }
-  return best;
-}

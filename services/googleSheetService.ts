@@ -195,6 +195,36 @@ export const submitRebateCustomerNotice = async (
   }
 };
 
+/** Gửi comment GPP (đổi pháp nhân / code) vào Google Sheet */
+export const submitGppComment = async (
+  url: string,
+  payload: {
+    customerCode: string;
+    customerName: string;
+    rep: string;
+    totalAmount: number;
+    gppExpiryDate: string;
+    comment: string;
+    commentValue: string; // Để load lại đúng option khi refresh
+    employeeName: string;
+    employeeCode: string;
+  }
+): Promise<{ status: string; message?: string }> => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'submitGppComment', ...payload }),
+    });
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Error submitting GPP comment:', error);
+    return { status: 'error', message: 'Không thể lưu comment vào Google Sheet.' };
+  }
+};
+
 /** Gửi thông tin Doanh số KH qua n8n/Telegram (tương tự Rebate) */
 export const submitCustomerSalesNotice = async (
   url: string,

@@ -117,7 +117,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
 
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-3 items-center">
-                    <div className="flex-1 min-w-[200px] relative" ref={dropdownRef}>
+                    <div className="flex-1 min-w-[320px] relative" ref={dropdownRef}>
                         <button
                             type="button"
                             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -131,7 +131,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                             <span className={`ml-2 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>▼</span>
                         </button>
                         {dropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-50 py-1">
+                            <div className="absolute top-full left-0 right-0 mt-1 max-h-96 overflow-auto bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-50 py-1">
                                 <button
                                     type="button"
                                     onClick={() => setSelectedProductIds([])}

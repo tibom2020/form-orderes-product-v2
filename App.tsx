@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [sentOrders, setSentOrders] = useState<Order[]>([]);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
+  const [gppComments, setGppComments] = useState<Record<string, string>>({});
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -96,7 +97,7 @@ const App: React.FC = () => {
   const loadInitialData = async () => {
 
     try {
-      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news] = await Promise.all([
+      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news, gppCommentRows] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
@@ -105,7 +106,8 @@ const App: React.FC = () => {
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
         fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL"),
-        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS')
+        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS'),
+        fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, 'GPP_COMMENT')
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
@@ -115,6 +117,25 @@ const App: React.FC = () => {
       setForecastData(forecasts);
       // setAllLiXiResults(lixiResults); // Tạm ẩn
       setNewsItems(news || []);
+      // GPP Comment: lấy comment mới nhất theo Code KH (bất kỳ user nào submit)
+      const GPP_VALUES = ['no_change', 'change_code', 'subtract_before_block', 'abandon_old_code'];
+      const GPP_LABELS: Record<string, string> = {
+        '1. KH không đổi pháp nhân - code giữ nguyên': 'no_change',
+        '2. KH có đổi pháp nhân : thay đổi code': 'change_code',
+        '2.1. KH sẽ trừ hết phí trước thời điểm block code': 'subtract_before_block',
+        '2.2. KH bỏ phí ở code cũ còn lại': 'abandon_old_code',
+      };
+      const commentMap: Record<string, string> = {};
+      (gppCommentRows || []).forEach((row: Record<string, unknown>) => {
+        const code = String(row['Code KH'] ?? row['customerCode'] ?? row['code'] ?? '').trim();
+        let val = String(row['commentValue'] ?? '').trim();
+        if (!val) {
+          const label = String(row['Comment'] ?? '').trim();
+          val = GPP_LABELS[label] || (GPP_VALUES.includes(label) ? label : '');
+        }
+        if (code && val) commentMap[code] = val;
+      });
+      setGppComments(commentMap);
     } catch (e) {
       console.error("Data load failed", e);
     }
@@ -811,6 +832,7 @@ const App: React.FC = () => {
             isAdmin={loggedInEmployee?.code === ADMIN_CODE}
             onPublishGppNotice={handlePublishGppNotice}
             onPublishCustomerNotice={handlePublishCustomerNotice}
+            gppComments={gppComments}
           />
         )}
 

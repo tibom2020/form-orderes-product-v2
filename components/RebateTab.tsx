@@ -1,8 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Rebate, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem } from '../types';
 import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon, ChartBarIcon } from './icons';
 import { formatCurrency, removeVietnameseTones } from '../utils/formatters';
+import { GOOGLE_SCRIPT_URL } from '../constants';
+import { submitGppComment } from '../services/googleSheetService';
+
+/** Lựa chọn Comment GPP cho mỗi KH (đổi pháp nhân / code) */
+const GPP_COMMENT_OPTIONS = [
+    { value: '', label: '— Chọn comment —' },
+    { value: 'no_change', label: '1. KH không đổi pháp nhân - code giữ nguyên' },
+    { value: 'change_code', label: '2. KH có đổi pháp nhân : thay đổi code' },
+    { value: 'subtract_before_block', label: '2.1. KH sẽ trừ hết phí trước thời điểm block code' },
+    { value: 'abandon_old_code', label: '2.2. KH bỏ phí ở code cũ còn lại' },
+] as const;
 
 export type GppNoticeRow = {
     code: string;
@@ -20,6 +31,8 @@ interface RebateTabProps {
     isAdmin?: boolean;
     onPublishGppNotice?: (message: string) => Promise<void>;
     onPublishCustomerNotice?: (payload: RebateCustomerNoticePayload) => Promise<void>;
+    /** Comment GPP đã lưu (từ Google Sheet) - giữ nguyên khi load lại, bất kỳ user nào submit */
+    gppComments?: Record<string, string>;
 }
 
 // Helper to parse date from string (dd/mm/yyyy) or excel serial number
@@ -76,7 +89,7 @@ type RebateGroup = {
     total: number;
 };
 
-const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice }) => {
+const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice, gppComments = {} }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
     const [sortOption, setSortOption] = useState<'NAME' | 'AMOUNT_DESC' | 'DATE_ASC'>('NAME');
@@ -291,8 +304,47 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
 
     const hasGppWarnings = gppWarningBuckets.some(b => b.list.length > 0);
 
+    // KH có GPP đã hết hạn (ngày GPP đã vượt ngày hệ thống)
+    const gppExpiredList = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const byCode = new Map<string, { name: string; rep: string; dateStr: string; programDetails: { program: string; remainAmount: number }[]; daysOverdue: number }>();
+        rebates
+            .filter(r => r.DATEGPP != null && (currentEmployee.code === ADMIN_CODE || r.Rep === currentEmployee.name))
+            .forEach(r => {
+                const code = String(r.code);
+                const dateGpp = parseDate(r.DATEGPP);
+                if (!dateGpp) return;
+                const d = new Date(dateGpp);
+                d.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 0) return; // Chỉ lấy KH đã hết hạn (ngày GPP < hôm nay)
+                const customer = customers.find(c => String(c.code) === code);
+                const name = customer ? customer.name : `Mã: ${code}`;
+                const rep = r.Rep || '—';
+                const dateStr = formatDateDisplay(r.DATEGPP);
+                const programDetails = rebates
+                    .filter(x => String(x.code) === code && (currentEmployee.code === ADMIN_CODE || x.Rep === currentEmployee.name))
+                    .map(x => ({ program: x["PromotionID#program"], remainAmount: Number(x.RemainAmount) || 0 }));
+                if (!byCode.has(code) || byCode.get(code)!.daysOverdue < diffDays) {
+                    byCode.set(code, { name, rep, dateStr, programDetails, daysOverdue: diffDays });
+                }
+            });
+        return Array.from(byCode.entries())
+            .map(([code, v]) => ({ code, ...v } as GppNoticeRow & { daysOverdue: number }))
+            .sort((a, b) => b.daysOverdue - a.daysOverdue);
+    }, [rebates, customers, currentEmployee]);
+
     const [showExportGppModal, setShowExportGppModal] = useState(false);
     const [showRepStatsModal, setShowRepStatsModal] = useState(false);
+    // Comment GPP (đổi pháp nhân) cho từng KH - khởi tạo từ gppComments (Google Sheet), cập nhật khi chọn/Submit
+    const [gppCommentByCode, setGppCommentByCode] = useState<Record<string, string>>(() => gppComments);
+    useEffect(() => {
+        if (Object.keys(gppComments).length > 0) {
+            setGppCommentByCode(prev => ({ ...gppComments, ...prev }));
+        }
+    }, [gppComments]);
+    const [submittingGppCommentCode, setSubmittingGppCommentCode] = useState<string | null>(null);
     const [repStatsGroupFilter, setRepStatsGroupFilter] = useState<'TOTAL' | 'LOCAL' | 'IMPORT'>('TOTAL');
     const [isPublishingGpp, setIsPublishingGpp] = useState(false);
     const [publishingCustomerCode, setPublishingCustomerCode] = useState<string | null>(null);
@@ -491,6 +543,38 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             alert('Gửi thông báo thất bại. Vui lòng thử lại.');
         } finally {
             setPublishingCustomerCode(null);
+        }
+    };
+
+    const handleSubmitGppComment = async (row: GppNoticeRow, totalAmount: number) => {
+        const comment = gppCommentByCode[row.code];
+        if (!comment || !comment.trim()) {
+            alert('Vui lòng chọn nội dung comment trước khi Submit.');
+            return;
+        }
+        const label = GPP_COMMENT_OPTIONS.find(o => o.value === comment)?.label || comment;
+        setSubmittingGppCommentCode(row.code);
+        try {
+            const result = await submitGppComment(GOOGLE_SCRIPT_URL, {
+                customerCode: row.code,
+                customerName: row.name,
+                rep: row.rep,
+                totalAmount,
+                gppExpiryDate: row.dateStr,
+                comment: label,
+                commentValue: comment,
+                employeeName: currentEmployee.name,
+                employeeCode: currentEmployee.code,
+            });
+            if (result.status === 'success') {
+                alert('Đã lưu comment vào Google Sheet.');
+            } else {
+                alert(result.message || 'Không thể lưu. Vui lòng thử lại.');
+            }
+        } catch {
+            alert('Lỗi kết nối. Vui lòng thử lại.');
+        } finally {
+            setSubmittingGppCommentCode(null);
         }
     };
 
@@ -704,6 +788,25 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                                 <div className="font-bold text-opella-green dark:text-opella-green pt-0.5 border-t border-slate-200 dark:border-slate-600 mt-0.5">
                                                     Tổng phí: {formatCurrency(row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
                                                 </div>
+                                                <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600 space-y-1.5">
+                                                    <select
+                                                        value={gppCommentByCode[row.code] || ''}
+                                                        onChange={(e) => setGppCommentByCode(prev => ({ ...prev, [row.code]: e.target.value }))}
+                                                        className="w-full text-[10px] px-2 py-1.5 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-opella-green outline-none cursor-pointer"
+                                                    >
+                                                        {GPP_COMMENT_OPTIONS.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSubmitGppComment(row, row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
+                                                        disabled={submittingGppCommentCode === row.code || !gppCommentByCode[row.code]}
+                                                        className="w-full px-2 py-1 rounded text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {submittingGppCommentCode === row.code ? 'Đang lưu...' : 'Submit'}
+                                                    </button>
+                                                </div>
                                             </div>
                                             </div>
                                         </li>
@@ -716,6 +819,59 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                     <p className="text-xs text-slate-500 dark:text-slate-400 italic">
                         Không có KH có GPP sắp hết hạn trong 45 ngày tới.
                     </p>
+                )}
+
+                {/* KH có GPP đã hết hạn (ngày GPP đã vượt ngày hệ thống) */}
+                {gppExpiredList.length > 0 && (
+                    <div className="mt-4 rounded-lg border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                        <h4 className="text-xs font-black text-red-700 dark:text-red-300 mb-2">
+                            ⚠️ KH có GPP đã hết hạn ({gppExpiredList.length} KH)
+                        </h4>
+                        <ul className="space-y-2 max-h-48 overflow-y-auto">
+                            {gppExpiredList.map((row, idx) => (
+                                <li key={row.code} className="text-xs border-b border-red-100 dark:border-red-900/50 pb-2 last:border-0 flex gap-2">
+                                    <span className="flex-shrink-0 font-bold text-slate-400 dark:text-slate-500 w-5">{idx + 1}.</span>
+                                    <div className="min-w-0 flex-1">
+                                        <div
+                                            onClick={() => onCustomerClick(row.code)}
+                                            className="cursor-pointer hover:text-opella-green dark:hover:text-opella-green font-bold text-slate-800 dark:text-white"
+                                        >
+                                            {row.code} — {row.name}
+                                        </div>
+                                        <div className="text-slate-500 dark:text-slate-400 mt-0.5">NV: {row.rep}</div>
+                                        <div className="text-red-600 dark:text-red-400 font-semibold mt-0.5">GPP đã hết hạn: {row.dateStr}</div>
+                                        <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-1 space-y-0.5">
+                                            {row.programDetails.map((p, i) => (
+                                                <div key={i}>{p.program}: {formatCurrency(p.remainAmount)}</div>
+                                            ))}
+                                            <div className="font-bold text-opella-green dark:text-opella-green pt-0.5 border-t border-slate-200 dark:border-slate-600 mt-0.5">
+                                                Tổng phí: {formatCurrency(row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
+                                            </div>
+                                            <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800 space-y-1.5">
+                                                <select
+                                                    value={gppCommentByCode[row.code] || ''}
+                                                    onChange={(e) => setGppCommentByCode(prev => ({ ...prev, [row.code]: e.target.value }))}
+                                                    className="w-full text-[10px] px-2 py-1.5 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-opella-green outline-none cursor-pointer"
+                                                >
+                                                    {GPP_COMMENT_OPTIONS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSubmitGppComment(row, row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
+                                                    disabled={submittingGppCommentCode === row.code || !gppCommentByCode[row.code]}
+                                                    className="w-full px-2 py-1 rounded text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {submittingGppCommentCode === row.code ? 'Đang lưu...' : 'Submit'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 )}
             </div>
 

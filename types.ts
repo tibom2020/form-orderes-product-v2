@@ -45,6 +45,7 @@ export interface Rebate {
 export interface DashboardProps {
   salesData: SalesRecord[];
   currentEmployee: Employee;
+  productTargetsByEmployee?: Record<string, Record<string, number>>; // Target theo Product Groups từ sheet TARGET
   onCustomerSelect: (customerCode: string) => void;
   rebates: Rebate[];
   purchaseHistory: PurchaseHistoryItem[];
@@ -221,6 +222,8 @@ export interface Order {
   totalAmount: number;
   finalAmount: number;
   totalSales: number;
+  calciPlusPackages?: number;  // Số gói 21h ck 4.76% (CORBIERE CALCIUM PLUS)
+  calciPlusAmount?: number;   // Thành tiền gói ck 4.76%
 }
 
 // Interface cho lịch sử mua hàng từ Sheet HISTORY_GG và HISTORY_BM (merged)

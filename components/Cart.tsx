@@ -6,7 +6,7 @@ import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIco
 import { buildCustomerSalesNoticePayload } from '../utils/customerSummarizer';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
-import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+import { getDiscountPercent, calculateLineTotal, getCalciPlusPackages } from '../utils/calculations';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
     DUMMY_BOX_LOCAL_PRODUCT_IDS,
@@ -17,6 +17,7 @@ import {
     DUMMY_BOX_DISCOUNT,
     TELFAST_GROUP_IDS,
     OSTELIN_GROUP_IDS,
+    CALCIPLUS_PRODUCT_ID,
 } from '../constants';
 
 const formatRebateDate = (r: any): string => {
@@ -34,6 +35,7 @@ interface CartItemRowProps {
     maxPayableFeeLine: number;
     monthlyDiscountPercent: number;
     isGrouped: boolean;
+    hasCalciPlusExtra?: boolean;  // SL 21, 42, 63... → hiển thị ck 5.9%+4.76%
     onUpdateQuantity: (id: number, q: number) => void;
     onRemoveItem: (id: number) => void;
 }
@@ -45,6 +47,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
     maxPayableFeeLine,
     monthlyDiscountPercent,
     isGrouped,
+    hasCalciPlusExtra = false,
     onUpdateQuantity,
     onRemoveItem
 }) => {
@@ -127,7 +130,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
                 <p className="font-bold text-opella-green dark:text-sky-400 text-[11px]">{formatCurrency(lineTotal)}</p>
                 {monthlyDiscountPercent > 0 && (
                     <p className="text-[9px] text-red-500 dark:text-red-400 font-bold italic">
-                        CK -{(monthlyDiscountPercent * 100).toFixed(2)}%
+                        {hasCalciPlusExtra ? 'ck 5.9%+4.76%' : `CK -${(monthlyDiscountPercent * 100).toFixed(2)}%`}
                         {isGrouped && <span className="block text-[8px]">(Gộp nhóm)</span>}
                     </p>
                 )}
@@ -275,7 +278,8 @@ const Cart: React.FC<CartProps> = (props) => {
                 item.price,
                 item.quantity,
                 item.promotion,
-                compareValue
+                compareValue,
+                item.id
             );
             return sum + lineTotal;
         }, 0);
@@ -314,6 +318,18 @@ const Cart: React.FC<CartProps> = (props) => {
             }, 0);
         return sum >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
     }, [items]);
+
+    // CORBIERE CALCIUM PLUS: SL 21, 42, 63... → tự động thêm "Gói ck 4.76%" vào ghi chú
+    const calciPlusPackages = useMemo(() => {
+        const calciItem = items.find(i => i.id === CALCIPLUS_PRODUCT_ID);
+        return calciItem ? getCalciPlusPackages(calciItem.quantity) : 0;
+    }, [items]);
+
+    useEffect(() => {
+        if (calciPlusPackages >= 1 && !note.includes('Gói ck 4.76%')) {
+            onNoteChange(note ? `${note} Gói ck 4.76%` : 'Gói ck 4.76%');
+        }
+    }, [calciPlusPackages, note, onNoteChange]);
 
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
@@ -559,8 +575,10 @@ const Cart: React.FC<CartProps> = (props) => {
                                         item.price,
                                         item.quantity,
                                         item.promotion,
-                                        compareValue
+                                        compareValue,
+                                        item.id
                                     );
+                                    const hasCalciPlusExtra = item.id === CALCIPLUS_PRODUCT_ID && getCalciPlusPackages(item.quantity) >= 1;
 
                                     return (
                                         <CartItemRow
@@ -570,6 +588,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                             maxPayableFeeLine={maxPayableFeeLine}
                                             monthlyDiscountPercent={monthlyDiscountPercent}
                                             isGrouped={isTelfastGroup || isOstelinGroup}
+                                            hasCalciPlusExtra={hasCalciPlusExtra}
                                             onUpdateQuantity={onUpdateQuantity}
                                             onRemoveItem={onRemoveItem}
                                         />

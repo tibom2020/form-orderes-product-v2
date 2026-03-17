@@ -50,7 +50,31 @@ export const getDiscountPercent = (promotion: string | undefined, quantity: numb
     return 0;
 };
 
-export const calculateLineTotal = (price: number, quantity: number, promotion?: string, groupValue?: number): number => {
+/** Số gói 21 hộp của CORBIERE CALCIUM PLUS (id 1) */
+export const getCalciPlusPackages = (quantity: number): number => Math.floor(quantity / 21);
+
+/** Số hộp được hưởng ck thêm 4.76% (bội số của 21) */
+export const getCalciPlusPackagesBoxes = (quantity: number): number => getCalciPlusPackages(quantity) * 21;
+
+export const calculateLineTotal = (
+    price: number,
+    quantity: number,
+    promotion?: string,
+    groupValue?: number,
+    productId?: number
+): number => {
     const discount = getDiscountPercent(promotion, quantity, groupValue);
+
+    // CORBIERE CALCIUM PLUS (id 1): Mua mỗi 21 hộp → ck thêm 4.76%
+    if (productId === 1) {
+        const boxesWithExtra = getCalciPlusPackagesBoxes(quantity);
+        const boxesWithout = quantity - boxesWithExtra;
+        const CALCIPLUS_EXTRA = 0.0476;
+        return (
+            price * boxesWithExtra * (1 - discount) * (1 - CALCIPLUS_EXTRA) +
+            price * boxesWithout * (1 - discount)
+        );
+    }
+
     return price * quantity * (1 - discount);
 };

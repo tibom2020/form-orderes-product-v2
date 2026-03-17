@@ -1,12 +1,15 @@
 
 import React from 'react';
 import type { SalesRecord } from '../../types';
+import type { Employee } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
-import { formatCompact } from './DashboardUtils';
+import { formatCompact, getProductTargetsByEmployee, PRODUCT_GROUPS_ALL, MUST_WIN_GROUPS, OTHER_GROUPS, ADMIN_CODE, KPI_TARGETS, getRawPercent } from './DashboardUtils';
 
 interface KpiModalsProps {
     activeKpiModal: string | null;
     userSalesData: SalesRecord[];
+    currentEmployee: Employee;
+    productTargetsByEmployee?: Record<string, Record<string, number>>;
     kpiViewMode: 'pass' | 'fail' | 'ao_2to3' | 'ao_under2';
     kpiGroupBy: 'customer' | 'group';
     onClose: () => void;
@@ -18,6 +21,8 @@ interface KpiModalsProps {
 const KpiModals: React.FC<KpiModalsProps> = ({
     activeKpiModal,
     userSalesData,
+    currentEmployee,
+    productTargetsByEmployee = {},
     kpiViewMode,
     kpiGroupBy,
     onClose,
@@ -28,7 +33,7 @@ const KpiModals: React.FC<KpiModalsProps> = ({
     if (!activeKpiModal) return null;
 
     let title = '';
-    let data: { code: string; name: string; district: string; value: number; originalRecord: SalesRecord }[] = [];
+    let data: { code: string; name: string; district: string; value: number; target?: number; originalRecord: SalesRecord }[] = [];
 
     // Base datasets
     const allKpiData = userSalesData.map(r => ({
@@ -39,12 +44,24 @@ const KpiModals: React.FC<KpiModalsProps> = ({
         originalRecord: r
     }));
 
-    const PRODUCT_GROUPS_ALL = [
-        "BUSCOPAN (B.I)", "CAL CORBIERE", "ENTEROGERMINA", "Nospa Import", "Nospa Local",
-        "PHARMATON", "TELFAST", "BISOLVON", "OSTELIN", "ACEMUC", "PHOSPHALUGEL (B.I)", "MAGNE B6"
-    ];
-    const MUST_WIN_GROUPS = ["CAL CORBIERE", "ENTEROGERMINA"];
-    const OTHER_GROUPS = PRODUCT_GROUPS_ALL.filter(g => !MUST_WIN_GROUPS.includes(g));
+    const productTargets = (() => {
+        if (currentEmployee.code === ADMIN_CODE) {
+            const fromSheet = PRODUCT_GROUPS_ALL.reduce((acc, g) => {
+                const sum = Object.values(productTargetsByEmployee).reduce((s, empTargets) => s + (empTargets[g] || 0), 0);
+                acc[g] = sum;
+                return acc;
+            }, {} as Record<string, number>);
+            const hasData = Object.values(fromSheet).some(v => v > 0);
+            if (hasData) return fromSheet;
+            return PRODUCT_GROUPS_ALL.reduce((acc, g) => {
+                acc[g] = Object.keys(KPI_TARGETS).reduce((s, emp) => s + (getProductTargetsByEmployee(emp)[g] || 0), 0);
+                return acc;
+            }, {} as Record<string, number>);
+        }
+        const fromSheet = productTargetsByEmployee[currentEmployee.name];
+        if (fromSheet && Object.values(fromSheet).some(v => v > 0)) return fromSheet;
+        return getProductTargetsByEmployee(currentEmployee.name);
+    })();
 
     const getGroupedData = (groups: string[]) => {
         const aggregated = groups.map(groupName => {
@@ -61,17 +78,26 @@ const KpiModals: React.FC<KpiModalsProps> = ({
             case 'Total':
                 title = 'KPI theo Nhóm Sản Phẩm (Total)';
                 const groupedTotal = getGroupedData(PRODUCT_GROUPS_ALL);
-                data = groupedTotal.map(it => ({ code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, originalRecord: userSalesData[0] }));
+                data = groupedTotal.map(it => {
+                    const target = productTargets[it.name] || 0;
+                    return { code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, target, originalRecord: userSalesData[0] };
+                });
                 break;
             case 'MustWin':
                 title = 'KPI theo Nhóm Sản Phẩm (Must Win)';
                 const groupedMW = getGroupedData(MUST_WIN_GROUPS);
-                data = groupedMW.map(it => ({ code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, originalRecord: userSalesData[0] }));
+                data = groupedMW.map(it => {
+                    const target = productTargets[it.name] || 0;
+                    return { code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, target, originalRecord: userSalesData[0] };
+                });
                 break;
             case 'Other':
                 title = 'KPI theo Nhóm Sản Phẩm (Other)';
                 const groupedOther = getGroupedData(OTHER_GROUPS);
-                data = groupedOther.map(it => ({ code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, originalRecord: userSalesData[0] }));
+                data = groupedOther.map(it => {
+                    const target = productTargets[it.name] || 0;
+                    return { code: 'GROUP', name: it.name, district: 'Sản phẩm', value: it.value, target, originalRecord: userSalesData[0] };
+                });
                 break;
         }
     } else {
@@ -208,10 +234,19 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                                 <tr>
                                     <th className="px-3 py-2">Khách Hàng</th>
                                     <th className="px-3 py-2 text-right">Doanh Số</th>
+                                    {isGroupViewPossible && kpiGroupBy === 'group' && (
+                                        <>
+                                            <th className="px-3 py-2 text-right">Target</th>
+                                            <th className="px-3 py-2 text-right">% Đạt</th>
+                                        </>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                                {data.map((item, idx) => (
+                                {data.map((item, idx) => {
+                                    const target = item.target ?? 0;
+                                    const percent = target > 0 ? getRawPercent(item.value, target) : 0;
+                                    return (
                                     <tr
                                         key={idx}
                                         className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${item.code !== 'GROUP' ? 'cursor-pointer group' : ''}`}
@@ -238,9 +273,26 @@ const KpiModals: React.FC<KpiModalsProps> = ({
                                         <td className="px-3 py-2 text-right font-bold text-slate-800 dark:text-white truncate">
                                             {formatCurrency(item.value)}
                                         </td>
+                                        {isGroupViewPossible && kpiGroupBy === 'group' && (
+                                            <>
+                                                <td className="px-3 py-2 text-right font-medium text-slate-600 dark:text-slate-300">
+                                                    {formatCurrency(target)}
+                                                </td>
+                                                <td className={`px-3 py-2 text-right font-bold ${percent >= 100 ? 'text-green-600 dark:text-green-400' : percent >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                    {target > 0 ? `${percent.toFixed(1)}%` : '-'}
+                                                </td>
+                                            </>
+                                        )}
                                     </tr>
-                                ))}
-                                {data.length === 0 && <tr><td colSpan={2} className="text-center py-4 text-slate-400 italic">Không có dữ liệu</td></tr>}
+                                    );
+                                })}
+                                {data.length === 0 && (
+                                    <tr>
+                                        <td colSpan={isGroupViewPossible && kpiGroupBy === 'group' ? 4 : 2} className="text-center py-4 text-slate-400 italic">
+                                            Không có dữ liệu
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                 </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, CALCIPLUS_PRODUCT_ID } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -16,16 +16,18 @@ import SaleKhPsTab from './components/SaleKhPsTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
+import CalciPlusTab from './components/CalciPlusTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
-import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
+import { calculateLineTotal, getDiscountPercent, getCalciPlusPackages, getCalciPlusPackagesBoxes } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 import { getInitials } from './utils/formatters';
+import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'lixi';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -61,6 +63,7 @@ const App: React.FC = () => {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
   const [gppComments, setGppComments] = useState<Record<string, string>>({});
+  const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -94,30 +97,79 @@ const App: React.FC = () => {
     setSentOrders(getOrders('sentOrders'));
   }, []);
 
-  const loadInitialData = async () => {
+  // Refs để lazy load chỉ 1 lần
+  const hasLoadedPurchaseHistory = useRef(false);
+  const hasLoadedGppComments = useRef(false);
+  const hasLoadedForecast = useRef(false);
 
+  /** Phase 1: Dữ liệu cốt lõi cho Order/Rebate/Landing (4 API) */
+  const loadCriticalData = async () => {
     try {
-      const [customers, rebates, sales, historyGG, historyBM, marketing, forecasts, , news, gppCommentRows] = await Promise.all([
+      const [customers, rebates, sales, marketing] = await Promise.all([
         fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
         fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
-        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_GG"),
-        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_BM"),
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
-        fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord"),
-        fetchDataFromSheet<LiXiResult>(GOOGLE_SCRIPT_URL, "LUCKY_WHEEL"),
-        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS'),
-        fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, 'GPP_COMMENT')
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
       setAllSalesRecords(sales);
-      setAllPurchaseHistory([...(historyGG || []), ...(historyBM || [])]);
       setMarketingData(marketing);
-      setForecastData(forecasts);
-      // setAllLiXiResults(lixiResults); // Tạm ẩn
+    } catch (e) {
+      console.error("Critical data load failed", e);
+    }
+  };
+
+  /** Phase 2: Dữ liệu cho Dashboard/News (2 API) — load sau Phase 1 */
+  const loadSecondaryData = async () => {
+    try {
+      const [news, targetRows] = await Promise.all([
+        fetchDataFromSheet<AdminNewsItem>(GOOGLE_SCRIPT_URL, 'ADMIN_NEWS'),
+        fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, 'TARGET'),
+      ]);
       setNewsItems(news || []);
-      // GPP Comment: lấy comment mới nhất theo Code KH (bất kỳ user nào submit)
+      const targets = buildProductTargetsFromSheet(targetRows || []);
+      setProductTargetsByEmployee(targets);
+    } catch (e) {
+      console.error("Secondary data load failed", e);
+    }
+  };
+
+  /** Lazy: Forecast — chỉ load khi mở tab Landing / Dashboard / Forecast */
+  const loadForecastData = async () => {
+    if (hasLoadedForecast.current) return;
+    hasLoadedForecast.current = true;
+    try {
+      const forecasts = await fetchDataFromSheet<ForecastItem>(GOOGLE_SCRIPT_URL, "ForecastRecord");
+      setForecastData(forecasts);
+    } catch (e) {
+      console.error("Forecast load failed", e);
+      hasLoadedForecast.current = false;
+    }
+  };
+
+  /** Lazy: Lịch sử mua hàng — chỉ load khi mở Dashboard */
+  const loadPurchaseHistory = async () => {
+    if (hasLoadedPurchaseHistory.current) return;
+    hasLoadedPurchaseHistory.current = true;
+    try {
+      const [historyGG, historyBM] = await Promise.all([
+        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_GG"),
+        fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_BM"),
+      ]);
+      setAllPurchaseHistory([...(historyGG || []), ...(historyBM || [])]);
+    } catch (e) {
+      console.error("Purchase history load failed", e);
+      hasLoadedPurchaseHistory.current = false;
+    }
+  };
+
+  /** Lazy: GPP Comment — chỉ load khi mở tab Rebate */
+  const loadGppComments = async () => {
+    if (hasLoadedGppComments.current) return;
+    hasLoadedGppComments.current = true;
+    try {
+      const gppCommentRows = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, 'GPP_COMMENT');
       const GPP_VALUES = ['no_change', 'change_code', 'subtract_before_block', 'abandon_old_code'];
       const GPP_LABELS: Record<string, string> = {
         '1. KH không đổi pháp nhân - code giữ nguyên': 'no_change',
@@ -137,14 +189,49 @@ const App: React.FC = () => {
       });
       setGppComments(commentMap);
     } catch (e) {
-      console.error("Data load failed", e);
+      console.error("GPP comments load failed", e);
+      hasLoadedGppComments.current = false;
     }
-
   };
 
+  /** Khởi tạo: Phase 1 trước, Phase 2 chạy song song ngay sau */
   useEffect(() => {
-    loadInitialData();
+    let cancelled = false;
+    const run = async () => {
+      await loadCriticalData();
+      if (cancelled) return;
+      loadSecondaryData(); // Không await — load nền
+    };
+    run();
+    return () => { cancelled = true; };
   }, []);
+
+  /** Lazy load khi mở Dashboard */
+  useEffect(() => {
+    if (viewMode === 'dashboard') loadPurchaseHistory();
+  }, [viewMode]);
+
+  /** Lazy load khi mở Rebate */
+  useEffect(() => {
+    if (viewMode === 'rebate') loadGppComments();
+  }, [viewMode]);
+
+  /** Lazy load Forecast khi mở Landing / Dashboard / Forecast */
+  useEffect(() => {
+    if (viewMode === 'landing' || viewMode === 'dashboard' || viewMode === 'forecast') loadForecastData();
+  }, [viewMode]);
+
+  /** Reload toàn bộ dữ liệu (dùng cho nút Tải lại ở Forecast/Landing) */
+  const handleReloadAllData = async () => {
+    hasLoadedPurchaseHistory.current = false;
+    hasLoadedGppComments.current = false;
+    hasLoadedForecast.current = false;
+    await loadCriticalData();
+    await loadSecondaryData();
+    if (viewMode === 'dashboard') await loadPurchaseHistory();
+    if (viewMode === 'rebate') await loadGppComments();
+    if (['landing', 'dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
+  };
 
   // Khi đăng nhập: hiện Báo cáo DummyBox như thông báo nhắc nhở KPI
   useEffect(() => {
@@ -388,7 +475,8 @@ const App: React.FC = () => {
         item.price,
         item.quantity,
         item.promotion,
-        compareValue
+        compareValue,
+        item.id
       );
     }, 0);
 
@@ -396,14 +484,31 @@ const App: React.FC = () => {
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
+    // CORBIERE CALCIUM PLUS: gói 21h ck 4.76% — auto thêm ghi chú & tính Thành tiền gói
+    const calciPlusItem = cart.find(item => item.id === CALCIPLUS_PRODUCT_ID);
+    const calciPlusPackages = calciPlusItem ? getCalciPlusPackages(calciPlusItem.quantity) : 0;
+    let calciPlusAmount = 0;
+    if (calciPlusItem && calciPlusPackages > 0) {
+      const boxesWithExtra = getCalciPlusPackagesBoxes(calciPlusItem.quantity);
+      const isTelfast = TELFAST_GROUP_IDS.includes(calciPlusItem.id);
+      const isOstelin = OSTELIN_GROUP_IDS.includes(calciPlusItem.id);
+      const compareVal = isTelfast ? telfastGroupTotal : isOstelin ? ostelinGroupBaseTotal : calciPlusItem.price * calciPlusItem.quantity;
+      const monthlyDisc = getDiscountPercent(calciPlusItem.promotion, calciPlusItem.quantity, compareVal);
+      calciPlusAmount = Math.round(calciPlusItem.price * boxesWithExtra * (1 - monthlyDisc) * (1 - 0.0476));
+    }
+    const finalNote = (calciPlusPackages > 0 && !note.includes('Gói ck 4.76%'))
+      ? (note ? `${note} Gói ck 4.76%` : 'Gói ck 4.76%')
+      : note;
+
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount);
 
     return {
-      customerCode, customerName, customerAddress, note, items: cart, isOnTopLiXi,
+      customerCode, customerName, customerAddress, note: finalNote, items: cart, isOnTopLiXi,
       isDummyBox: isDummyBoxLocal || isDummyBoxImport,
       isDummyBoxLocal, isDummyBoxImport,
       appliedRebates: selectedRebateIds,
-      totalAmount, finalAmount, totalSales
+      totalAmount, finalAmount, totalSales,
+      calciPlusPackages, calciPlusAmount
     };
   };
 
@@ -697,6 +802,14 @@ const App: React.FC = () => {
             <span className="sm:hidden">PS</span>
           </button>
           <button
+            onClick={() => setViewMode('calciPlus')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'calciPlus' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <CubeIcon />
+            <span className="hidden sm:inline">Gói CalciPlus</span>
+            <span className="sm:hidden">CalciPlus</span>
+          </button>
+          <button
             onClick={() => setViewMode('priceList')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -758,7 +871,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -809,6 +922,7 @@ const App: React.FC = () => {
           <Dashboard
             salesData={allSalesRecords}
             currentEmployee={loggedInEmployee}
+            productTargetsByEmployee={productTargetsByEmployee}
             onCustomerSelect={handleCustomerSelectFromDashboard}
             rebates={allRebates}
             purchaseHistory={allPurchaseHistory}
@@ -857,7 +971,7 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee}
             onUpdateForecast={handleUpdateForecast}
             onCustomerClick={handleQuickViewCustomer}
-            onReloadData={loadInitialData}
+            onReloadData={handleReloadAllData}
           />
         )}
 
@@ -879,6 +993,10 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee!}
             onCustomerSelect={handleCustomerSelectFromDashboard}
           />
+        )}
+
+        {viewMode === 'calciPlus' && (
+          <CalciPlusTab currentEmployee={loggedInEmployee!} />
         )}
 
         {/* Tạm thời ẩn LuckyWheelTab

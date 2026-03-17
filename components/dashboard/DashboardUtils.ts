@@ -13,6 +13,105 @@ export const KPI_TARGETS: Record<string, { Total: number, MustWin: number, Other
     'Truong Hoang Du': { Total: 2023730916, MustWin: 883013722, Other: 1140717195, AO: 130, MSO: 85, Active: 130 },
 };
 
+/** Product groups for KPI (Total = MustWin + Other) */
+export const PRODUCT_GROUPS_ALL = [
+    'BUSCOPAN (B.I)', 'CAL CORBIERE', 'ENTEROGERMINA', 'Nospa Import', 'Nospa Local',
+    'PHARMATON', 'TELFAST', 'BISOLVON', 'OSTELIN', 'ACEMUC', 'PHOSPHALUGEL (B.I)', 'MAGNE B6'
+];
+export const MUST_WIN_GROUPS = ['CAL CORBIERE', 'ENTEROGERMINA'];
+export const OTHER_GROUPS = PRODUCT_GROUPS_ALL.filter(g => !MUST_WIN_GROUPS.includes(g));
+
+/** Target theo sản phẩm theo nhân viên (fallback khi chưa có sheet TARGET) */
+export const getProductTargetsByEmployee = (employeeName: string): Record<string, number> => {
+    const kpi = KPI_TARGETS[employeeName];
+    if (!kpi) return {};
+    const result: Record<string, number> = {};
+    const halfMustWin = Math.round(kpi.MustWin / 2);
+    MUST_WIN_GROUPS.forEach((g, i) => { result[g] = i === 0 ? halfMustWin : kpi.MustWin - halfMustWin; });
+    const otherPerProduct = OTHER_GROUPS.length > 0 ? Math.round(kpi.Other / OTHER_GROUPS.length) : 0;
+    OTHER_GROUPS.forEach((g, i) => { result[g] = i < OTHER_GROUPS.length - 1 ? otherPerProduct : kpi.Other - otherPerProduct * (OTHER_GROUPS.length - 1); });
+    return result;
+};
+
+/** Map tên sản phẩm từ sheet TARGET sang PRODUCT_GROUPS_ALL */
+const PRODUCT_NAME_ALIASES: Record<string, string> = {
+    'ENTEROGERMINA': 'ENTEROGERMINA',
+    'CAL CORBIERE': 'CAL CORBIERE',
+    'TELFAST': 'TELFAST',
+    'PHARMATON': 'PHARMATON',
+    'PHOSPHALUGEL (B.I)': 'PHOSPHALUGEL (B.I)',
+    'ACEMUC': 'ACEMUC',
+    'MAGNE B6': 'MAGNE B6',
+    'BISOLVON': 'BISOLVON',
+    'NOSPA Local': 'Nospa Local',
+    'Nospa Local': 'Nospa Local',
+    'NOSPA Import': 'Nospa Import',
+    'Nospa Import': 'Nospa Import',
+    'BUSCOPAN (B.I)': 'BUSCOPAN (B.I)',
+    'OSTELIN': 'OSTELIN',
+};
+
+const normalizeProductName = (name: string): string | null => {
+    const t = String(name || '').trim();
+    if (!t) return null;
+    if (PRODUCT_GROUPS_ALL.includes(t)) return t;
+    const alias = PRODUCT_NAME_ALIASES[t] || Object.keys(PRODUCT_NAME_ALIASES).find(k => k.toLowerCase() === t.toLowerCase());
+    return alias || (PRODUCT_GROUPS_ALL.find(p => p.toLowerCase() === t.toLowerCase()) || null);
+};
+
+/** Chuẩn hóa dữ liệu từ sheet: hỗ trợ cả array of objects và array of arrays */
+const normalizeTargetRows = (raw: unknown[]): Record<string, unknown>[] => {
+    if (raw.length === 0) return [];
+    const first = raw[0];
+    if (Array.isArray(first)) {
+        const headers = (first as unknown[]).map(h => String(h ?? '').trim());
+        return raw.slice(1).map((row: unknown) => {
+            const arr = Array.isArray(row) ? row : [];
+            const obj: Record<string, unknown> = {};
+            headers.forEach((h, i) => { if (h) obj[h] = arr[i]; });
+            return obj;
+        });
+    }
+    return raw as Record<string, unknown>[];
+};
+
+/** Danh sách tên NV để map cột sheet (từ KPI_TARGETS + Admin) */
+const KNOWN_EMPLOYEES = [...Object.keys(KPI_TARGETS), 'Phan Viet Linh', 'Ngo Thi Thuy Quynh'];
+
+const normalizeEmployeeColumn = (colKey: string): string | null => {
+    const t = String(colKey || '').trim().replace(/\uFEFF/g, '');
+    if (!t) return null;
+    const lower = t.toLowerCase();
+    const found = KNOWN_EMPLOYEES.find(e => e.toLowerCase() === lower || e.toLowerCase().replace(/\s+/g, ' ') === lower.replace(/\s+/g, ' '));
+    return found || t;
+};
+
+/** Build productTargetsByEmployee từ sheet TARGET (Sub Brand Name + cột theo tên NV) */
+export const buildProductTargetsFromSheet = (rawRows: unknown[]): Record<string, Record<string, number>> => {
+    const rows = normalizeTargetRows(Array.isArray(rawRows) ? rawRows : []);
+    const result: Record<string, Record<string, number>> = {};
+    const productKeys = ['Sub Brand Name', 'SubBrandName', 'Nhóm sản phẩm', 'Product', 'product', 'A', '0'];
+    const excludeKeys = new Set([...productKeys, 'Group', 'group', '']);
+    const headerLikeValues = new Set(['Sub Brand Name', 'SubBrandName', 'Group', 'Nhóm sản phẩm', 'Product']);
+    for (const row of rows) {
+        const productNameRaw = productKeys.map(k => row[k]).find(v => v != null && String(v).trim());
+        const rawStr = String(productNameRaw || Object.values(row)[0] || '').trim();
+        if (headerLikeValues.has(rawStr)) continue;
+        const productName = normalizeProductName(rawStr);
+        if (!productName) continue;
+        for (const [key, val] of Object.entries(row)) {
+            const colNorm = normalizeEmployeeColumn(key);
+            if (!colNorm || excludeKeys.has(key)) continue;
+            const num = typeof val === 'number' && !isNaN(val) ? val : parseFloat(String(val || '').replace(/,/g, ''));
+            if (isNaN(num) || num < 0) continue;
+            const empName = colNorm;
+            if (!result[empName]) result[empName] = {};
+            result[empName][productName] = (result[empName][productName] || 0) + num;
+        }
+    }
+    return result;
+};
+
 export const REBATE_TIERS = [
     { level: 1, amount: 1500000, percent: 3.0 },
     { level: 2, amount: 3000000, percent: 3.5 },

@@ -18,6 +18,7 @@ import {
 const Dashboard: React.FC<DashboardProps> = ({
     salesData,
     currentEmployee,
+    productTargetsByEmployee = {},
     onCustomerSelect,
     rebates,
     purchaseHistory,
@@ -231,6 +232,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             <KpiModals
                 activeKpiModal={activeKpiModal}
                 userSalesData={userSalesData}
+                currentEmployee={currentEmployee}
+                productTargetsByEmployee={productTargetsByEmployee}
                 kpiViewMode={kpiViewMode}
                 kpiGroupBy={kpiGroupBy}
                 onClose={() => { setActiveKpiModal(null); setKpiViewMode('pass'); setKpiGroupBy('customer'); }}

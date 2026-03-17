@@ -24,7 +24,7 @@ export const EMPLOYEES: Employee[] = [
 export const CUSTOMERS: Customer[] = [];
 
 export const PRODUCTS: Product[] = [
-  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 5h ck 4.9%, 10h ck 5.9% (đến 31.03.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
+  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 5h ck 4.9%, 10h ck 5.9%. Mua 21h ck thêm 4.76% (đến 31.03.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
   { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/43ZXpknR/calci-10-(1).webp' },
   { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167425, type: 'Local', basePrice: 159453, promotion: 'Mua 7h ck 4.9%, 10h ck 7.4%, 13h ck 9.9% (đến 31.03.2026)', image: 'https://i.postimg.cc/43JTm62S/calci-5.webp' },
   { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
@@ -75,4 +75,9 @@ export const DUMMY_BOX_DISCOUNT = 150_000;
 
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
 export const OSTELIN_GROUP_IDS = [22, 23, 24] as const;
+
+// CORBIERE CALCIUM PLUS: Mua mỗi 21 hộp → ck thêm 4.76% (được tính luôn ck tháng)
+export const CALCIPLUS_PRODUCT_ID = 1;
+export const CALCIPLUS_PACKAGE_SIZE = 21;
+export const CALCIPLUS_EXTRA_DISCOUNT = 0.0476;
 

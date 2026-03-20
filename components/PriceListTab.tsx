@@ -39,6 +39,13 @@ interface PriceListTabProps {
     products: Product[];
 }
 
+interface GigaPriceRow {
+    product: Product;
+    minOrder: number;
+    monthlyDiscountPercent: number | null;
+    note: string;
+}
+
 const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -77,6 +84,27 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
         }
         return list;
     }, [products, typeFilter, selectedProductIds]);
+
+    const gigaPriceRows = useMemo<GigaPriceRow[]>(() => {
+        const rows: GigaPriceRow[] = [];
+        filteredProducts.forEach((p) => {
+            if (p.id === 1) {
+                rows.push(
+                    { product: p, minOrder: 5, monthlyDiscountPercent: 5.9, note: 'Mua 5h ck 5.9%' },
+                    { product: p, minOrder: 21, monthlyDiscountPercent: 10.66, note: 'Mua 21h ck 10.66% (5.9% + 4.76%)' }
+                );
+                return;
+            }
+
+            rows.push({
+                product: p,
+                minOrder: getGigaMinOrderMax(p),
+                monthlyDiscountPercent: getMaxDiscountPercent(p.promotion),
+                note: '-',
+            });
+        });
+        return rows;
+    }, [filteredProducts]);
 
     /** Dữ liệu bảng giá BM: áp dụng cùng selectedProductIds và typeFilter như bảng Giga */
     const bmPriceRows = useMemo(() => {
@@ -188,7 +216,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                         </div>
                     </div>
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        {filteredProducts.length} sản phẩm
+                        {gigaPriceRows.length} dòng giá
                     </span>
                 </div>
 
@@ -221,29 +249,31 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {filteredProducts.map((p, idx) => {
-                                const maxCk = getMaxDiscountPercent(p.promotion);
-                                const giaHD = Math.round(p.price * (1 - (maxCk ?? 0) / 100));
+                            {gigaPriceRows.map((row, idx) => {
+                                const p = row.product;
+                                const monthlyCk = row.monthlyDiscountPercent;
+                                const giaHD = Math.round(p.price * (1 - (monthlyCk ?? 0) / 100));
                                 const giaCuoiThang = Math.round(giaHD * (1 - REBATE_TIERS[selectedLevelIndex].percent / 100));
                                 const noteParts: string[] = [];
                                 if (p.requireApproval) noteParts.push('ĐƠN DUYỆT');
                                 if (p.nearExpiry) noteParts.push(p.nearExpiry);
                                 if (p.note) noteParts.push(p.note);
+                                if (row.note !== '-') noteParts.push(row.note);
                                 const noteStr = noteParts.join(' • ') || '-';
                                 return (
-                                    <tr key={p.id} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">
+                                    <tr key={`${p.id}-${row.minOrder}-${row.monthlyDiscountPercent ?? 0}`} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">
                                         <td className="px-1.5 md:px-2 py-1.5 md:py-2 text-center text-slate-500 dark:text-slate-400 font-medium text-[10px] md:text-sm sticky left-0 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 border-r border-slate-100 dark:border-slate-700 w-8 md:w-10">{idx + 1}</td>
                                         <td className="px-2 md:px-3 py-1.5 md:py-2 font-medium uppercase leading-tight text-[10px] md:text-sm sticky left-8 md:left-10 z-[9] bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50 min-w-[100px] md:min-w-[200px] max-w-[130px] md:max-w-none shadow-[2px_0_4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_4px_rgba(0,0,0,0.2)] border-r border-slate-100 dark:border-slate-700 break-words">{p.name}</td>
                                         <td className="px-2 py-2 text-center">
-                                            <span className="font-bold text-red-600 dark:text-red-400">{getGigaMinOrderMax(p)}</span>
+                                            <span className="font-bold text-red-600 dark:text-red-400">{row.minOrder}</span>
                                         </td>
                                         <td className="px-2 py-2 text-right font-medium">
                                             {formatCurrency(p.price)}
                                         </td>
                                         <td className="px-2 py-2 text-center">
-                                            {maxCk != null ? (
+                                            {monthlyCk != null ? (
                                                 <span className="font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
-                                                    {maxCk.toFixed(2)}%
+                                                    {monthlyCk.toFixed(2)}%
                                                 </span>
                                             ) : (
                                                 <span className="text-slate-400">-</span>
@@ -277,7 +307,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                     </table>
                 </div>
 
-                {filteredProducts.length === 0 && (
+                {gigaPriceRows.length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-sm italic">
                         Không có sản phẩm nào phù hợp.
                     </div>

@@ -50,11 +50,44 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
             <div><span className="text-slate-500 dark:text-slate-400">💰 TOTAL DS QUÝ:</span> <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(data.totalQuarterDS)}</span></div>
             <div className="h-1.5" />
 
-            <div className="font-bold text-slate-600 dark:text-slate-300">📑 ĐIỀU KIỆN TB:</div>
+            <div className="font-bold text-slate-600 dark:text-slate-300">🎯 THAM GIA TB QUÝ 2.2026:</div>
             <div className="pl-2 space-y-0.5">
-                <div><span className="text-slate-500 dark:text-slate-400">+ Trạng thái:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{data.checkStatus || '-'}</span></div>
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">+ Trạng thái:</span>{' '}
+                    <span className={`font-bold ${data.quarterStatusLabel === 'THAM GIA TB QUÝ' ? 'text-amber-600 dark:text-amber-400' : (data.isQuarterPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}`}>
+                        {data.quarterStatusLabel}
+                    </span>
+                </div>
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">+ Mục tiêu quý:</span>{' '}
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {data.quarterTarget > 0 ? formatCurrency(data.quarterTarget) : 'THAM GIA TB QUÝ'}
+                    </span>
+                </div>
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">+ TODO:</span>{' '}
+                    <span className={`font-bold ${data.isQuarterPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {data.quarterTodo > 0 ? '+' : ''}{formatCurrency(data.quarterTodo)}
+                    </span>
+                </div>
+            </div>
+            <div className="h-1.5" />
+
+            <div className="font-bold text-slate-600 dark:text-slate-300">📑 ĐIỀU KIỆN TB THÁNG:</div>
+            <div className="pl-2 space-y-0.5">
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">+ Trạng thái:</span>{' '}
+                    <span className={`font-bold ${data.isCheckPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {data.isCheckPassed ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                    </span>
+                </div>
                 <div><span className="text-slate-500 dark:text-slate-400">+ Doanh số đã đặt:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.doanhSoDaDat)}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">+ Todo TB:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.todoTotal)}</span></div>
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">+ Todo TB:</span>{' '}
+                    <span className={`font-bold ${data.isCheckPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {data.signedTodoTotal > 0 ? '+' : ''}{formatCurrency(data.signedTodoTotal)}
+                    </span>
+                </div>
                 {data.counterTopStr && <div><span className="text-slate-500 dark:text-slate-400">+ Counter Top:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{data.counterTopStr}</span></div>}
                 {data.cduStr && <div><span className="text-slate-500 dark:text-slate-400">+ CDU:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{data.cduStr}</span></div>}
             </div>

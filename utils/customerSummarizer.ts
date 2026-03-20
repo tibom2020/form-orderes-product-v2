@@ -98,6 +98,18 @@ const safeStr = (r: Record<string, unknown>, ...keys: string[]): string => {
     return '';
 };
 
+const isPassStatus = (status: string): boolean => {
+    const s = (status || '').toLowerCase().trim();
+    return s.includes('đạt') || s.includes('dat') || s.includes('pass') || s === 'yes' || s === 'ok';
+};
+
+const getQuarterTargetByStoreType = (storeType: string): number => {
+    const s = (storeType || '').toLowerCase();
+    if (s.includes('gold')) return 40_000_000;
+    if (s.includes('silver')) return 20_000_000;
+    return 0;
+};
+
 /**
  * Tạo payload xuất thông tin Doanh số KH (gửi n8n/Telegram).
  * - Code giga = CustomerCode, Code BM = CodeBuyMed
@@ -137,12 +149,20 @@ export const buildCustomerSalesNoticePayload = (
     const customerName = safeStr(r, 'CustomerName', 'Customer Name', 'Location Name');
     const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type');
     const checkStatus = safeStr(r, 'Check');
+    const passed = isPassStatus(checkStatus);
+    const signedTodo = passed ? Math.abs(todoTotal) : -Math.abs(todoTotal);
     const counterTopStr = safeStr(r, 'CounterTop', 'Counter Top');
     const cduStr = safeStr(r, 'CDU');
 
     const mustWin = safeNum(r, 'MustWin', 'Must Win');
     const other = safeNum(r, 'Other');
     const totalQuarterDS = mustWin + other;
+    const quarterTarget = getQuarterTargetByStoreType(finalStoreType);
+    const quarterTodo = quarterTarget > 0 ? (totalQuarterDS - quarterTarget) : totalQuarterDS;
+    const isQuarterPassed = quarterTodo >= 0;
+    const quarterStatusLabel = quarterTarget > 0
+        ? (isQuarterPassed ? 'ĐẠT' : 'CHƯA ĐẠT')
+        : 'THAM GIA TB QUÝ';
 
     let message = `📊 THÔNG TIN DOANH SỐ KHÁCH HÀNG\n`;
     message += `--------------------------------\n`;
@@ -158,11 +178,15 @@ export const buildCustomerSalesNoticePayload = (
     message += `   ➔ ${localTier ? `Mức: ${localTier.level} (CK: ${localTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'} | Thưởng dự kiến: ${formatCurrency(expectedBonusLocal)}\n`;
 
     message += `\n💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n`;
+    message += `\n🎯 THAM GIA TB QUÝ 2.2026:\n`;
+    message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
+    message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
+    message += `+ TODO: ${quarterTodo > 0 ? '+' : ''}${formatCurrency(quarterTodo)}\n`;
 
     message += `\n📑 ĐIỀU KIỆN TB:\n`;
     message += `+ Trạng thái: ${checkStatus}\n`;
     message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
-    message += `+ Todo TB: ${formatCurrency(todoTotal)}\n`;
+    message += `+ Todo TB: ${signedTodo > 0 ? '+' : ''}${formatCurrency(signedTodo)}\n`;
     if (counterTopStr) message += `+ Counter Top: ${counterTopStr}\n`;
     if (cduStr) message += `+ CDU: ${cduStr}\n`;
 
@@ -196,9 +220,15 @@ export interface CustomerSalesDisplayData {
     localTier: { level: number; percent: number } | null;
     expectedBonusLocal: number;
     totalQuarterDS: number;
+    quarterTarget: number;
+    quarterTodo: number;
+    isQuarterPassed: boolean;
+    quarterStatusLabel: string;
     checkStatus: string;
     doanhSoDaDat: number;
     todoTotal: number;
+    signedTodoTotal: number;
+    isCheckPassed: boolean;
     counterTopStr: string;
     cduStr: string;
 }
@@ -220,15 +250,26 @@ export const getCustomerSalesDisplayData = (
     const expectedBonusImport = importTier ? actualImport * (importTier.percent / 100) : 0;
     const expectedBonusLocal = localTier ? actualLocal * (localTier.percent / 100) : 0;
     const todoTotal = safeNum(r, 'Todo', 'Todo TB');
+    const checkStatus = safeStr(r, 'Check');
+    const isCheckPassed = isPassStatus(checkStatus);
+    const signedTodoTotal = isCheckPassed ? Math.abs(todoTotal) : -Math.abs(todoTotal);
     const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
     const mustWin = safeNum(r, 'MustWin', 'Must Win');
     const other = safeNum(r, 'Other');
+    const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type') || 'Thành viên';
+    const totalQuarterDS = mustWin + other;
+    const quarterTarget = getQuarterTargetByStoreType(finalStoreType);
+    const quarterTodo = quarterTarget > 0 ? (totalQuarterDS - quarterTarget) : totalQuarterDS;
+    const isQuarterPassed = quarterTodo >= 0;
+    const quarterStatusLabel = quarterTarget > 0
+        ? (isQuarterPassed ? 'ĐẠT' : 'CHƯA ĐẠT')
+        : 'THAM GIA TB QUÝ';
     return {
         codeGiga: safeStr(r, 'CustomerCode', 'Customer Code', 'Code'),
         codeBM: safeStr(r, 'CodeBuyMed', 'Code BM', 'BM'),
         customerName: safeStr(r, 'CustomerName', 'Customer Name', 'Location Name') || 'N/A',
         employeeName: employeeName || '',
-        finalStoreType: safeStr(r, 'FinalStoreType', 'Final Store Type') || 'Thành viên',
+        finalStoreType,
         actualImport,
         targetImport,
         importPct,
@@ -239,10 +280,16 @@ export const getCustomerSalesDisplayData = (
         localPct,
         localTier,
         expectedBonusLocal,
-        totalQuarterDS: mustWin + other,
-        checkStatus: safeStr(r, 'Check'),
+        totalQuarterDS,
+        quarterTarget,
+        quarterTodo,
+        isQuarterPassed,
+        quarterStatusLabel,
+        checkStatus,
         doanhSoDaDat,
         todoTotal,
+        signedTodoTotal,
+        isCheckPassed,
         counterTopStr: safeStr(r, 'CounterTop', 'Counter Top'),
         cduStr: safeStr(r, 'CDU'),
     };

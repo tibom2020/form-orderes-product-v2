@@ -52,8 +52,13 @@ export const generateCustomerSummary = (
     summary += `🔹 Local: ${formatCurrency(actualLocal)} (${localPct.toFixed(1)}% / ${formatCurrency(targetLocal)})\n`;
     summary += `   ➔ ${localTier ? `Mức: ${localTier.level} (CK: ${localTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'}\n\n`;
     // Doanh số Quý (Tính từ tổng MW + Other)
+    const rSummary = record as unknown as Record<string, unknown>;
     const totalQuarterDS = (Number(record.MustWin) || 0) + (Number(record.Other) || 0);
-    summary += `💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n\n`;
+    const dsGigaQuarter = safeNum(rSummary, 'GIGAMED');
+    const dsBmQuarter = safeNum(rSummary, 'BM');
+    summary += `💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n`;
+    summary += `🟢 DOANH SỐ GIGA: ${formatCurrency(dsGigaQuarter)}\n`;
+    summary += `🔴 DOANH SỐ BM: ${formatCurrency(dsBmQuarter)}\n\n`;
  
     const hasCheck = record.Check != null && String(record.Check).trim() !== '';
     const hasCounterTop = record.CounterTop != null && String(record.CounterTop).trim() !== '';
@@ -157,6 +162,8 @@ export const buildCustomerSalesNoticePayload = (
     const mustWin = safeNum(r, 'MustWin', 'Must Win');
     const other = safeNum(r, 'Other');
     const totalQuarterDS = mustWin + other;
+    const dsGigaQuarter = safeNum(r, 'GIGAMED');
+    const dsBmQuarter = safeNum(r, 'BM');
     const quarterTarget = getQuarterTargetByStoreType(finalStoreType);
     const quarterTodo = quarterTarget > 0 ? (totalQuarterDS - quarterTarget) : totalQuarterDS;
     const isQuarterPassed = quarterTodo >= 0;
@@ -178,6 +185,8 @@ export const buildCustomerSalesNoticePayload = (
     message += `   ➔ ${localTier ? `Mức: ${localTier.level} (CK: ${localTier.percent}%)` : 'Mức: 0 (Chưa đạt thưởng)'} | Thưởng dự kiến: ${formatCurrency(expectedBonusLocal)}\n`;
 
     message += `\n💰 TOTAL DS QUÝ: ${formatCurrency(totalQuarterDS)}\n`;
+    message += `🟢 DOANH SỐ GIGA: ${formatCurrency(dsGigaQuarter)}\n`;
+    message += `🔴 DOANH SỐ BM: ${formatCurrency(dsBmQuarter)}\n`;
     message += `\n🎯 THAM GIA TB QUÝ 2.2026:\n`;
     message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
     message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
@@ -220,6 +229,10 @@ export interface CustomerSalesDisplayData {
     localTier: { level: number; percent: number } | null;
     expectedBonusLocal: number;
     totalQuarterDS: number;
+    /** Doanh số kênh Giga (cột GIGAMED sheet Doanh_So) */
+    doanhSoGiga: number;
+    /** Doanh số kênh BM (cột BM sheet Doanh_So) */
+    doanhSoBM: number;
     quarterTarget: number;
     quarterTodo: number;
     isQuarterPassed: boolean;
@@ -258,6 +271,8 @@ export const getCustomerSalesDisplayData = (
     const other = safeNum(r, 'Other');
     const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type') || 'Thành viên';
     const totalQuarterDS = mustWin + other;
+    const doanhSoGiga = safeNum(r, 'GIGAMED');
+    const doanhSoBM = safeNum(r, 'BM');
     const quarterTarget = getQuarterTargetByStoreType(finalStoreType);
     const quarterTodo = quarterTarget > 0 ? (totalQuarterDS - quarterTarget) : totalQuarterDS;
     const isQuarterPassed = quarterTodo >= 0;
@@ -281,6 +296,8 @@ export const getCustomerSalesDisplayData = (
         localTier,
         expectedBonusLocal,
         totalQuarterDS,
+        doanhSoGiga,
+        doanhSoBM,
         quarterTarget,
         quarterTodo,
         isQuarterPassed,

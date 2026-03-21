@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
   const [viewMode, setViewMode] = useState<ViewMode>('order');
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
+  const [showSaleKhPsReportOnMount, setShowSaleKhPsReportOnMount] = useState(false);
   const hasShownLoginReminder = useRef(false);
 
   const [customerCode, setCustomerCode] = useState('');
@@ -233,12 +234,13 @@ const App: React.FC = () => {
     if (['landing', 'dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
   };
 
-  // Khi đăng nhập: hiện Báo cáo DummyBox như thông báo nhắc nhở KPI
+  // Khi đăng nhập: chuyển thẳng sang tab Sale KH PS (không tự mở báo cáo DummyBox)
   useEffect(() => {
     if (loggedInEmployee && !hasShownLoginReminder.current) {
       hasShownLoginReminder.current = true;
-      setViewMode('landing');
-      setShowDummyBoxReminderOnMount(true);
+      setViewMode('saleKhPs');
+      setShowDummyBoxReminderOnMount(false);
+      setShowSaleKhPsReportOnMount(true);
     }
   }, [loggedInEmployee]);
 
@@ -992,6 +994,8 @@ const App: React.FC = () => {
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}
             onCustomerSelect={handleCustomerSelectFromDashboard}
+            showReportOnMount={showSaleKhPsReportOnMount}
+            onReportShown={() => setShowSaleKhPsReportOnMount(false)}
           />
         )}
 

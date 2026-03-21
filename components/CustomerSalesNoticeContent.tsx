@@ -48,6 +48,14 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
             <div className="h-1.5" />
 
             <div><span className="text-slate-500 dark:text-slate-400">💰 TOTAL DS QUÝ:</span> <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(data.totalQuarterDS)}</span></div>
+            <div>
+                <span className="text-slate-500 dark:text-slate-400">DOANH SỐ GIGA:</span>{' '}
+                <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency(data.doanhSoGiga)}</span>
+            </div>
+            <div>
+                <span className="text-slate-500 dark:text-slate-400">DOANH SỐ BM:</span>{' '}
+                <span className="font-bold text-red-600 dark:text-red-400">{formatCurrency(data.doanhSoBM)}</span>
+            </div>
             <div className="h-1.5" />
 
             <div className="font-bold text-slate-600 dark:text-slate-300">🎯 THAM GIA TB QUÝ 2.2026:</div>

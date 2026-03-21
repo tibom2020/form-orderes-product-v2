@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { SalesRecord, Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { ADMIN_CODE } from '../constants';
@@ -11,6 +11,8 @@ interface SaleKhPsTabProps {
     salesRecords: SalesRecord[];
     currentEmployee: Employee;
     onCustomerSelect: (code: string) => void;
+    showReportOnMount?: boolean;
+    onReportShown?: () => void;
 }
 
 const GOLD_MIN = 40_000_000;
@@ -46,7 +48,7 @@ const formatPhí = (val: unknown): string => {
     return isNaN(n) ? String(val) : formatCurrency(n);
 };
 
-const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee, onCustomerSelect }) => {
+const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee, onCustomerSelect, showReportOnMount = false, onReportShown }) => {
     const showRep = currentEmployee.code === ADMIN_CODE;
     const [searchTerm, setSearchTerm] = useState('');
     const [showReport, setShowReport] = useState(false);
@@ -154,6 +156,13 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
 
     const currentDate = new Date().toLocaleDateString('vi-VN');
 
+    useEffect(() => {
+        if (showReportOnMount) {
+            setShowReport(true);
+            onReportShown?.();
+        }
+    }, [showReportOnMount, onReportShown]);
+
     const renderReportModal = () => {
         if (!showReport) return null;
         return (
@@ -189,7 +198,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                         <p className="text-[10px] font-bold">
                                             <span className="text-green-600 dark:text-green-400">{t.dat} Đạt</span>
                                             <span className="text-slate-400 mx-1">|</span>
-                                            <span className="text-red-600 dark:text-red-400">{t.rot} Rớt</span>
+                                            <span className="text-red-600 dark:text-red-400">{t.rot} Chưa đạt</span>
                                         </p>
                                     </div>
                                 );
@@ -200,7 +209,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                 <p className="text-[10px] font-bold">
                                     <span className="text-green-600 dark:text-green-400">{reportTotalStats.dat} Đạt</span>
                                     <span className="text-slate-400 mx-1">|</span>
-                                    <span className="text-red-600 dark:text-red-400">{reportTotalStats.rot} Rớt</span>
+                                    <span className="text-red-600 dark:text-red-400">{reportTotalStats.rot} Chưa đạt</span>
                                 </p>
                             </div>
                         </div>
@@ -220,7 +229,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                                     <th className="px-4 py-2">Rep Phụ Trách</th>
                                                     <th className="px-4 py-2 text-center">Tổng KH</th>
                                                     <th className="px-4 py-2 text-center text-green-600 dark:text-green-400">Đạt</th>
-                                                    <th className="px-4 py-2 text-center text-red-600 dark:text-red-400">Rớt</th>
+                                                    <th className="px-4 py-2 text-center text-red-600 dark:text-red-400">Chưa đạt</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
@@ -316,7 +325,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                     : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
                             }`}
                         >
-                            Rớt
+                            Chưa đạt
                         </button>
                         <button
                             onClick={() => setShowReport(true)}
@@ -376,7 +385,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
                                             </td>
                                             <td className="px-3 py-2">
                                                 <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${dat ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>
-                                                    {dat ? 'Đạt' : 'Rớt'}
+                                                    {dat ? 'Đạt' : 'Chưa đạt'}
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2">

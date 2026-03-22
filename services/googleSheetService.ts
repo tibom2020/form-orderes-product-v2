@@ -1,6 +1,7 @@
 
 import type { CartItem } from '../types';
 import type { RebateCustomerNoticePayload, CustomerSalesNoticePayload } from '../types';
+import type { AiChatRequestPayload, AiChatResponse } from '../types';
 
 interface OrderPayload {
   employeeName: string;
@@ -249,6 +250,46 @@ export const submitCustomerSalesNotice = async (
   } catch (error) {
     console.error('Error submitting customer sales notice:', error);
     return { status: 'error', message: 'Không thể gửi thông tin doanh số qua webhook.' };
+  }
+};
+
+export const submitAiChat = async (
+  url: string,
+  payload: AiChatRequestPayload
+): Promise<AiChatResponse> => {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: JSON.stringify({
+        action: 'aiChat',
+        ...payload,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Network response was not ok: ${response.status}`);
+    }
+
+    const data = await response.json() as AiChatResponse;
+    if (data.status !== 'success') {
+      return {
+        status: 'error',
+        message: data.message || 'AI không thể phản hồi lúc này.',
+      };
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error submitting AI chat:', error);
+    return {
+      status: 'error',
+      message: 'Không thể kết nối AI. Vui lòng thử lại sau.',
+    };
   }
 };
 

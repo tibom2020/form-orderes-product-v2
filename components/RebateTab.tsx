@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import type { Rebate, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem } from '../types';
+import type { Rebate, RebateBm, Customer, Employee, RebateCustomerNoticePayload, RebateNoticeProgramItem, SalesRecord } from '../types';
 import { SearchIcon, BanknotesIcon, ExclamationCircleIcon, ClockIcon, ChartBarIcon } from './icons';
 import { formatCurrency, removeVietnameseTones } from '../utils/formatters';
 import { GOOGLE_SCRIPT_URL } from '../constants';
@@ -23,8 +22,14 @@ export type GppNoticeRow = {
     programDetails: { program: string; remainAmount: number }[];
 };
 
+type RebateSourceRow = Rebate | RebateBm;
+
 interface RebateTabProps {
     rebates: Rebate[];
+    /** Phí BM (sheet REBATE_BM) */
+    rebatesBm?: RebateBm[];
+    /** Để lấy CodeBuyMed khi xuất thông báo */
+    salesRecords: SalesRecord[];
     customers: Customer[];
     currentEmployee: Employee;
     onCustomerClick: (code: string) => void;
@@ -74,7 +79,7 @@ const formatDateForInput = (date: Date): string => {
     return `${y}-${m}-${d}`;
 }
 
-type RebateMergedItem = Rebate & {
+type RebateMergedItem = RebateSourceRow & {
     customerName: string;
     amount: number;
     expiryDate: Date | null;
@@ -89,9 +94,9 @@ type RebateGroup = {
     total: number;
 };
 
-const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice, gppComments = {} }) => {
+const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRecords = [], customers = [], currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice, gppComments = {} }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
+    const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'BM' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
     const [sortOption, setSortOption] = useState<'NAME' | 'AMOUNT_DESC' | 'DATE_ASC'>('NAME');
     const [selectedDates, setSelectedDates] = useState<string[]>([]); // Array of YYYY-MM-DD
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
@@ -100,34 +105,32 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
     // Modal xuất thông báo trả thưởng - review trước khi xuất
     const [showExportNoticeModal, setShowExportNoticeModal] = useState(false);
     const [selectedGroupForExport, setSelectedGroupForExport] = useState<RebateGroup | null>(null);
+    /** Modal xuất thông báo: có gồm phí BM trong nội dung & tổng hay không */
+    const [includeBmInCustomerNotice, setIncludeBmInCustomerNotice] = useState(true);
 
     const ADMIN_CODE = '20043741';
 
-    // 1. Merge Rebates with Customer Names and Parse Dates, Filter by Rep
+    // 1. Merge REBATE + REBATE_BM với tên KH, Filter by Rep
     const mergedData = useMemo(() => {
-        // Filter by Rep first
-        let availableRebates = rebates;
-        if (currentEmployee.code !== ADMIN_CODE) {
-            availableRebates = rebates.filter(r => {
-                // Nếu cột Rep trong Rebate rỗng, có thể không hiện hoặc hiện tất cả (tùy logic). 
-                // Ở đây giả định so sánh chính xác tên.
-                return r.Rep === currentEmployee.name;
-            });
-        }
+        const repMatches = (r: RebateSourceRow) =>
+            currentEmployee.code === ADMIN_CODE || r.Rep === currentEmployee.name;
 
-        return availableRebates.map(r => {
-            const customer = customers.find(c => String(c.code) === String(r.code));
+        const rows: RebateSourceRow[] = [...rebates.filter(repMatches), ...rebatesBm.filter(repMatches)];
+
+        return rows.map((r) => {
+            const customer = customers.find((c) => String(c.code) === String(r.code));
             const expiryDate = parseDate(r.Endate || r.EndDate);
+            const g = (r.Group || 'UNKNOWN').toUpperCase();
             return {
                 ...r,
                 customerName: customer ? customer.name : `Mã KH: ${r.code}`,
                 amount: Number(r.RemainAmount) || 0,
                 expiryDate,
-                groupTag: (r.Group || 'UNKNOWN').toUpperCase(),
-                dateStr: expiryDate ? formatDateForInput(expiryDate) : 'N/A'
+                groupTag: g,
+                dateStr: expiryDate ? formatDateForInput(expiryDate) : 'N/A',
             };
         });
-    }, [rebates, customers, currentEmployee]);
+    }, [rebates, rebatesBm, customers, currentEmployee]);
 
     // 1b. Get all unique available dates from the merged data
     const availableDates = useMemo(() => {
@@ -164,9 +167,16 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
 
         // Group/Attribute Filters
         if (filterGroup === 'LOCAL') {
-            matchingItems = matchingItems.filter(item => item.groupTag.includes('LOCAL'));
+            matchingItems = matchingItems.filter(item => item.groupTag === 'LOCAL');
         } else if (filterGroup === 'IMPORT') {
-            matchingItems = matchingItems.filter(item => item.groupTag.includes('IMPORT'));
+            matchingItems = matchingItems.filter(item => item.groupTag === 'IMPORT');
+        } else if (filterGroup === 'BM') {
+            matchingItems = matchingItems.filter(
+                item =>
+                    item.groupTag === 'BM_LOCAL' ||
+                    item.groupTag === 'BM_IMPORT' ||
+                    item.groupTag === 'BM'
+            );
         } else if (filterGroup === 'DATE_SELECT' && selectedDates.length > 0) {
             matchingItems = matchingItems.filter(item => selectedDates.includes(item.dateStr));
         } else if (filterGroup === 'PROMOTION_SELECT' && selectedPromotions.length > 0) {
@@ -428,7 +438,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
         }
     };
 
-    const buildCustomerNoticePayload = (group: RebateGroup): RebateCustomerNoticePayload => {
+    const buildCustomerNoticePayload = (group: RebateGroup, includeBm: boolean): RebateCustomerNoticePayload => {
         const rep = group.items.find(item => item.Rep)?.Rep || currentEmployee.name;
         const gppRawDate = group.items.find(item => item.DATEGPP != null)?.DATEGPP;
         const gppExpiryDate = formatDateDisplay(gppRawDate);
@@ -440,15 +450,31 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
         });
 
         const localPrograms = group.items
-            .filter(item => item.groupTag.includes('LOCAL'))
+            .filter(item => item.groupTag === 'LOCAL')
             .map(toProgramItem);
         const importPrograms = group.items
-            .filter(item => item.groupTag.includes('IMPORT'))
+            .filter(item => item.groupTag === 'IMPORT')
             .map(toProgramItem);
+        const bmLocalPrograms = includeBm
+            ? group.items
+                .filter(item => item.groupTag === 'BM_LOCAL' || item.groupTag === 'BM')
+                .map(toProgramItem)
+            : [];
+        const bmImportPrograms = includeBm
+            ? group.items
+                .filter(item => item.groupTag === 'BM_IMPORT')
+                .map(toProgramItem)
+            : [];
 
         const totalLocalAmount = localPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
         const totalImportAmount = importPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
-        const totalAmount = totalLocalAmount + totalImportAmount;
+        const totalBmLocalAmount = bmLocalPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
+        const totalBmImportAmount = bmImportPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
+        const totalBmAmount = includeBm ? totalBmLocalAmount + totalBmImportAmount : 0;
+        const totalAmount = totalLocalAmount + totalImportAmount + totalBmAmount;
+
+        const rawBuyMed = salesRecords.find((s) => String(s.CustomerCode).trim() === String(group.code).trim())?.CodeBuyMed;
+        const codeBuyMed = rawBuyMed != null && rawBuyMed !== '' ? String(rawBuyMed).trim() : '';
 
         const dueDates = group.items
             .map(item => parseDate(item.Endate || item.EndDate))
@@ -467,7 +493,8 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
         const message = [
             '📢 THÔNG BÁO PHÍ TRẢ THƯỞNG KHÁCH HÀNG',
             '--------------------------------',
-            `🔢 Code: ${group.code}`,
+            `🔢 Code Giga: ${group.code}`,
+            ...(codeBuyMed ? [`🔢 Code BuyMed: ${codeBuyMed}`] : []),
             `🏠 Tên KH: ${group.name}`,
             `🧑‍💼 Tên nhân viên: ${rep}`,
             `📅 Ngày đến hạn gần nhất: ${nearestDueDate}`,
@@ -478,8 +505,20 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             '',
             `💙 IMPORT (Tổng: ${formatCurrency(totalImportAmount)}):`,
             formatProgramList(importPrograms),
+            ...(includeBm
+                ? [
+                    '',
+                    `💚 BM LOCAL (Tổng: ${formatCurrency(totalBmLocalAmount)}):`,
+                    formatProgramList(bmLocalPrograms),
+                    '',
+                    `💙 BM IMPORT (Tổng: ${formatCurrency(totalBmImportAmount)}):`,
+                    formatProgramList(bmImportPrograms),
+                ]
+                : []),
             '',
-            `💰 Tổng phí còn lại: ${formatCurrency(totalAmount)}`,
+            includeBm
+                ? `💰 Tổng phí còn lại (Local + Import + BM): ${formatCurrency(totalAmount)}`
+                : `💰 Tổng phí còn lại (Local + Import): ${formatCurrency(totalAmount)}`,
         ].join('\n');
 
         return {
@@ -490,20 +529,29 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
             nearestDueDate,
             localPrograms,
             importPrograms,
+            bmLocalPrograms,
+            bmImportPrograms,
             totalLocalAmount,
             totalImportAmount,
+            totalBmLocalAmount,
+            totalBmImportAmount,
+            totalBmAmount,
             totalAmount,
+            codeBuyMed: codeBuyMed || undefined,
             message,
         };
     };
 
     const renderRebateNoticeContent = (group: RebateGroup) => {
-        const payload = buildCustomerNoticePayload(group);
+        const payload = buildCustomerNoticePayload(group, includeBmInCustomerNotice);
         return (
             <div className="font-mono text-[11px] leading-relaxed space-y-1">
                 <div className="font-black text-opella-green dark:text-opella-green text-sm">📢 THÔNG BÁO PHÍ TRẢ THƯỞNG KHÁCH HÀNG</div>
                 <div className="text-slate-400 dark:text-slate-500">--------------------------------</div>
-                <div><span className="text-slate-500 dark:text-slate-400">🔢 Code:</span> <span className="font-bold text-cyan-600 dark:text-cyan-400">{payload.code}</span></div>
+                <div><span className="text-slate-500 dark:text-slate-400">🔢 Code Giga:</span> <span className="font-bold text-cyan-600 dark:text-cyan-400">{payload.code}</span></div>
+                {payload.codeBuyMed && (
+                    <div><span className="text-slate-500 dark:text-slate-400">🔢 Code BuyMed:</span> <span className="font-bold text-fuchsia-600 dark:text-fuchsia-400">{payload.codeBuyMed}</span></div>
+                )}
                 <div><span className="text-slate-500 dark:text-slate-400">🏠 Tên KH:</span> <span className="font-bold text-slate-800 dark:text-white">{payload.customerName}</span></div>
                 <div><span className="text-slate-500 dark:text-slate-400">🧑‍💼 Tên nhân viên:</span> <span className="font-bold text-slate-800 dark:text-white">{payload.employeeName}</span></div>
                 <div><span className="text-slate-500 dark:text-slate-400">📅 Ngày đến hạn gần nhất:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{payload.nearestDueDate}</span></div>
@@ -522,14 +570,46 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                         <div key={idx} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-blue-600 dark:text-blue-400">| {formatCurrency(it.remainAmount)}</span></div>
                     ))
                 ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                {includeBmInCustomerNotice && (
+                    <>
+                        <div className="h-1.5" />
+                        <div><span className="text-green-600 dark:text-green-400 font-bold">💚 BM LOCAL (Tổng: {formatCurrency(payload.totalBmLocalAmount ?? 0)}):</span></div>
+                        {(payload.bmLocalPrograms && payload.bmLocalPrograms.length > 0) ? (
+                            payload.bmLocalPrograms.map((it, idx) => (
+                                <div key={`bml-${idx}`} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-green-600 dark:text-green-400">| {formatCurrency(it.remainAmount)}</span></div>
+                            ))
+                        ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                        <div className="h-1.5" />
+                        <div><span className="text-blue-600 dark:text-blue-400 font-bold">💙 BM IMPORT (Tổng: {formatCurrency(payload.totalBmImportAmount ?? 0)}):</span></div>
+                        {(payload.bmImportPrograms && payload.bmImportPrograms.length > 0) ? (
+                            payload.bmImportPrograms.map((it, idx) => (
+                                <div key={`bmi-${idx}`} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-blue-600 dark:text-blue-400">| {formatCurrency(it.remainAmount)}</span></div>
+                            ))
+                        ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                    </>
+                )}
                 <div className="h-2" />
-                <div><span className="text-slate-500 dark:text-slate-400">💰 Tổng phí còn lại:</span> <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payload.totalAmount)}</span></div>
+                <div>
+                    <span className="text-slate-500 dark:text-slate-400">
+                        💰 Tổng phí {includeBmInCustomerNotice ? '(Local + Import + BM)' : '(Local + Import)'}:
+                    </span>{' '}
+                    <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payload.totalAmount)}</span>
+                </div>
+                <label className="mt-3 flex items-start gap-2 cursor-pointer select-none rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 px-3 py-2 font-sans text-[11px] text-slate-700 dark:text-slate-200">
+                    <input
+                        type="checkbox"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-opella-green focus:ring-opella-green"
+                        checked={includeBmInCustomerNotice}
+                        onChange={(e) => setIncludeBmInCustomerNotice(e.target.checked)}
+                    />
+                    <span>Gồm phí BM (BM LOCAL + BM IMPORT) trong thông báo và tổng tiền</span>
+                </label>
             </div>
         );
     };
 
     const handlePublishCustomerNotice = async (group: RebateGroup) => {
-        const payload = buildCustomerNoticePayload(group);
+        const payload = buildCustomerNoticePayload(group, includeBmInCustomerNotice);
         setPublishingCustomerCode(group.code);
         try {
             if (onPublishCustomerNotice) {
@@ -632,6 +712,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                             { id: 'ALL', label: 'Tất cả' },
                             { id: 'LOCAL', label: 'LOCAL' },
                             { id: 'IMPORT', label: 'IMPORT' },
+                            { id: 'BM', label: 'BM' },
                             { id: 'DATE_SELECT', label: 'Ngày đến hạn' },
                             { id: 'PROMOTION_SELECT', label: 'Chương trình' }
                         ].map((f) => (
@@ -1006,17 +1087,27 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                 </div>
             )}
 
-            {/* Modal Xuất thông báo trả thưởng - review trước khi xuất */}
-            {showExportNoticeModal && selectedGroupForExport && typeof document !== 'undefined' && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => { setShowExportNoticeModal(false); setSelectedGroupForExport(null); }}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Xuất thông báo trả thưởng - cùng pattern overlay fixed như modal GPP (tránh lỗi portal/DOM) */}
+            {showExportNoticeModal && selectedGroupForExport && (
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50"
+                    onClick={() => { setShowExportNoticeModal(false); setSelectedGroupForExport(null); }}
+                    role="presentation"
+                >
+                    <div
+                        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 max-w-lg w-full max-h-[85vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="rebate-notice-modal-title"
+                    >
                         <div className="p-4 border-b border-slate-200 dark:border-slate-600">
-                            <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông báo phí trả thưởng</h3>
+                            <h3 id="rebate-notice-modal-title" className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông báo phí trả thưởng</h3>
                         </div>
-                        <div className="p-4 overflow-y-auto flex-1">
+                        <div className="p-4 overflow-y-auto flex-1 min-h-0">
                             {renderRebateNoticeContent(selectedGroupForExport)}
                         </div>
-                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end shrink-0">
                             <button
                                 type="button"
                                 onClick={() => { setShowExportNoticeModal(false); setSelectedGroupForExport(null); }}
@@ -1038,8 +1129,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                             </button>
                         </div>
                     </div>
-                </div>,
-                document.body
+                </div>
             )}
 
             {/* List with 2 columns on large screens */}
@@ -1076,6 +1166,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedGroupForExport(group);
+                                                    setIncludeBmInCustomerNotice(true);
                                                     setShowExportNoticeModal(true);
                                                 }}
                                                 className="px-2 py-1 rounded-md text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90"
@@ -1091,9 +1182,14 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, customers, currentEmploy
                                     {group.items.map((item, idx) => (
                                         <div key={idx} className="relative bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm space-y-1.5">
                                             {/* Item Group Tag */}
-                                            <div className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase shadow-sm border ${item.groupTag.includes('IMPORT')
-                                                ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
-                                                : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
+                                            <div className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase shadow-sm border ${
+                                                item.groupTag === 'BM_LOCAL' || item.groupTag === 'BM'
+                                                    ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/50 dark:text-purple-200 dark:border-purple-800'
+                                                    : item.groupTag === 'BM_IMPORT'
+                                                        ? 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/50 dark:text-violet-200 dark:border-violet-800'
+                                                        : item.groupTag === 'IMPORT'
+                                                            ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
+                                                            : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
                                                 }`}>
                                                 {item.groupTag}
                                             </div>

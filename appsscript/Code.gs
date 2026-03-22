@@ -6,6 +6,8 @@
 var BOT_TOKEN = "";
 var CHAT_ID = ""; 
 var N8N_WEBHOOK_URL = "";
+var GEMINI_API_KEY = "";
+var GEMINI_MODEL = "gemini-2.5-flash";
 
 var clean = function(text) { return text ? text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; };
 var formatCurrency = function(amount) { return new Intl.NumberFormat('vi-VN').format(amount); };
@@ -50,6 +52,11 @@ function doPost(e) {
     if (data.action === "customerSalesNotice") {
       sendCustomerSalesNotification(data);
       return output.setContent(JSON.stringify({ status: "success" }));
+    }
+
+    // --- ACTION: AI CHAT ---
+    if (data.action === "aiChat") {
+      return handleAiChat(data, output);
     }
 
     // --- ACTION: GPP COMMENT ---
@@ -244,6 +251,113 @@ function handleRebateNotice(data, ss, output) {
   ]);
   sendRebateCustomerNoticeNotification(data);
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+function handleAiChat(data, output) {
+  try {
+    if (!GEMINI_API_KEY) {
+      return output.setContent(JSON.stringify({
+        status: "error",
+        message: "Chua cau hinh GEMINI_API_KEY trong Apps Script."
+      }));
+    }
+
+    var userMessage = String(data.message || "").trim();
+    if (!userMessage) {
+      return output.setContent(JSON.stringify({
+        status: "error",
+        message: "Noi dung cau hoi khong duoc de trong."
+      }));
+    }
+
+    var customerContext = data.customerContext || null;
+    var contextText = "Khong co khach hang cu the.";
+    if (customerContext) {
+      contextText =
+        "Ma KH: " + clean(customerContext.customerCode || "") + "\n" +
+        "Ten KH: " + clean(customerContext.customerName || "") + "\n" +
+        "Dia chi: " + clean(customerContext.address || "-") + "\n" +
+        "Sales summary: " + clean(customerContext.salesSummary || "-") + "\n" +
+        "Forecast summary: " + clean(customerContext.forecastSummary || "-");
+    }
+
+    var systemInstruction =
+      "Ban la tro ly ban hang cho app Smart Orders. " +
+      "Chi dua tren du lieu ngu canh duoc cung cap. " +
+      "Neu trong ngu canh co doan 'BANG SO LIEU SAN CO' thi phai chep nguyen cac dong so lieu do vao cau tra loi (khong duoc bo trong). " +
+      "KHONG dung bang Markdown (khong dung hang ngan cach bang dau |). Dung moi dong mot thong tin, hoac dau '; ' de tach cot. " +
+      "Neu Sales summary ghi ro la khong tim thay dong DOANH_SO thi giai thich: app chua co ban ghi doanh so cho ma do (doi chieu sheet), khong noi la loi he thong. " +
+      "Neu user hoi thang 1,2,3 va quy 1: dung dung khai niem T1/T2 trong ngu canh (theo sheet); neu khong du 3 thang rieng thi noi ro app chi co du lieu den muc nao. " +
+      "Dau '-' nghia la truong trong sheet chua co. Luon dung day du ten khach trong ngu canh, khong rut ngan ten. " +
+      "Neu thieu du lieu thi noi ro can bo sung gi. " +
+      "Tra loi tieng Viet, day du so lieu, de hieu.";
+
+    var prompt =
+      systemInstruction + "\n\n" +
+      "Thong tin ngu canh:\n" + contextText + "\n\n" +
+      "Nhan vien: " + clean(data.employeeName || "") + "\n" +
+      "Cau hoi user: " + userMessage;
+
+    var endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent?key=" + GEMINI_API_KEY;
+
+    var payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 4096
+      }
+    };
+
+    var response = UrlFetchApp.fetch(endpoint, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    var statusCode = response.getResponseCode();
+    var responseText = response.getContentText();
+    if (statusCode < 200 || statusCode >= 300) {
+      return output.setContent(JSON.stringify({
+        status: "error",
+        message: "Gemini API loi (" + statusCode + ").",
+        details: responseText
+      }));
+    }
+
+    var parsed = JSON.parse(responseText);
+    var cand = parsed && parsed.candidates && parsed.candidates[0];
+    var parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
+    var answer = "";
+    for (var pi = 0; pi < parts.length; pi++) {
+      if (parts[pi] && parts[pi].text) {
+        answer += parts[pi].text;
+      }
+    }
+    if (!answer || !answer.trim()) {
+      answer = "Toi chua the phan hoi ro rang, ban thu dat cau hoi cu the hon.";
+    }
+    var fr = cand && cand.finishReason ? String(cand.finishReason) : "";
+    if (fr === "MAX_TOKENS") {
+      answer += "\n\n(Luu y: phan hoi co the bi gioi han do do dai — hay hoi ngan hon hoac tach cau hoi.)";
+    }
+
+    return output.setContent(JSON.stringify({
+      status: "success",
+      answer: answer
+    }));
+  } catch (err) {
+    return output.setContent(JSON.stringify({
+      status: "error",
+      message: "Khong the xu ly AI chat.",
+      details: err.toString()
+    }));
+  }
 }
 
 // ======================================================

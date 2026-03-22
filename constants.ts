@@ -57,7 +57,8 @@ export const PRODUCTS: Product[] = [
 ];
 
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
-export const TELFAST_GROUP_IDS = [7, 8] as const;
+// readonly number[] (không as const) để .includes(cartItem.id: number) hợp lệ với TypeScript
+export const TELFAST_GROUP_IDS: readonly number[] = [7, 8];
 
 // CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
 export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml
@@ -74,7 +75,7 @@ export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 export const DUMMY_BOX_DISCOUNT = 150_000;
 
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
-export const OSTELIN_GROUP_IDS = [22, 23, 24] as const;
+export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24];
 
 // CORBIERE CALCIUM PLUS: Mua mỗi 21 hộp → ck thêm 4.76% (được tính luôn ck tháng)
 export const CALCIPLUS_PRODUCT_ID = 1;

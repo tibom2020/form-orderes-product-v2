@@ -42,6 +42,18 @@ export interface Rebate {
   DATEGPP?: string | number; // Ngày hết hạn giấy phép GPP (từ sheet REBATE)
 }
 
+/** Sheet REBATE_BM — phí BuyMed (Group: BM_LOCAL / BM_IMPORT) */
+export interface RebateBm {
+  code: string;
+  Group: 'BM_LOCAL' | 'BM_IMPORT' | 'BM';
+  "PromotionID#program": string;
+  EndDate?: string | number;
+  Endate?: string | number;
+  RemainAmount: number;
+  Rep?: string;
+  DATEGPP?: string | number;
+}
+
 export interface DashboardProps {
   salesData: SalesRecord[];
   currentEmployee: Employee;
@@ -295,9 +307,18 @@ export interface RebateCustomerNoticePayload {
   nearestDueDate: string;
   localPrograms: RebateNoticeProgramItem[];
   importPrograms: RebateNoticeProgramItem[];
+  /** Phí BM Local / Import (sheet REBATE_BM) */
+  bmLocalPrograms?: RebateNoticeProgramItem[];
+  bmImportPrograms?: RebateNoticeProgramItem[];
   totalLocalAmount: number;
   totalImportAmount: number;
+  totalBmLocalAmount?: number;
+  totalBmImportAmount?: number;
+  totalBmAmount?: number;
+  /** Tổng Local + Import + BM */
   totalAmount: number;
+  /** Code BuyMed từ DOANH_SO khi KH có */
+  codeBuyMed?: string;
   message: string;
 }
 
@@ -309,4 +330,30 @@ export interface CustomerSalesNoticePayload {
   customerName: string;
   employeeName: string;
   message: string;
+}
+
+export interface AiChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface AiCustomerContext {
+  customerCode: string;
+  customerName: string;
+  address?: string;
+  salesSummary?: string;
+  forecastSummary?: string;
+}
+
+export interface AiChatRequestPayload {
+  message: string;
+  employeeName: string;
+  customerContext?: AiCustomerContext | null;
+}
+
+export interface AiChatResponse {
+  status: 'success' | 'error';
+  answer?: string;
+  message?: string;
 }

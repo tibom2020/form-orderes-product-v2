@@ -50,7 +50,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
     // Tổng Telfast group (basePrice * qty) cho compareValue của Telfast BD
     const telfastGroupTotal = useMemo(() => {
         return visibleProducts
-            .filter(p => TELFAST_GROUP_IDS.includes(p.id as 7 | 8))
+            .filter(p => TELFAST_GROUP_IDS.includes(p.id))
             .reduce((s, p) => s + (p.basePrice ?? p.price) * (quantities[p.id] ?? 0), 0);
     }, [quantities, visibleProducts]);
 
@@ -58,7 +58,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
         return visibleProducts.map((p, idx) => {
             const qty = quantities[p.id] ?? 0;
             const basePrice = p.basePrice ?? p.price;
-            const isTelfast = TELFAST_GROUP_IDS.includes(p.id as 7 | 8);
+            const isTelfast = TELFAST_GROUP_IDS.includes(p.id);
             const compareValue = isTelfast ? telfastGroupTotal : undefined;
             const ckPercent = getDiscountPercent(p.promotion, qty, compareValue);
             const giaSau = basePrice * (1 - ckPercent);

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, CALCIPLUS_PRODUCT_ID } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, LiXiResult, RebateCustomerNoticePayload } from './types';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login from './components/Login';
@@ -17,6 +17,7 @@ import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
+import AiTuVanTab from './components/AiTuVanTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent, getCalciPlusPackages, getCalciPlusPackagesBoxes } from './utils/calculations';
@@ -27,7 +28,7 @@ import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUt
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'aiTuVan' | 'lixi';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -35,6 +36,7 @@ const App: React.FC = () => {
 
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [allRebates, setAllRebates] = useState<Rebate[]>([]);
+  const [allRebatesBm, setAllRebatesBm] = useState<RebateBm[]>([]);
   const [allSalesRecords, setAllSalesRecords] = useState<SalesRecord[]>([]);
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
@@ -114,6 +116,13 @@ const App: React.FC = () => {
       ]);
       setAllCustomers(customers);
       setAllRebates(rebates);
+      try {
+        const bm = await fetchDataFromSheet<RebateBm>(GOOGLE_SCRIPT_URL, "REBATE_BM");
+        setAllRebatesBm(bm || []);
+      } catch (e) {
+        console.warn("REBATE_BM sheet load failed (optional sheet)", e);
+        setAllRebatesBm([]);
+      }
       setAllSalesRecords(sales);
       setMarketingData(marketing);
     } catch (e) {
@@ -243,6 +252,13 @@ const App: React.FC = () => {
       setShowSaleKhPsReportOnMount(true);
     }
   }, [loggedInEmployee]);
+
+  /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
+  useEffect(() => {
+    if (viewMode === 'aiTuVan' && loggedInEmployee?.code !== ADMIN_CODE) {
+      setViewMode('order');
+    }
+  }, [viewMode, loggedInEmployee]);
 
   const handleLoginSuccess = (employee: Employee) => {
     setLoggedInEmployee(employee);
@@ -827,6 +843,16 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Forecast T3</span>
             <span className="sm:hidden">FC T3</span>
           </button>
+          {loggedInEmployee?.code === ADMIN_CODE && (
+            <button
+              onClick={() => setViewMode('aiTuVan')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'aiTuVan' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <StarIcon />
+              <span className="hidden sm:inline">AI Tu van</span>
+              <span className="sm:hidden">AI</span>
+            </button>
+          )}
 
           {/* Tạm thời ẩn Tab Lì xì theo yêu cầu
           {LIXI_ELIGIBLE_CODES.includes(loggedInEmployee.code) && (
@@ -873,7 +899,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -942,6 +968,8 @@ const App: React.FC = () => {
         {viewMode === 'rebate' && (
           <RebateTab
             rebates={allRebates}
+            rebatesBm={allRebatesBm}
+            salesRecords={allSalesRecords}
             customers={allCustomers}
             currentEmployee={loggedInEmployee}
             onCustomerClick={handleRebateCustomerClick}
@@ -1001,6 +1029,16 @@ const App: React.FC = () => {
 
         {viewMode === 'calciPlus' && (
           <CalciPlusTab currentEmployee={loggedInEmployee!} />
+        )}
+
+        {viewMode === 'aiTuVan' && loggedInEmployee?.code === ADMIN_CODE && (
+          <AiTuVanTab
+            key={loggedInEmployee.code}
+            customers={allCustomers}
+            salesRecords={allSalesRecords}
+            forecastData={forecastData}
+            currentEmployee={loggedInEmployee!}
+          />
         )}
 
         {/* Tạm thời ẩn LuckyWheelTab

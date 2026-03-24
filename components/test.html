@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>THEO DÕI DUMMYBOX</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed-variant": "#7a2949",
+              "on-primary-fixed": "#002203",
+              "surface-container-low": "#f3f3f3",
+              "on-error-container": "#93000a",
+              "surface-container": "#eeeeee",
+              "on-primary-fixed-variant": "#0c5216",
+              "surface-container-lowest": "#ffffff",
+              "on-error": "#ffffff",
+              "tertiary-fixed-dim": "#ffb1c8",
+              "surface-bright": "#f9f9f9",
+              "surface-container-high": "#e8e8e8",
+              "on-tertiary": "#ffffff",
+              "surface": "#f9f9f9",
+              "surface-dim": "#dadada",
+              "outline-variant": "#c0c9bb",
+              "on-surface": "#1a1c1c",
+              "on-primary-container": "#90d689",
+              "secondary-container": "#cae8c2",
+              "surface-variant": "#e2e2e2",
+              "on-surface-variant": "#41493e",
+              "on-secondary-fixed": "#082009",
+              "primary-fixed-dim": "#91d78a",
+              "tertiary-container": "#883454",
+              "on-secondary": "#ffffff",
+              "primary": "#00450d",
+              "surface-container-highest": "#e2e2e2",
+              "background": "#f9f9f9",
+              "tertiary-fixed": "#ffd9e2",
+              "on-secondary-fixed-variant": "#344d31",
+              "on-primary": "#ffffff",
+              "on-secondary-container": "#4f694b",
+              "primary-container": "#1b5e20",
+              "secondary-fixed-dim": "#b1cfaa",
+              "inverse-primary": "#91d78a",
+              "inverse-surface": "#2f3131",
+              "inverse-on-surface": "#f1f1f1",
+              "secondary": "#4b6547",
+              "on-background": "#1a1c1c",
+              "on-tertiary-fixed": "#3e001d",
+              "error": "#ba1a1a",
+              "error-container": "#ffdad6",
+              "outline": "#717a6d",
+              "tertiary": "#6b1d3d",
+              "secondary-fixed": "#cdebc5",
+              "primary-fixed": "#acf4a4",
+              "surface-tint": "#2a6b2c",
+              "on-tertiary-container": "#ffaec6"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+        body {
+            min-height: 100dvh;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 z-50 w-full h-16 flex items-center px-4 gap-4 bg-[#f9f9f9]/80 backdrop-blur-md shadow-sm">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[#00450d] cursor-pointer" data-icon="arrow_back">arrow_back</span>
+</div>
+<div class="flex-1 flex items-center">
+<div class="relative flex items-center w-full">
+<span class="material-symbols-outlined absolute left-3 text-primary/60 text-lg" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-sm font-body text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 w-full transition-all" placeholder="Nhập tên và code KH" type="text"/>
+</div>
+</div>
+</header>
+<!-- Main Content: Kanban Board -->
+<main class="pt-20 pb-8 min-h-screen">
+<!-- Horizontal Scrollable Kanban Container -->
+<div class="flex overflow-x-auto hide-scrollbar gap-4 px-6 snap-x snap-mandatory">
+<!-- Column: TODO -->
+<div class="min-w-[280px] w-[280px] flex-shrink-0 snap-start">
+<div class="flex items-center justify-between mb-4 px-1">
+<h3 class="font-headline font-bold text-sm tracking-wide text-on-surface-variant flex items-center gap-2">
+                        TODO <span class="bg-surface-container-high px-2 py-0.5 rounded-full text-[10px]">3</span>
+</h3>
+<span class="material-symbols-outlined text-outline text-sm" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-error">
+<p class="text-[10px] font-label font-semibold text-outline mb-1">#ID-45920</p>
+<h4 class="font-headline font-bold text-sm text-on-surface leading-snug mb-2">QUAY THUOC MINH MINH KHOI</h4>
+<div class="flex items-center gap-1 text-on-surface-variant text-[11px] mb-3">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span>
+<span>Hồ Chí Minh, VN</span>
+</div>
+<div class="flex justify-between items-center border-t border-surface-container pt-3">
+<span class="text-primary font-bold text-sm">45.000.000đ</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">L</button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">I</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-error">
+<p class="text-[10px] font-label font-semibold text-outline mb-1">#ID-45921</p>
+<h4 class="font-headline font-bold text-sm text-on-surface leading-snug mb-2">NHA THUOC GIA DINH</h4>
+<div class="flex items-center gap-1 text-on-surface-variant text-[11px] mb-3">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span>
+<span>Đà Nẵng, VN</span>
+</div>
+<div class="flex justify-between items-center border-t border-surface-container pt-3">
+<span class="text-primary font-bold text-sm">12.500.000đ</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-outline-variant"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">L</button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">I</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: PROCESSING_1 -->
+<div class="min-w-[280px] w-[280px] flex-shrink-0 snap-start">
+<div class="flex items-center justify-between mb-4 px-1">
+<h3 class="font-headline font-bold text-sm tracking-wide text-on-surface-variant flex items-center gap-2">
+                        PROCESSING_1 <span class="bg-secondary-container px-2 py-0.5 rounded-full text-[10px] text-on-secondary-container">2</span>
+</h3>
+<p class="text-[10px] text-on-surface-variant font-medium mt-0.5 opacity-80 uppercase tracking-tight">ẢNH - YES, GÓI HÀNG - NO</p>
+<span class="material-symbols-outlined text-outline text-sm" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-secondary">
+<div class="mb-3 rounded-lg overflow-hidden h-24">
+<img class="w-full h-full object-cover" data-alt="Modern clean pharmacy interior with professional shelving and green medical cross sign in soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0bPs29qLRkyObHvK_Ul-3uCM7Mp0UgjOIqNN9Ts-SNal5GtqFvqjIL8_dK6Z37Gmb-t51fQqSAePWdnXrBB8fkVWH9SuSJjbBQ_3YQLOA76N_H6nEGkpTA_hwMSDLA8xx31Xnqd9C5VWbMQcvO4nKCQm_lrAcS7ic8aSFwrpoioU8O2CB1-OabwSRvO896fSusMHARgzoox5DjU9cgU-lPnHgGu4gvAlJk_i9arFtiPeQKCR98UgwdNwJC0f7eujmxU-Cqv3h9I47"/>
+</div>
+<p class="text-[10px] font-label font-semibold text-outline mb-1">#ID-45922</p>
+<h4 class="font-headline font-bold text-sm text-on-surface leading-snug mb-2">HO KINH DOANH NHA THUOC AI LINH</h4>
+<div class="flex items-center gap-1 text-on-surface-variant text-[11px] mb-3">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span>
+<span>Long An, VN</span>
+</div>
+<div class="flex justify-between items-center border-t border-surface-container pt-3">
+<span class="text-primary font-bold text-sm">88.200.000đ</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary text-[11px] font-bold">L</button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">I</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: PROCESSING_2 -->
+<div class="min-w-[280px] w-[280px] flex-shrink-0 snap-start">
+<div class="flex items-center justify-between mb-4 px-1">
+<h3 class="font-headline font-bold text-sm tracking-wide text-on-surface-variant flex items-center gap-2">
+                        PROCESSING_2 <span class="bg-tertiary-fixed px-2 py-0.5 rounded-full text-[10px] text-on-tertiary-fixed-variant">1</span>
+</h3>
+<p class="text-[10px] text-on-surface-variant font-medium mt-0.5 opacity-80 uppercase tracking-tight">ẢNH - NO, GÓI HÀNG - YES</p>
+<span class="material-symbols-outlined text-outline text-sm" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-tertiary">
+<div class="mb-3 rounded-lg overflow-hidden h-24 bg-surface-container-high flex items-center justify-center border border-dashed border-outline-variant">
+<div class="text-center">
+<span class="material-symbols-outlined text-outline-variant text-2xl" data-icon="inventory_2">inventory_2</span>
+<p class="text-[9px] font-bold text-outline-variant uppercase">Package Sent</p>
+</div>
+</div>
+<p class="text-[10px] font-label font-semibold text-outline mb-1">#ID-45923</p>
+<h4 class="font-headline font-bold text-sm text-on-surface leading-snug mb-2">PHONG KHAM DA KHOA AN PHUC</h4>
+<div class="flex items-center gap-1 text-on-surface-variant text-[11px] mb-3">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span>
+<span>Cần Thơ, VN</span>
+</div>
+<div class="flex justify-between items-center border-t border-surface-container pt-3">
+<span class="text-primary font-bold text-sm">125.000.000đ</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-outline-variant"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center text-[11px] font-bold text-outline-variant">L</button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary text-[11px] font-bold">I</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: COMPLETE -->
+<div class="min-w-[280px] w-[280px] flex-shrink-0 snap-start">
+<div class="flex items-center justify-between mb-4 px-1">
+<h3 class="font-headline font-bold text-sm tracking-wide text-on-surface-variant flex items-center gap-2">
+                        COMPLETE <span class="bg-primary px-2 py-0.5 rounded-full text-[10px] text-white">1</span>
+</h3>
+<span class="material-symbols-outlined text-outline text-sm" data-icon="more_horiz">more_horiz</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-primary">
+<div class="mb-3 rounded-lg overflow-hidden h-24 relative">
+<img class="w-full h-full object-cover" data-alt="Professional delivery driver in green uniform handing a medical supply package to a pharmacist in a bright clinic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYAeZtXpGuE6KMFuprZ8v1CP8TwXEU9K_l5pURSwh0tkAhbgfnry_WFgOFuxRoQ163N-J05QpDm1AvbV-i2FEKlmtufSiM2-5zqrCiokQijqoJAq4CG2saaorra7fLjLSb3AauDbZxSf-hk8IcHCu1qn9bNZbMLtNG1Xdbwotz-6iRyB_SxuYf2daj-eI26NK3oyEe5Jni6kDvfX1yMHpFi2h9h7feWv2msGRywZhfnZrZinFV8wbCHNkuIqEP2Pg4rlMniQxF7OEW"/>
+<div class="absolute top-2 right-2 bg-primary text-white p-1 rounded-full">
+<span class="material-symbols-outlined text-[12px]" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+</div>
+<p class="text-[10px] font-label font-semibold text-outline mb-1">#ID-45924</p>
+<h4 class="font-headline font-bold text-sm text-on-surface leading-snug mb-2">NHÀ THUỐC TÂM ĐỨC</h4>
+<div class="flex items-center gap-1 text-on-surface-variant text-[11px] mb-3">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span>
+<span>Hà Nội, VN</span>
+</div>
+<div class="flex justify-between items-center border-t border-surface-container pt-3">
+<span class="text-primary font-bold text-sm">312.000.000đ</span>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary text-[11px] font-bold">L</button>
+<button class="w-8 h-8 rounded-lg border border-surface-container-high flex items-center justify-center bg-secondary-container/20 text-primary text-[11px] font-bold">I</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

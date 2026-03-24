@@ -238,6 +238,33 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return saleB - saleA; // Sale Q1 giảm dần
     });
 
+    type CustomerStage = 'TODO' | 'PROCESSING_1' | 'PROCESSING_2' | 'COMPLETE';
+
+    const customerBoard = useMemo(() => {
+        const columns: Record<CustomerStage, MarketingRecord[]> = {
+            TODO: [],
+            PROCESSING_1: [],
+            PROCESSING_2: [],
+            COMPLETE: [],
+        };
+
+        const getStage = (customer: MarketingRecord): CustomerStage => {
+            const hasImage = (customer.UpHinh && customer.UpHinh !== 'NO' && customer.UpHinh !== '') ||
+                (customer.UpHinh2 && customer.UpHinh2 !== 'NO' && customer.UpHinh2 !== '');
+            const hasPackage = customer.GoiLocal === 'YES' || customer.GoiImport === 'YES';
+            if (hasImage && hasPackage) return 'COMPLETE';
+            if (hasImage) return 'PROCESSING_1';
+            if (hasPackage) return 'PROCESSING_2';
+            return 'TODO';
+        };
+
+        filteredCustomers.forEach((customer) => {
+            columns[getStage(customer)].push(customer);
+        });
+
+        return columns;
+    }, [filteredCustomers]);
+
     const handleBoxClick = (slot: 1 | 2) => {
         resetUploadState();
         setActiveSlot(slot);
@@ -754,58 +781,116 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-full pl-10 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none transition-all"
                         />
-                        <div className="mt-4 max-h-[55vh] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 border-t border-slate-100 dark:border-slate-700">
+                        <div className="mt-4 max-h-[58vh] overflow-x-auto overflow-y-hidden pb-1">
                             {filteredCustomers.length === 0 ? (
-                                <div className="p-8 text-center text-slate-400 italic text-sm">
+                                <div className="p-8 text-center text-slate-400 italic text-sm border-t border-slate-100 dark:border-slate-700">
                                     Không tìm thấy khách hàng phù hợp
                                 </div>
                             ) : (
-                                filteredCustomers.map(c => {
-                                    const hasImage = (c.UpHinh && c.UpHinh !== 'NO' && c.UpHinh !== '') || (c.UpHinh2 && c.UpHinh2 !== 'NO' && c.UpHinh2 !== '');
-                                    const hasLocal = c.GoiLocal === 'YES';
-                                    const hasImport = c.GoiImport === 'YES';
-
-                                    return (
-                                        <div
-                                            key={c.CustomerCode}
-                                            onClick={() => setSelectedCustomer(c)}
-                                            className="py-3 px-1 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer flex justify-between items-center transition-colors group"
-                                        >
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green dark:group-hover:text-opella-green transition-colors">{c.CustomerName}</p>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                                                    {c.CustomerCode} • {c.District}
-                                                    <span className="text-red-600 dark:text-red-400 font-bold"> • Sale Q1: {formatCurrency(salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0)}</span>
-                                                </p>
-                                                    {/* Hiển thị Rep Name nếu đang xem ở chế độ Admin */}
-                                                    {currentEmployee.code === '20043741' && c.Rep && (
-                                                        <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">
-                                                            {c.Rep}
+                                <div className="flex gap-4 min-w-max pr-2">
+                                    {([
+                                        {
+                                            key: 'TODO' as const,
+                                            title: 'TODO',
+                                            hint: 'Ảnh - NO, Gói - NO',
+                                            titleClass: 'text-red-700 dark:text-red-300',
+                                            hintClass: 'text-red-500/80 dark:text-red-300/80',
+                                            badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                                            borderClass: 'border-l-red-500'
+                                        },
+                                        {
+                                            key: 'PROCESSING_1' as const,
+                                            title: 'PROCESSING_1',
+                                            hint: 'Ảnh - YES, Gói - NO',
+                                            titleClass: 'text-blue-700 dark:text-blue-300',
+                                            hintClass: 'text-blue-500/80 dark:text-blue-300/80',
+                                            badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                                            borderClass: 'border-l-blue-500'
+                                        },
+                                        {
+                                            key: 'PROCESSING_2' as const,
+                                            title: 'PROCESSING_2',
+                                            hint: 'Ảnh - NO, Gói - YES',
+                                            titleClass: 'text-amber-700 dark:text-amber-300',
+                                            hintClass: 'text-amber-600/80 dark:text-amber-300/80',
+                                            badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+                                            borderClass: 'border-l-amber-500'
+                                        },
+                                        {
+                                            key: 'COMPLETE' as const,
+                                            title: 'COMPLETE',
+                                            hint: 'Ảnh - YES, Gói - YES',
+                                            titleClass: 'text-green-700 dark:text-green-300',
+                                            hintClass: 'text-green-600/80 dark:text-green-300/80',
+                                            badgeClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                                            borderClass: 'border-l-green-600'
+                                        },
+                                    ]).map((column) => (
+                                        <div key={column.key} className="w-[290px] min-w-[290px]">
+                                            <div className="px-1 mb-2">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className={`text-sm font-black tracking-wide uppercase flex items-center gap-2 ${column.titleClass}`}>
+                                                        <span>{column.title}</span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs ${column.badgeClass}`}>
+                                                            {customerBoard[column.key].length}
                                                         </span>
-                                                    )}
+                                                    </h4>
                                                 </div>
+                                                <p className={`mt-1 text-xs font-semibold uppercase tracking-tight ${column.hintClass}`}>{column.hint}</p>
                                             </div>
 
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${hasImage
-                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                                                    : 'bg-slate-100 text-slate-300 dark:bg-slate-700 dark:text-slate-600'
-                                                    }`}>
-                                                    <div className="scale-75"><CameraIcon /></div>
-                                                </div>
-                                                <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasLocal
-                                                    ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800'
-                                                    : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
-                                                    }`}>L</div>
-                                                <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasImport
-                                                    ? 'bg-opella-beige/50 text-opella-green border-opella-green/30 dark:bg-opella-green/20 dark:text-opella-green dark:border-opella-green/50'
-                                                    : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
-                                                    }`}>I</div>
+                                            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                                                {customerBoard[column.key].map((c) => {
+                                                    const hasImage = (c.UpHinh && c.UpHinh !== 'NO' && c.UpHinh !== '') || (c.UpHinh2 && c.UpHinh2 !== 'NO' && c.UpHinh2 !== '');
+                                                    const hasLocal = c.GoiLocal === 'YES';
+                                                    const hasImport = c.GoiImport === 'YES';
+
+                                                    return (
+                                                        <div
+                                                            key={c.CustomerCode}
+                                                            onClick={() => setSelectedCustomer(c)}
+                                                            className={`bg-white dark:bg-slate-800 rounded-xl p-3 border border-slate-200 dark:border-slate-700 border-l-4 ${column.borderClass} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group`}
+                                                        >
+                                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mb-1">
+                                                                #{c.CustomerCode}
+                                                            </p>
+                                                            <h5 className="font-black text-[15px] text-slate-800 dark:text-white leading-snug group-hover:text-opella-green dark:group-hover:text-opella-green transition-colors line-clamp-2">
+                                                                {c.CustomerName}
+                                                            </h5>
+                                                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                                                                {c.District || 'Chưa có quận/huyện'}
+                                                            </p>
+                                                            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
+                                                                <span className="text-xs font-black text-red-600 dark:text-red-400">
+                                                                    {formatCurrency(salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0)}
+                                                                </span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${hasImage ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' : 'bg-slate-100 text-slate-300 dark:bg-slate-700 dark:text-slate-600'}`}>
+                                                                        <div className="scale-75"><CameraIcon /></div>
+                                                                    </div>
+                                                                    <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasLocal ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800' : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'}`}>L</div>
+                                                                    <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasImport ? 'bg-opella-beige/50 text-opella-green border-opella-green/30 dark:bg-opella-green/20 dark:text-opella-green dark:border-opella-green/50' : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'}`}>I</div>
+                                                                </div>
+                                                            </div>
+                                                            {currentEmployee.code === '20043741' && c.Rep && (
+                                                                <div className="mt-2">
+                                                                    <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">
+                                                                        Rep: {c.Rep}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {customerBoard[column.key].length === 0 && (
+                                                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-4 text-center text-[11px] text-slate-400 italic">
+                                                        Không có khách hàng
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                    );
-                                })
+                                    ))}
+                                </div>
                             )}
                         </div>
                     </div>

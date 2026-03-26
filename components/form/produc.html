@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "outline-variant": "#bfc9c2",
+              "on-error": "#ffffff",
+              "on-primary-fixed-variant": "#10513a",
+              "error": "#ba1a1a",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#ed9e9b",
+              "on-secondary-container": "#4f665a",
+              "outline": "#707973",
+              "on-secondary-fixed": "#0a1f16",
+              "inverse-on-surface": "#eff1f2",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#4d6357",
+              "surface-variant": "#e1e3e4",
+              "on-tertiary-fixed": "#380b0d",
+              "surface-bright": "#f8fafb",
+              "on-secondary-fixed-variant": "#354b40",
+              "tertiary-fixed-dim": "#ffb3b0",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#96d4b5",
+              "surface-container-high": "#e6e8e9",
+              "on-secondary": "#ffffff",
+              "secondary-container": "#cae3d4",
+              "inverse-primary": "#96d4b5",
+              "surface-container-highest": "#e1e3e4",
+              "secondary-fixed-dim": "#b4ccbe",
+              "on-surface": "#191c1d",
+              "on-error-container": "#93000a",
+              "tertiary-container": "#6d3433",
+              "tertiary": "#511e1e",
+              "surface": "#f8fafb",
+              "primary-container": "#0d4f38",
+              "on-primary-container": "#83c0a2",
+              "inverse-surface": "#2e3132",
+              "primary": "#003725",
+              "surface-container-low": "#f2f4f5",
+              "background": "#f8fafb",
+              "tertiary-fixed": "#ffdad8",
+              "on-primary-fixed": "#002114",
+              "on-background": "#191c1d",
+              "secondary-fixed": "#cfe8d9",
+              "primary-fixed": "#b1f0d0",
+              "surface-tint": "#2d6950",
+              "surface-container": "#eceeef",
+              "surface-dim": "#d8dadb",
+              "error-container": "#ffdad6",
+              "on-tertiary-fixed-variant": "#6f3635",
+              "on-surface-variant": "#404943"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafb;
+      }
+      h1, h2, h3, .font-manrope {
+        font-family: 'Manrope', sans-serif;
+      }
+      .glass-nav {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface bg-background min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-[#f8fafb]/80 dark:bg-[#191c1d]/80 backdrop-blur-xl shadow-[0_12px_32px_rgba(25,28,29,0.04)]">
+<div class="flex items-center px-4 h-16 w-full max-w-md mx-auto">
+<button class="p-2 -ml-2 text-[#003725] dark:text-[#bfc9c2] active:scale-95 transition-transform hover:bg-[#f2f4f5] dark:hover:bg-[#191c1d] transition-colors duration-200 rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="ml-2 font-manrope font-semibold text-lg tracking-tight text-[#003725] dark:text-[#bfc9c2]">Khách hàng mua sản phẩm</h1>
+</div>
+</header>
+<main class="flex-1 w-full max-w-md mx-auto pb-32">
+<!-- Hero Section / Product Stats -->
+<section class="px-4 pt-4 pb-6">
+<div class="bg-surface-container-low rounded-xl p-6 relative overflow-hidden">
+<!-- Decorative Accent -->
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/5 rounded-full -mr-8 -mt-8"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="flex-1">
+<span class="text-on-surface-variant font-label text-[10px] tracking-widest uppercase font-semibold mb-1 block">Thông tin sản phẩm</span>
+<h2 class="font-manrope text-2xl font-extrabold text-primary leading-tight mb-4">Enterogermina Box 20</h2>
+</div>
+<div class="w-16 h-16 bg-surface-container-lowest rounded-xl shadow-sm flex items-center justify-center p-2">
+<img alt="Product thumbnail" class="w-full h-full object-contain rounded-md" data-alt="high quality product shot of pharmaceutical medicine box with clean clinical packaging on soft white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9IAi8sWjNJ3MeYEIMWKPBp4DREAKsgSFOFH4yE87BhoItiKIagTgrc9YdVHk-Ew7UhzPVwfTPJxU2uyVEwfhX9yXgUHvCZElcfMYjFqj5AjuYDxvynBxBpjuF9smH8x9P7TX7mDReSNlARXAlWcPPoIySdiZx8mLp0YMDWVUB5ewULWJ1sTtHkme5NA1lDg4-IPwUJoBMJh5oPCnqOjU2LqONcW03w2YmI0AxYVVIkcDWdN7ssXrbrPvxnBkABJ48RDHR1WJ4fE8"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="bg-surface-container-lowest p-3 rounded-lg shadow-[0_4px_12px_rgba(0,55,37,0.03)]">
+<p class="text-[10px] text-on-surface-variant font-medium mb-0.5">Tổng số lượng</p>
+<p class="font-manrope text-xl font-bold text-primary">1,248 <span class="text-xs font-medium text-on-surface-variant">hộp</span></p>
+</div>
+<div class="bg-tertiary-fixed-dim/20 p-3 rounded-lg border border-tertiary-fixed-dim/10">
+<p class="text-[10px] text-on-tertiary-fixed-variant font-medium mb-0.5">Khách hàng</p>
+<p class="font-manrope text-xl font-bold text-tertiary-container">84 <span class="text-xs font-medium text-on-tertiary-fixed-variant">đối tác</span></p>
+</div>
+</div>
+</div>
+</section>
+<!-- Filters/Search (Subtle) -->
+<div class="px-4 mb-4">
+<div class="flex items-center gap-2">
+<div class="flex-1 bg-surface-container-highest rounded-full px-4 py-2.5 flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm p-0 w-full placeholder:text-on-surface-variant/60" placeholder="Tìm tên hoặc mã khách hàng..." type="text"/>
+</div>
+<button class="w-10 h-10 flex items-center justify-center bg-surface-container-low rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Customer List Section -->
+<div class="px-4 space-y-3">
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-manrope font-bold text-on-surface">Danh sách đối tác</h3>
+<span class="text-[11px] font-medium text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded">Sắp xếp: Mới nhất</span>
+</div>
+<!-- Customer Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_2px_8px_rgba(25,28,29,0.02)] border border-outline-variant/10 active:scale-[0.98] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-inter font-semibold text-on-surface text-base">Nhà thuốc An Khang</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">KH-00123</span>
+<span class="text-[11px] text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span> Quận 7, TP.HCM
+                            </span>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-primary-container bg-primary-fixed-dim/20 px-2 py-1 rounded-full uppercase">VIP</span>
+</div>
+</div>
+<div class="flex items-end justify-between border-t border-surface-container-high pt-3">
+<div>
+<p class="text-[10px] text-on-surface-variant font-medium">Số lượng mua</p>
+<p class="font-manrope font-bold text-on-surface text-lg">12 <span class="text-[10px] font-medium opacity-60">hộp</span></p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-medium">Tổng thanh toán</p>
+<p class="font-manrope font-extrabold text-primary text-xl">1.200.000 <span class="text-xs font-semibold">đ</span></p>
+</div>
+</div>
+</div>
+<!-- Customer Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_2px_8px_rgba(25,28,29,0.02)] border border-outline-variant/10 active:scale-[0.98] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-inter font-semibold text-on-surface text-base">Nhà thuốc Pharmacity</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">KH-00456</span>
+<span class="text-[11px] text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span> Quận 1, TP.HCM
+                            </span>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-secondary-container bg-secondary-container px-2 py-1 rounded-full uppercase">Chuỗi</span>
+</div>
+</div>
+<div class="flex items-end justify-between border-t border-surface-container-high pt-3">
+<div>
+<p class="text-[10px] text-on-surface-variant font-medium">Số lượng mua</p>
+<p class="font-manrope font-bold text-on-surface text-lg">240 <span class="text-[10px] font-medium opacity-60">hộp</span></p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-medium">Tổng thanh toán</p>
+<p class="font-manrope font-extrabold text-primary text-xl">22.800.000 <span class="text-xs font-semibold">đ</span></p>
+</div>
+</div>
+</div>
+<!-- Customer Item 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_2px_8px_rgba(25,28,29,0.02)] border border-outline-variant/10 active:scale-[0.98] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-inter font-semibold text-on-surface text-base">Nhà thuốc Long Châu</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">KH-00789</span>
+<span class="text-[11px] text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span> Quận Gò Vấp
+                            </span>
+</div>
+</div>
+</div>
+<div class="flex items-end justify-between border-t border-surface-container-high pt-3">
+<div>
+<p class="text-[10px] text-on-surface-variant font-medium">Số lượng mua</p>
+<p class="font-manrope font-bold text-on-surface text-lg">60 <span class="text-[10px] font-medium opacity-60">hộp</span></p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-medium">Tổng thanh toán</p>
+<p class="font-manrope font-extrabold text-primary text-xl">5.850.000 <span class="text-xs font-semibold">đ</span></p>
+</div>
+</div>
+</div>
+<!-- Customer Item 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-[0_2px_8px_rgba(25,28,29,0.02)] border border-outline-variant/10 active:scale-[0.98] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-inter font-semibold text-on-surface text-base">Quầy thuốc Thanh Bình</h4>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">KH-01202</span>
+<span class="text-[11px] text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs" data-icon="location_on">location_on</span> Hóc Môn
+                            </span>
+</div>
+</div>
+</div>
+<div class="flex items-end justify-between border-t border-surface-container-high pt-3">
+<div>
+<p class="text-[10px] text-on-surface-variant font-medium">Số lượng mua</p>
+<p class="font-manrope font-bold text-on-surface text-lg">5 <span class="text-[10px] font-medium opacity-60">hộp</span></p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-medium">Tổng thanh toán</p>
+<p class="font-manrope font-extrabold text-primary text-xl">515.000 <span class="text-xs font-semibold">đ</span></p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-6 pb-6 pt-3 bg-[#ffffff]/90 dark:bg-[#191c1d]/90 backdrop-blur-md z-50 rounded-t-3xl border-t border-[#bfc9c2]/15 shadow-[0_-8px_24px_rgba(25,28,29,0.05)]">
+<a class="flex flex-col items-center justify-center text-[#404943] dark:text-[#bfc9c2] px-5 py-2 hover:bg-[#f2f4f5] dark:hover:bg-[#404943]/20 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[10px] font-medium tracking-wide">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#404943] dark:text-[#bfc9c2] px-5 py-2 hover:bg-[#f2f4f5] dark:hover:bg-[#404943]/20 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="receipt_long">receipt_long</span>
+<span class="font-inter text-[10px] font-medium tracking-wide">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#0D4F38] text-white rounded-2xl px-5 py-2 transition-all duration-300 active:scale-90" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-inter text-[10px] font-medium tracking-wide">Customers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#404943] dark:text-[#bfc9c2] px-5 py-2 hover:bg-[#f2f4f5] dark:hover:bg-[#404943]/20 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-inter text-[10px] font-medium tracking-wide">Settings</span>
+</a>
+</nav>
+</body></html>

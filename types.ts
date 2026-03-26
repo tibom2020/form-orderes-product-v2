@@ -252,6 +252,8 @@ export interface PurchaseHistoryItem {
   Team?: string;            // Cũ
   Group?: string;           // Mới: Khớp với file Excel của bạn (LOCAL/IMPORT)
   Note?: string;            // Ghi chú (ví dụ: BuyMed)
+  /** Nguồn sheet: HISTORY_GG / HISTORY_BM (gắn khi load trong App) */
+  HistorySource?: 'GG' | 'BM';
 }
 
 // Interface cho tin tức Admin

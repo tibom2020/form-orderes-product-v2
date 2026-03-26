@@ -15,9 +15,10 @@ import AoTrackingTab from './components/AoTrackingTab';
 import SaleKhPsTab from './components/SaleKhPsTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import AiTuVanTab from './components/AiTuVanTab';
+import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent, getCalciPlusPackages, getCalciPlusPackagesBoxes } from './utils/calculations';
@@ -28,7 +29,7 @@ import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUt
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'aiTuVan' | 'lixi';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -167,7 +168,10 @@ const App: React.FC = () => {
         fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_GG"),
         fetchDataFromSheet<PurchaseHistoryItem>(GOOGLE_SCRIPT_URL, "HISTORY_BM"),
       ]);
-      setAllPurchaseHistory([...(historyGG || []), ...(historyBM || [])]);
+      setAllPurchaseHistory([
+        ...(historyGG || []).map((h) => ({ ...h, HistorySource: 'GG' as const })),
+        ...(historyBM || []).map((h) => ({ ...h, HistorySource: 'BM' as const })),
+      ]);
     } catch (e) {
       console.error("Purchase history load failed", e);
       hasLoadedPurchaseHistory.current = false;
@@ -216,9 +220,9 @@ const App: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  /** Lazy load khi mở Dashboard */
+  /** Lazy load khi mở Dashboard hoặc tab Lịch sử mua hàng */
   useEffect(() => {
-    if (viewMode === 'dashboard') loadPurchaseHistory();
+    if (viewMode === 'dashboard' || viewMode === 'purchaseHistory') loadPurchaseHistory();
   }, [viewMode]);
 
   /** Lazy load khi mở Rebate */
@@ -238,7 +242,7 @@ const App: React.FC = () => {
     hasLoadedForecast.current = false;
     await loadCriticalData();
     await loadSecondaryData();
-    if (viewMode === 'dashboard') await loadPurchaseHistory();
+    if (viewMode === 'dashboard' || viewMode === 'purchaseHistory') await loadPurchaseHistory();
     if (viewMode === 'rebate') await loadGppComments();
     if (['landing', 'dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
   };
@@ -788,6 +792,14 @@ const App: React.FC = () => {
             <span className="sm:hidden">BC</span>
           </button>
           <button
+            onClick={() => setViewMode('purchaseHistory')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'purchaseHistory' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <ClockIcon />
+            <span className="hidden sm:inline">Lịch sử MH</span>
+            <span className="sm:hidden">LS</span>
+          </button>
+          <button
             onClick={() => setViewMode('rebate')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'rebate' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -899,7 +911,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -962,6 +974,16 @@ const App: React.FC = () => {
               setDashboardCustomerCode(null);
             }}
             onExportSales={handleExportSales}
+          />
+        )}
+
+        {viewMode === 'purchaseHistory' && (
+          <PurchaseHistoryTab
+            purchaseHistory={allPurchaseHistory}
+            salesRecords={allSalesRecords}
+            currentEmployee={loggedInEmployee!}
+            onCustomerSelect={handleQuickViewCustomer}
+            onReloadData={handleReloadAllData}
           />
         )}
 

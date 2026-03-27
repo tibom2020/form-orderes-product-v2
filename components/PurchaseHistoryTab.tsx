@@ -253,7 +253,11 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
 
         return baseFiltered.filter((h) => {
             const id = String(h.CustomerID || '').trim();
-            if (codeQ && !id.toLowerCase().includes(codeQ)) return false;
+            if (codeQ) {
+                const canonicalCode = resolveNavigateCustomerCode(id).toLowerCase();
+                const idText = id.toLowerCase();
+                if (!idText.includes(codeQ) && !canonicalCode.includes(codeQ)) return false;
+            }
 
             const resolvedName = resolveCustomerName(id, h.CustomerName);
             if (nameQ && !removeVietnameseTones(resolvedName || '').toLowerCase().includes(nameQ)) return false;
@@ -319,24 +323,87 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
     }, [baseFiltered, selectedProduct, productCustomerSearch, salesByCode]);
 
     const buildCustomerExportMessage = (includeProducts: boolean): string => {
-        const lines = [
-            '📊 LỊCH SỬ MUA HÀNG (Tổng hợp)',
+        const channelLabel = channelFilter === 'all' ? 'Tất cả' : channelFilter === 'gg' ? 'GG' : 'BM';
+        const typeLabel = typeFilter === 'all' ? 'Tất cả' : typeFilter === 'import' ? 'IMPORT' : 'LOCAL';
+        const productLabel = productFilter === 'all' ? 'Tất cả' : productFilter;
+
+        const canonicalCodes = Array.from(
+            new Set(customerViewRows.map((h) => resolveNavigateCustomerCode(String(h.CustomerID || '').trim())))
+        );
+        const primaryCode = customerCodeQuery.trim() || canonicalCodes[0] || '';
+        const primaryRec = primaryCode ? salesByCode.get(primaryCode) : undefined;
+        const primaryName =
+            primaryRec?.CustomerName ||
+            customerNameQuery.trim() ||
+            (customerViewRows[0]
+                ? resolveCustomerName(String(customerViewRows[0].CustomerID || '').trim(), customerViewRows[0].CustomerName)
+                : '—');
+
+        type MonthSummary = {
+            monthKey: string;
+            total: number;
+            importValue: number;
+            localValue: number;
+            importProducts: Map<string, number>;
+            localProducts: Map<string, number>;
+        };
+        const monthlyMap = new Map<string, MonthSummary>();
+        customerViewRows.forEach((h) => {
+            const key = getMonthKeyFromInvoiceDate(h.InvoiceDate);
+            if (!key) return;
+            const cur = monthlyMap.get(key) || {
+                monthKey: key,
+                total: 0,
+                importValue: 0,
+                localValue: 0,
+                importProducts: new Map<string, number>(),
+                localProducts: new Map<string, number>(),
+            };
+            const val = Number(h.Value) || 0;
+            const qty = Number(h.Qty) || 0;
+            const product = (h.Product || '').trim();
+            cur.total += val;
+            if (isImportRow(h)) {
+                cur.importValue += val;
+                if (product) cur.importProducts.set(product, (cur.importProducts.get(product) || 0) + qty);
+            } else if (isLocalRow(h)) {
+                cur.localValue += val;
+                if (product) cur.localProducts.set(product, (cur.localProducts.get(product) || 0) + qty);
+            }
+            monthlyMap.set(key, cur);
+        });
+        const months = Array.from(monthlyMap.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+        const lines: string[] = [
+            '📊 THÔNG TIN LỊCH SỬ MUA HÀNG',
             '--------------------------------',
-            `Kênh: ${channelFilter === 'all' ? 'Tất cả' : channelFilter === 'gg' ? 'GG' : 'BM'}`,
-            `Loại: ${typeFilter === 'all' ? 'Tất cả' : typeFilter === 'import' ? 'IMPORT' : 'LOCAL'}`,
-            `Tháng: ${monthFilter === 'all' ? 'Tất cả' : formatMonthLabel(monthFilter)}`,
-            `Sản phẩm: ${productFilter === 'all' ? 'Tất cả' : productFilter}`,
-            `Giao dịch: ${customerSummary.count} | SL: ${customerSummary.totalQty} | Giá trị: ${formatCurrency(customerSummary.totalVal)}`,
+            `📍 KH: ${String(primaryName || '—').toUpperCase()}`,
+            `🔢 Code Giga: ${primaryRec?.CustomerCode || primaryCode || '—'}`,
+            `🔢 Code BM: ${primaryRec?.CodeBuyMed || '—'}`,
+            `🏆 Loại TB: ${primaryRec?.FinalStoreType || '—'}`,
+            `🧑‍💼 NV: ${primaryRec?.Rep || currentEmployee.name || '—'}`,
+            `Nội dung lọc: ${channelLabel} - ${typeLabel} - ${productLabel}`,
             '',
-            ...customerViewRows.map((h, i) => {
-                const parts = parseRowDateParts(h.InvoiceDate);
-                const d = parts ? `${parts.dd}/${parts.mm}/${parts.yyyy}` : '—';
-                const ch = h.HistorySource === 'BM' ? 'BM' : 'GG';
-                const imp = isImportRow(h) ? 'IMP' : isLocalRow(h) ? 'LOC' : '';
-                const productPart = includeProducts ? `${h.Product} | ` : '';
-                return `${i + 1}. ${d} | ${productPart}${h.CustomerID} | ${ch}${imp ? ` ${imp}` : ''} | SL ${h.Qty} | ${formatCurrency(Number(h.Value) || 0)}`;
-            }),
         ];
+
+        months.forEach((m, idx) => {
+            const [year, month] = m.monthKey.split('-');
+            const monthNum = parseInt(month, 10);
+            lines.push(`Tháng ${Number.isFinite(monthNum) ? monthNum : month} : ${month}/${year}`);
+            lines.push(`Tổng doanh số : ${formatCurrency(m.total)}`);
+            lines.push(`IMPORT T${Number.isFinite(monthNum) ? monthNum : month} : ${formatCurrency(m.importValue)}`);
+            if (includeProducts) {
+                const importRows = Array.from(m.importProducts.entries()).sort((a, b) => b[1] - a[1]);
+                importRows.forEach(([name, qty]) => lines.push(`  + ${name} x ${qty}`));
+            }
+            lines.push(`LOCAL T${Number.isFinite(monthNum) ? monthNum : month} : ${formatCurrency(m.localValue)}`);
+            if (includeProducts) {
+                const localRows = Array.from(m.localProducts.entries()).sort((a, b) => b[1] - a[1]);
+                localRows.forEach(([name, qty]) => lines.push(`  + ${name} x ${qty}`));
+            }
+            if (idx !== months.length - 1) lines.push('');
+        });
+
         return lines.join('\n');
     };
 
@@ -350,41 +417,43 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
     };
 
     const renderCustomerExportContent = (includeProducts: boolean) => {
+        const lines = buildCustomerExportMessage(includeProducts).split('\n');
         return (
-            <div className="font-mono text-[11px] leading-relaxed space-y-1">
-                <div className="font-black text-opella-green dark:text-opella-green text-sm">📊 LỊCH SỬ MUA HÀNG (Tổng hợp)</div>
-                <div className="text-slate-400 dark:text-slate-500">--------------------------------</div>
-                <div><span className="text-slate-500 dark:text-slate-400">Kênh:</span> <span className="font-bold text-slate-800 dark:text-white">{channelFilter === 'all' ? 'Tất cả' : channelFilter === 'gg' ? 'GG' : 'BM'}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">Loại:</span> <span className="font-bold text-slate-800 dark:text-white">{typeFilter === 'all' ? 'Tất cả' : typeFilter === 'import' ? 'IMPORT' : 'LOCAL'}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">Tháng:</span> <span className="font-bold text-slate-800 dark:text-white">{monthFilter === 'all' ? 'Tất cả' : formatMonthLabel(monthFilter)}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">Sản phẩm:</span> <span className="font-bold text-slate-800 dark:text-white">{productFilter === 'all' ? 'Tất cả' : productFilter}</span></div>
-                <div className="h-2" />
-                <div><span className="text-slate-500 dark:text-slate-400">Giao dịch:</span> <span className="font-bold text-slate-800 dark:text-white">{customerSummary.count}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">Tổng SL:</span> <span className="font-bold text-slate-800 dark:text-white">{customerSummary.totalQty}</span></div>
-                <div><span className="text-slate-500 dark:text-slate-400">Tổng giá trị:</span> <span className="font-black text-rose-600 dark:text-rose-400">{formatCurrency(customerSummary.totalVal)}</span></div>
-                <div className="h-2" />
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Chi tiết</div>
-                {customerViewRows.length > 0 ? (
-                    <div className="space-y-1 max-h-[260px] overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-lg p-2 bg-slate-50/80 dark:bg-slate-900/40">
-                        {customerViewRows.map((h, i) => {
-                            const parts = parseRowDateParts(h.InvoiceDate);
-                            const d = parts ? `${parts.dd}/${parts.mm}/${parts.yyyy}` : '—';
-                            const ch = h.HistorySource === 'BM' ? 'BM' : 'GG';
-                            const imp = isImportRow(h) ? 'IMP' : isLocalRow(h) ? 'LOC' : '';
-                            const bm = isBmRow(h);
-                            return (
-                                <div key={`${h.CustomerID}-${h.Product}-${i}`} className="text-[10px]">
-                                    <span className="text-slate-500 dark:text-slate-400">{i + 1}. {d}</span>{' '}
-                                    {includeProducts && <span className={`font-bold ${bm ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-white'}`}>{h.Product}</span>}
-                                    {includeProducts && <span className="text-slate-400"> | </span>}
-                                    <span className={`font-bold ${bm ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>{h.CustomerID}</span>
-                                    <span className="text-slate-500"> | {ch}{imp ? ` ${imp}` : ''} | SL {h.Qty} | </span>
-                                    <span className="font-bold text-opella-green">{formatCurrency(Number(h.Value) || 0)}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : <div className="text-slate-400 italic">Chưa có dữ liệu giao dịch.</div>}
+            <div className="font-mono text-[11px] leading-relaxed space-y-0.5">
+                {lines.map((line, idx) => {
+                    const isHeader = line.startsWith('📊 ');
+                    const isSeparator = line.startsWith('---');
+                    const isCustomer = line.startsWith('📍 ');
+                    const isCode = line.startsWith('🔢 ');
+                    const isBadge = line.startsWith('🏆 ');
+                    const isRep = line.startsWith('🧑‍💼 ');
+                    const isFilter = line.startsWith('Nội dung lọc:');
+                    const isMonth = line.startsWith('Tháng ');
+                    const isTotal = line.startsWith('Tổng doanh số');
+                    const isImport = line.startsWith('IMPORT ');
+                    const isLocal = line.startsWith('LOCAL ');
+                    const isProduct = line.trimStart().startsWith('+ ');
+
+                    let cls = 'whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200';
+                    if (isHeader) cls = 'whitespace-pre-wrap break-words font-black text-sm text-[#0d4f38] dark:text-emerald-300';
+                    else if (isSeparator) cls = 'whitespace-pre-wrap break-words text-slate-400 dark:text-slate-500';
+                    else if (isCustomer) cls = 'whitespace-pre-wrap break-words font-bold text-slate-900 dark:text-white';
+                    else if (isCode) cls = 'whitespace-pre-wrap break-words font-semibold text-indigo-700 dark:text-indigo-300';
+                    else if (isBadge) cls = 'whitespace-pre-wrap break-words font-semibold text-amber-700 dark:text-amber-300';
+                    else if (isRep) cls = 'whitespace-pre-wrap break-words font-semibold text-sky-700 dark:text-sky-300';
+                    else if (isFilter) cls = 'whitespace-pre-wrap break-words text-[10px] font-semibold text-slate-500 dark:text-slate-400';
+                    else if (isMonth) cls = 'whitespace-pre-wrap break-words font-black text-slate-800 dark:text-slate-100 pt-1';
+                    else if (isTotal) cls = 'whitespace-pre-wrap break-words font-bold text-rose-700 dark:text-rose-300';
+                    else if (isImport) cls = 'whitespace-pre-wrap break-words font-bold text-blue-700 dark:text-blue-300';
+                    else if (isLocal) cls = 'whitespace-pre-wrap break-words font-bold text-emerald-700 dark:text-emerald-300';
+                    else if (isProduct) cls = 'whitespace-pre-wrap break-words text-slate-700 dark:text-slate-300';
+
+                    return (
+                        <div key={`${idx}-${line}`} className={cls}>
+                            {line || ' '}
+                        </div>
+                    );
+                })}
             </div>
         );
     };

@@ -6,6 +6,7 @@ import { CustomerSalesNoticeContent } from '../CustomerSalesNoticeContent';
 import { FaceFrownIcon, FaceSmileIcon } from '../icons';
 import { formatDateVal } from './DashboardUtils';
 import { ProgressBar, MiniProgressBar } from './ProgressBars';
+import { getSaleQ1, isDat, isPsDisplayRecord } from '../../utils/saleKhPs';
 
 interface CustomerListItemProps {
     record: SalesRecord;
@@ -30,6 +31,7 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
     const todoImport = Number(record.TodoImport) || 0;
     const todoLocal = Number(record.TodoLocal) || 0;
     const todoTotal = Number(record.Todo) || 0;
+    const saleQ1 = getSaleQ1(record);
 
     return (
         <div className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
@@ -61,6 +63,24 @@ const CustomerListItem: React.FC<CustomerListItemProps> = ({
                                     'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-500 border-amber-100 dark:border-amber-800'
                                 }`}>
                                 {record.FinalStoreType}
+                            </span>
+                        )}
+                        {isPsDisplayRecord(record) && (
+                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-x-1 gap-y-0.5 max-w-full">
+                                <span className="text-slate-400 dark:text-slate-500">-</span>
+                                <span className="text-slate-500 dark:text-slate-400 uppercase tracking-tight">DOANH SỐ QUÝ :</span>
+                                <span className="font-black text-slate-900 dark:text-white tabular-nums">{formatCurrency(saleQ1)}</span>
+                                <span className="text-slate-400 dark:text-slate-500">-</span>
+                                <span className="text-slate-500 dark:text-slate-400 uppercase tracking-tight">TÌNH TRẠNG :</span>
+                                <span
+                                    className={
+                                        isDat(record)
+                                            ? 'font-black text-green-600 dark:text-green-400'
+                                            : 'font-black text-red-600 dark:text-red-400'
+                                    }
+                                >
+                                    {isDat(record) ? 'Đạt' : 'Rớt'}
+                                </span>
                             </span>
                         )}
                     </div>

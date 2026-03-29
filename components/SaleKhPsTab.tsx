@@ -3,6 +3,7 @@ import type { SalesRecord, Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { ADMIN_CODE } from '../constants';
 import { SearchIcon, CartIcon, ChartBarIcon } from './icons';
+import { getSaleQ1, getStoreType, isDat, isPsDisplayRecord } from '../utils/saleKhPs';
 
 type TypeFilter = 'gold' | 'silver' | 'bronze' | 'total';
 type StatusFilter = 'dat' | 'rot';
@@ -14,33 +15,6 @@ interface SaleKhPsTabProps {
     showReportOnMount?: boolean;
     onReportShown?: () => void;
 }
-
-const GOLD_MIN = 40_000_000;
-const SILVER_MIN = 20_000_000;
-const BRONZE_MIN = 7_000_000;
-
-const getSaleQ1 = (r: SalesRecord) => (Number(r.MustWin) || 0) + (Number(r.Other) || 0);
-
-const getStoreType = (r: SalesRecord): 'gold' | 'silver' | 'bronze' | null => {
-    const ft = (r.FinalStoreType || '').toLowerCase();
-    if (ft.includes('gold')) return 'gold';
-    if (ft.includes('silver')) return 'silver';
-    if (ft.includes('bronze')) return 'bronze';
-    return null;
-};
-
-const getMinForType = (type: 'gold' | 'silver' | 'bronze'): number => {
-    if (type === 'gold') return GOLD_MIN;
-    if (type === 'silver') return SILVER_MIN;
-    return BRONZE_MIN;
-};
-
-const isDat = (r: SalesRecord): boolean => {
-    const type = getStoreType(r);
-    const saleQ1 = getSaleQ1(r);
-    if (!type) return saleQ1 >= BRONZE_MIN; // default Bronze threshold
-    return saleQ1 >= getMinForType(type);
-};
 
 const formatPhí = (val: unknown): string => {
     if (val == null || val === '') return '';
@@ -57,9 +31,7 @@ const SaleKhPsTab: React.FC<SaleKhPsTabProps> = ({ salesRecords, currentEmployee
 
     const psRecords = useMemo(() => {
         return salesRecords.filter(r => {
-            const ft = (r.FinalStoreType || '').trim();
-            if (!ft) return false;
-            if (ft.toLowerCase().includes('dummy')) return false;
+            if (!isPsDisplayRecord(r)) return false;
             const codeMatch = r.StaffCode && String(r.StaffCode).trim() === currentEmployee.code;
             const repMatch = r.Rep && r.Rep.toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
             if (currentEmployee.code === ADMIN_CODE) return true;

@@ -13,6 +13,7 @@ import RebateTab from './components/RebateTab';
 import PriceListTab from './components/PriceListTab';
 import AoTrackingTab from './components/AoTrackingTab';
 import SaleKhPsTab from './components/SaleKhPsTab';
+import QuarterSalesTrackingTab from './components/QuarterSalesTrackingTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon } from './components/icons';
@@ -29,7 +30,7 @@ import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUt
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -832,6 +833,14 @@ const App: React.FC = () => {
             <span className="sm:hidden">PS</span>
           </button>
           <button
+            onClick={() => setViewMode('quarterSalesTracking')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'quarterSalesTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <ChartBarIcon />
+            <span className="hidden sm:inline">DS Quý 1 KH</span>
+            <span className="sm:hidden">Q1</span>
+          </button>
+          <button
             onClick={() => setViewMode('calciPlus')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'calciPlus' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -911,7 +920,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -1046,6 +1055,14 @@ const App: React.FC = () => {
             onCustomerSelect={handleCustomerSelectFromDashboard}
             showReportOnMount={showSaleKhPsReportOnMount}
             onReportShown={() => setShowSaleKhPsReportOnMount(false)}
+          />
+        )}
+
+        {viewMode === 'quarterSalesTracking' && (
+          <QuarterSalesTrackingTab
+            salesRecords={allSalesRecords}
+            currentEmployee={loggedInEmployee!}
+            onCustomerSelect={handleCustomerSelectFromDashboard}
           />
         )}
 

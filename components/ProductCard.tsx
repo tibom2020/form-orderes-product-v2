@@ -4,7 +4,7 @@ import type { Product } from '../types';
 import { PlusIcon, CubeIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
 import { getMaxDiscountPercent, getDiscountPercent } from '../utils/calculations';
-import { CALCIPLUS_PRODUCT_ID, CALCIPLUS_EXTRA_DISCOUNT } from '../constants';
+import { CALCIPLUS_PRODUCT_ID } from '../constants';
 import { REBATE_TIERS } from './dashboard/DashboardUtils';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 
@@ -86,12 +86,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         return [];
     }, [product.promotion, product.price]);
 
-    // CORBIERE CALCIUM PLUS: giá 21h (ck 5.9% + 4.76%)
-    const calciPlus21hPrice = useMemo(() => {
-        if (product.id !== CALCIPLUS_PRODUCT_ID || !product.promotion) return null;
-        const monthlyDisc = getDiscountPercent(product.promotion, 21, product.price * 21);
-        return Math.round(product.price * (1 - monthlyDisc) * (1 - CALCIPLUS_EXTRA_DISCOUNT));
-    }, [product.id, product.promotion, product.price]);
+    // (đã gỡ) Rule 21h ck thêm 4.76%
 
     // Giá cuối tháng ở mức 5% (Lv5) - đã bao gồm CK + VAT
     const LEVEL_5_INDEX = 4;
@@ -176,16 +171,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                                             </span>
                                         </div>
                                     ))}
-                                    {calciPlus21hPrice != null && (
-                                        <div className="flex justify-between items-center text-[10px] mt-0.5 pt-0.5 border-t border-red-100/50 dark:border-red-900/30">
-                                            <span className="text-slate-600 dark:text-slate-300 font-medium">
-                                                21h (ck 5.9%+4.76%):
-                                            </span>
-                                            <span className="text-red-600 dark:text-red-400 font-bold">
-                                                {formatCurrency(calciPlus21hPrice)}
-                                            </span>
-                                        </div>
-                                    )}
+                                    {/* Gỡ rule 21h ck thêm 4.76% theo CTKM mới */}
                                 </div>
                             )}
                         </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, CALCIPLUS_PRODUCT_ID } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -22,7 +22,7 @@ import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
-import { calculateLineTotal, getDiscountPercent, getCalciPlusPackages, getCalciPlusPackagesBoxes } from './utils/calculations';
+import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 import { getInitials } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
@@ -507,21 +507,7 @@ const App: React.FC = () => {
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
-    // CORBIERE CALCIUM PLUS: gói 21h ck 4.76% — auto thêm ghi chú & tính Thành tiền gói
-    const calciPlusItem = cart.find(item => item.id === CALCIPLUS_PRODUCT_ID);
-    const calciPlusPackages = calciPlusItem ? getCalciPlusPackages(calciPlusItem.quantity) : 0;
-    let calciPlusAmount = 0;
-    if (calciPlusItem && calciPlusPackages > 0) {
-      const boxesWithExtra = getCalciPlusPackagesBoxes(calciPlusItem.quantity);
-      const isTelfast = TELFAST_GROUP_IDS.includes(calciPlusItem.id);
-      const isOstelin = OSTELIN_GROUP_IDS.includes(calciPlusItem.id);
-      const compareVal = isTelfast ? telfastGroupTotal : isOstelin ? ostelinGroupBaseTotal : calciPlusItem.price * calciPlusItem.quantity;
-      const monthlyDisc = getDiscountPercent(calciPlusItem.promotion, calciPlusItem.quantity, compareVal);
-      calciPlusAmount = Math.round(calciPlusItem.price * boxesWithExtra * (1 - monthlyDisc) * (1 - 0.0476));
-    }
-    const finalNote = (calciPlusPackages > 0 && !note.includes('Gói ck 4.76%'))
-      ? (note ? `${note} Gói ck 4.76%` : 'Gói ck 4.76%')
-      : note;
+    const finalNote = note;
 
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount);
 
@@ -530,8 +516,7 @@ const App: React.FC = () => {
       isDummyBox: isDummyBoxLocal || isDummyBoxImport,
       isDummyBoxLocal, isDummyBoxImport,
       appliedRebates: selectedRebateIds,
-      totalAmount, finalAmount, totalSales,
-      calciPlusPackages, calciPlusAmount
+      totalAmount, finalAmount, totalSales
     };
   };
 

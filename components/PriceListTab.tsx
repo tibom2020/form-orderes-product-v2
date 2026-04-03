@@ -88,19 +88,11 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
     const gigaPriceRows = useMemo<GigaPriceRow[]>(() => {
         const rows: GigaPriceRow[] = [];
         filteredProducts.forEach((p) => {
-            if (p.id === 1) {
-                rows.push(
-                    { product: p, minOrder: 5, monthlyDiscountPercent: 5.9, note: 'Mua 5h ck 5.9%' },
-                    { product: p, minOrder: 21, monthlyDiscountPercent: 10.66, note: 'Mua 21h ck 10.66% (5.9% + 4.76%)' }
-                );
-                return;
-            }
-
             rows.push({
                 product: p,
                 minOrder: getGigaMinOrderMax(p),
                 monthlyDiscountPercent: getMaxDiscountPercent(p.promotion),
-                note: '-',
+                note: p.promotion || '-',
             });
         });
         return rows;
@@ -258,7 +250,7 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                                 if (p.requireApproval) noteParts.push('ĐƠN DUYỆT');
                                 if (p.nearExpiry) noteParts.push(p.nearExpiry);
                                 if (p.note) noteParts.push(p.note);
-                                if (row.note !== '-') noteParts.push(row.note);
+                                if (row.note && row.note !== '-') noteParts.push(row.note);
                                 const noteStr = noteParts.join(' • ') || '-';
                                 return (
                                     <tr key={`${p.id}-${row.minOrder}-${row.monthlyDiscountPercent ?? 0}`} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200">

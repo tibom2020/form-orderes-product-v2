@@ -1,6 +1,6 @@
 /**
  * Google Apps Script - Smart Orders 2026
- * Refactored doPost với logic CalciPlus (gói 21h ck 4.76%)
+ * Refactored doPost — theo dõi gói Ostelin 60V (5h ck 21.97%) → sheet OSTELIN_60V_GOI
  */
 
 var BOT_TOKEN = "";
@@ -174,17 +174,25 @@ function handleOrder(data, ss, output) {
       updateLiXiOntopStats(ss, data.employeeName, data.customerCode, data.customerName, data.totalSales || 0);
     }
 
-    // --- CALCIPLUS: Ghi gói 21h ck 4.76% vào sheet THEO DÕI GÓI CALCIPLUS ---
-    var calciPlusPackages = Number(data.calciPlusPackages) || 0;
-    var calciPlusAmount = Number(data.calciPlusAmount) || 0;
-    if (calciPlusPackages > 0 && calciPlusAmount >= 0) {
-      var sheetCalci = ss.getSheetByName("CALCIPLUS_GOI");
-      if (!sheetCalci) {
-        sheetCalci = ss.insertSheet("CALCIPLUS_GOI");
-        sheetCalci.appendRow(["Rep", "SL_goi", "Thanh_tien"]);
-        sheetCalci.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#d9ead3");
+    // --- OSTELIN 60V: Ghi gói 5h ck 21.97% (1 gói/đơn đủ điều kiện) + KH để đối soát 1 gói/KH ---
+    var ostelin60VPackages = Number(data.ostelin60VPackages) || 0;
+    var ostelin60VAmount = Number(data.ostelin60VAmount) || 0;
+    if (ostelin60VPackages > 0 && ostelin60VAmount >= 0) {
+      var sheetOstelinGoi = ss.getSheetByName("OSTELIN_60V_GOI");
+      if (!sheetOstelinGoi) {
+        sheetOstelinGoi = ss.insertSheet("OSTELIN_60V_GOI");
+        sheetOstelinGoi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien"]);
+        sheetOstelinGoi.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#d9ead3");
       }
-      sheetCalci.appendRow([data.employeeName || "", calciPlusPackages, calciPlusAmount]);
+      sheetOstelinGoi.appendRow([
+        new Date(),
+        data.employeeName || "",
+        data.customerCode || "",
+        data.customerName || "",
+        Number(data.ostelin60VQuantity) || 0,
+        ostelin60VPackages,
+        ostelin60VAmount
+      ]);
     }
 
     sendTelegramNotification(data);

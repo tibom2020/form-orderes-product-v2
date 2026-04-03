@@ -19,6 +19,9 @@ import {
     OSTELIN_GROUP_IDS,
 } from '../constants';
 
+/** Dòng ghi chú khi tick “gói Ostelin tặng cân” */
+const OSTELIN_TANG_CAN_NOTE = 'Gói Ostelin tặng cân';
+
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
     if (dateValue === undefined || dateValue === null || dateValue === '') return 'N/A';
@@ -34,6 +37,7 @@ interface CartItemRowProps {
     maxPayableFeeLine: number;
     monthlyDiscountPercent: number;
     isGrouped: boolean;
+    hasCalciPlusExtra?: boolean;
     onUpdateQuantity: (id: number, q: number) => void;
     onRemoveItem: (id: number) => void;
 }
@@ -228,6 +232,20 @@ const Cart: React.FC<CartProps> = (props) => {
             onNoteChange(note.replace(new RegExp(`\\s*${preset}\\s*`, 'g'), ' ').trim());
         } else {
             onNoteChange(note ? `${note} ${preset}` : preset);
+        }
+    };
+
+    const noteLinesTrimmed = useMemo(
+        () => note.split('\n').map(l => l.trim()).filter(Boolean),
+        [note]
+    );
+    const hasOstelinTangCanNote = noteLinesTrimmed.includes(OSTELIN_TANG_CAN_NOTE);
+
+    const toggleOstelinTangCanNote = () => {
+        if (hasOstelinTangCanNote) {
+            onNoteChange(noteLinesTrimmed.filter(l => l !== OSTELIN_TANG_CAN_NOTE).join('\n'));
+        } else {
+            onNoteChange(note.trim() ? `${note.trim()}\n${OSTELIN_TANG_CAN_NOTE}` : OSTELIN_TANG_CAN_NOTE);
         }
     };
 
@@ -633,6 +651,18 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đơn ≥1M (sau CK) nhóm Pharmaton (Energy ko CK 29.5%), Essent, Vitality, Fizzi + Enterogermina (GUT 2B, 4B, 2B/20) + ít nhất 01 Pharmaton Vitality' : 'Chưa đủ điều kiện: đơn ≥1M nhóm trên + ít nhất 01 Pharmaton Vitality'}>DummyBox Import (-150k)</label>
                             </div>
                         )}
+                        <div className="flex items-center space-x-1.5">
+                            <input
+                                type="checkbox"
+                                id="ostelin-tang-can"
+                                checked={hasOstelinTangCanNote}
+                                onChange={toggleOstelinTangCanNote}
+                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
+                            />
+                            <label htmlFor="ostelin-tang-can" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                                Gói Ostelin tặng cân
+                            </label>
+                        </div>
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}

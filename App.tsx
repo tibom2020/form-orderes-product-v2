@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -29,6 +29,12 @@ import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUt
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
+
+/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH */
+const SHOW_PRICE_LIST_TAB = false;
+const SHOW_AO_TRACKING_TAB = false;
+const SHOW_SALE_KH_PS_TAB = false;
+const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
 type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
@@ -248,15 +254,28 @@ const App: React.FC = () => {
     if (['landing', 'dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
   };
 
-  // Khi đăng nhập: chuyển thẳng sang tab Sale KH PS (không tự mở báo cáo DummyBox)
+  // Khi đăng nhập: nếu tab Sale KH PS bật — sang PS + báo cáo; nếu tạm ẩn — ở Đặt hàng
   useEffect(() => {
     if (loggedInEmployee && !hasShownLoginReminder.current) {
       hasShownLoginReminder.current = true;
-      setViewMode('saleKhPs');
       setShowDummyBoxReminderOnMount(false);
-      setShowSaleKhPsReportOnMount(true);
+      if (SHOW_SALE_KH_PS_TAB) {
+        setViewMode('saleKhPs');
+        setShowSaleKhPsReportOnMount(true);
+      } else {
+        setViewMode('order');
+        setShowSaleKhPsReportOnMount(false);
+      }
     }
   }, [loggedInEmployee]);
+
+  /** Tránh kẹt view khi tab tạm ẩn */
+  useEffect(() => {
+    if (!SHOW_PRICE_LIST_TAB && viewMode === 'priceList') setViewMode('order');
+    if (!SHOW_AO_TRACKING_TAB && viewMode === 'aoTracking') setViewMode('order');
+    if (!SHOW_SALE_KH_PS_TAB && viewMode === 'saleKhPs') setViewMode('order');
+    if (!SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking') setViewMode('order');
+  }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
   useEffect(() => {
@@ -511,12 +530,33 @@ const App: React.FC = () => {
 
     const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount);
 
+    const ostelin60vItem = cart.find(i => i.id === OSTELIN_60V_PRODUCT_ID);
+    let ostelin60VPackages = 0;
+    let ostelin60VAmount = 0;
+    let ostelin60VQuantity: number | undefined;
+    if (ostelin60vItem && ostelin60vItem.quantity >= OSTELIN_60V_GOI_MIN_QTY) {
+      ostelin60VPackages = 1;
+      ostelin60VQuantity = ostelin60vItem.quantity;
+      ostelin60VAmount = Math.round(
+        calculateLineTotal(
+          ostelin60vItem.price,
+          ostelin60vItem.quantity,
+          ostelin60vItem.promotion,
+          ostelinGroupBaseTotal,
+          ostelin60vItem.id
+        )
+      );
+    }
+
     return {
       customerCode, customerName, customerAddress, note: finalNote, items: cart, isOnTopLiXi,
       isDummyBox: isDummyBoxLocal || isDummyBoxImport,
       isDummyBoxLocal, isDummyBoxImport,
       appliedRebates: selectedRebateIds,
-      totalAmount, finalAmount, totalSales
+      totalAmount, finalAmount, totalSales,
+      ostelin60VPackages: ostelin60VPackages > 0 ? ostelin60VPackages : undefined,
+      ostelin60VAmount: ostelin60VPackages > 0 ? ostelin60VAmount : undefined,
+      ostelin60VQuantity: ostelin60VQuantity,
     };
   };
 
@@ -801,46 +841,54 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Dummybox</span>
             <span className="sm:hidden">Dummy</span>
           </button>
-          <button
-            onClick={() => setViewMode('aoTracking')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'aoTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-          >
-            <TrendingUpIcon />
-            <span className="hidden sm:inline">Theo dõi AO</span>
-            <span className="sm:hidden">AO</span>
-          </button>
-          <button
-            onClick={() => setViewMode('saleKhPs')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'saleKhPs' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-          >
-            <StarIcon />
-            <span className="hidden sm:inline">Sale KH PS</span>
-            <span className="sm:hidden">PS</span>
-          </button>
-          <button
-            onClick={() => setViewMode('quarterSalesTracking')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'quarterSalesTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-          >
-            <ChartBarIcon />
-            <span className="hidden sm:inline">DS Quý 1 KH</span>
-            <span className="sm:hidden">Q1</span>
-          </button>
+          {SHOW_AO_TRACKING_TAB && (
+            <button
+              onClick={() => setViewMode('aoTracking')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'aoTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <TrendingUpIcon />
+              <span className="hidden sm:inline">Theo dõi AO</span>
+              <span className="sm:hidden">AO</span>
+            </button>
+          )}
+          {SHOW_SALE_KH_PS_TAB && (
+            <button
+              onClick={() => setViewMode('saleKhPs')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'saleKhPs' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <StarIcon />
+              <span className="hidden sm:inline">Sale KH PS</span>
+              <span className="sm:hidden">PS</span>
+            </button>
+          )}
+          {SHOW_QUARTER_SALES_TRACKING_TAB && (
+            <button
+              onClick={() => setViewMode('quarterSalesTracking')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'quarterSalesTracking' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <ChartBarIcon />
+              <span className="hidden sm:inline">DS Quý 1 KH</span>
+              <span className="sm:hidden">Q1</span>
+            </button>
+          )}
           <button
             onClick={() => setViewMode('calciPlus')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'calciPlus' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <CubeIcon />
-            <span className="hidden sm:inline">Gói CalciPlus</span>
-            <span className="sm:hidden">CalciPlus</span>
+            <span className="hidden sm:inline">Gói Ostelin 60V</span>
+            <span className="sm:hidden">Ostelin</span>
           </button>
-          <button
-            onClick={() => setViewMode('priceList')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-          >
-            <TagIcon />
-            <span className="hidden sm:inline">Báo giá & CTKM</span>
-            <span className="sm:hidden">Báo giá</span>
-          </button>
+          {SHOW_PRICE_LIST_TAB && (
+            <button
+              onClick={() => setViewMode('priceList')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'priceList' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <TagIcon />
+              <span className="hidden sm:inline">Báo giá & CTKM</span>
+              <span className="sm:hidden">Báo giá</span>
+            </button>
+          )}
           <button
             onClick={() => setViewMode('forecast')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
@@ -1021,11 +1069,11 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'priceList' && (
+        {SHOW_PRICE_LIST_TAB && viewMode === 'priceList' && (
           <PriceListTab products={PRODUCTS} />
         )}
 
-        {viewMode === 'aoTracking' && (
+        {SHOW_AO_TRACKING_TAB && viewMode === 'aoTracking' && (
           <AoTrackingTab
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}
@@ -1033,7 +1081,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'saleKhPs' && (
+        {SHOW_SALE_KH_PS_TAB && viewMode === 'saleKhPs' && (
           <SaleKhPsTab
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}
@@ -1043,7 +1091,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'quarterSalesTracking' && (
+        {SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking' && (
           <QuarterSalesTrackingTab
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}

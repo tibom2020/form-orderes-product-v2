@@ -53,7 +53,7 @@ export const PRODUCTS: Product[] = [
   { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
   { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
   { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 4h ck 9.85%, 6h ck 11.82% (đến 29.04.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 5h ck 21.97% (đến 20.04.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
@@ -75,7 +75,13 @@ export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 export const DUMMY_BOX_DISCOUNT = 150_000;
 
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
-export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24];
+export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24, 25];
+
+/** Theo dõi gói Ostelin 60V (5h ck 21.97%) — khớp sheet Google & Apps Script */
+export const OSTELIN_60V_PRODUCT_ID = 25;
+/** Tối thiểu 5 hộp để áp CK 21.97% & ghi theo dõi (1 gói/đơn đủ điều kiện) */
+export const OSTELIN_60V_GOI_MIN_QTY = 5;
+export const OSTELIN_60V_GOI_SHEET = 'OSTELIN_60V_GOI';
 
 export const CALCIPLUS_PRODUCT_ID = 1;
 

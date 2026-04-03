@@ -16,8 +16,9 @@ interface OrderPayload {
   isDummyBoxImport?: boolean;
   appliedRebates: string[];
   customerSummary?: string;
-  calciPlusPackages?: number;
-  calciPlusAmount?: number;
+  ostelin60VPackages?: number;
+  ostelin60VAmount?: number;
+  ostelin60VQuantity?: number;
 }
 
 export const postOrderToGoogleSheet = async (

@@ -234,8 +234,10 @@ export interface Order {
   totalAmount: number;
   finalAmount: number;
   totalSales: number;
-  calciPlusPackages?: number;  // Số gói 21h ck 4.76% (CORBIERE CALCIUM PLUS)
-  calciPlusAmount?: number;   // Thành tiền gói ck 4.76%
+  /** Ostelin 60V: đơn đủ điều kiện (≥5 hộp) = 1 gói (ck 21.97%), ghi sheet OSTELIN_60V_GOI */
+  ostelin60VPackages?: number;
+  ostelin60VAmount?: number;
+  ostelin60VQuantity?: number;
 }
 
 // Interface cho lịch sử mua hàng từ Sheet HISTORY_GG và HISTORY_BM (merged)

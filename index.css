@@ -65,21 +65,44 @@
   position: sticky;
   top: 0;
   z-index: 12;
+  vertical-align: middle;
+  /* Tránh khe hở giữa các ô header khi border-separate */
+  background-clip: padding-box;
 }
 .tbq2-sticky-table thead th:first-child {
   left: 0;
   z-index: 22;
-  box-shadow: 2px 2px 0 0 rgba(15, 23, 42, 0.08);
+  box-shadow: 2px 0 0 0 rgba(15, 23, 42, 0.06), 0 2px 0 0 rgba(15, 23, 42, 0.06);
 }
 .tbq2-sticky-table tbody td:first-child {
   position: sticky;
   left: 0;
   z-index: 11;
   box-shadow: 4px 0 14px -6px rgba(15, 23, 42, 0.2);
+  vertical-align: top;
 }
 .dark .tbq2-sticky-table thead th:first-child {
-  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 2px 0 0 0 rgba(0, 0, 0, 0.25), 0 2px 0 0 rgba(0, 0, 0, 0.25);
 }
 .dark .tbq2-sticky-table tbody td:first-child {
   box-shadow: 4px 0 14px -6px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * Mobile: bỏ sticky cột "Khách hàng" (left) — Safari/WebKit dễ lệch hàng header
+ * giữa ô cố định và phần cuộn ngang; chỉ giữ sticky top cho cả hàng tiêu đề.
+ */
+@media (max-width: 767px) {
+  /* Chỉ bỏ sticky ngang; giữ sticky top để cả hàng header vẫn dính khi cuộn dọc */
+  .tbq2-sticky-table thead th:first-child {
+    left: auto;
+    z-index: 12;
+    box-shadow: none;
+  }
+  .tbq2-sticky-table tbody td:first-child {
+    position: relative;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
 }

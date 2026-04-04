@@ -10,6 +10,8 @@ export interface DangKyTbq2RowView {
   district: string;
   sdt: string;
   rep: string;
+  /** NV thao tác đăng ký Q2 (sheet) — dùng quyền hủy khi khác cột Rep */
+  nvDangKy: string;
   /** Cột sheet FinalStoreTypeQ2 */
   finalStoreTypeQ2: string;
   item: string;
@@ -48,6 +50,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
     district: pickCell(row, ['District', 'Quan', 'Quận', 'Khu vực']),
     sdt: pickCell(row, ['SDT', 'Phone', 'Điện thoại', 'SoDT', 'SĐT']),
     rep: pickCell(row, ['Rep', 'REP', 'NV phụ trách']),
+    nvDangKy: pickCell(row, ['NVDangKy', 'NV đăng ký', 'NV Dang ky']),
     finalStoreTypeQ2: pickCell(row, [
       'FinalStoreTypeQ2',
       'Final Store Type Q2',

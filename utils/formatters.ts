@@ -52,6 +52,36 @@ export const formatVndDong = (value: number): string => {
     return `${sign}${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(abs)}đ`;
 };
 
+/**
+ * Bóc số doanh số từ ô sheet (1500000, 1.500.000 kiểu VN, 1,500,000).
+ * Không khớp → null (giữ nguyên chuỗi khi hiển thị).
+ */
+export const parseSheetSalesAmount = (raw: string): number | null => {
+    const s = String(raw ?? '').trim().replace(/\s/g, '');
+    if (!s) return null;
+    if (/^-?\d+$/.test(s)) {
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+    }
+    if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+        return Number(s.replace(/\./g, ''));
+    }
+    if (/^-?\d{1,3}(,\d{3})+$/.test(s)) {
+        return Number(s.replace(/,/g, ''));
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+};
+
+/** Hiển thị cột Sale Q1: số → formatVndDong; text/không parse được → nguyên bản */
+export const formatSheetSaleQ1Display = (raw: string): string => {
+    const t = String(raw ?? '').trim();
+    if (!t) return '—';
+    const n = parseSheetSalesAmount(t);
+    if (n !== null && Number.isFinite(n)) return formatVndDong(n);
+    return t;
+};
+
 /** Lấy 2 chữ cái viết hoa từ tên (VD: "Ly Minh Dat" → "MD", "Le Huu Phuc" → "HP") */
 export const getInitials = (name: string | undefined | null): string => {
     try {

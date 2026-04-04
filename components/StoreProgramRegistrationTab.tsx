@@ -1,18 +1,27 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import type { Customer, Employee } from '../types';
-import { formatCurrency, formatVndDong } from '../utils/formatters';
+import type { Employee } from '../types';
+import { formatCurrency, formatVndDong, formatSheetSaleQ1Display } from '../utils/formatters';
 import {
   normalizeDangKyTbq2Row,
   isRegisteredRow,
   formatShortVnd,
   repMatchesEmployee,
   isPheDuyetApproved,
+  type DangKyTbq2RowView,
 } from '../utils/displayTbq2Sheet';
-import { fetchDataFromSheet, submitDisplayTBQ2Registration, submitDisplayTBQ2Approval } from '../services/googleSheetService';
+import {
+  fetchDataFromSheet,
+  submitDisplayTBQ2Registration,
+  submitDisplayTBQ2Approval,
+  submitCancelDisplayTBQ2Registration,
+} from '../services/googleSheetService';
 import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2 } from '../constants';
 
 /** Ảnh tiêu chí tham gia / phân hạng CT trưng bày */
 export const DISPLAY_TBQ2_CRITERIA_IMAGE_URL = 'https://i.postimg.cc/Cxs6WRtg/tieu-chi.png';
+
+/** Nhãn tab trên thanh điều hướng (App.tsx) */
+export const STORE_PROGRAM_TAB_LABEL = 'DK PS 2026';
 
 export const POSM = {
   FRAME_OTC: 'Frame OTC',
@@ -203,6 +212,15 @@ function isValidVnPhoneInput(s: string): boolean {
   return d.length >= 9 && d.length <= 12;
 }
 
+/** Hủy đăng ký + hoàn Budget: chỉ khi đã đăng ký và chưa phê duyệt */
+function canCancelTbq2Registration(row: DangKyTbq2RowView, employeeName: string, admin: boolean): boolean {
+  if (!isRegisteredRow(row) || isPheDuyetApproved(row)) return false;
+  if (admin) return true;
+  return (
+    repMatchesEmployee(row.rep, employeeName) || repMatchesEmployee(row.nvDangKy, employeeName)
+  );
+}
+
 function pickBudgetCell(row: Record<string, unknown>, keys: string[]): string {
   const rk = Object.keys(row);
   for (const k of keys) {
@@ -294,9 +312,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   /** Lọc theo FinalStoreTypeQ1: null = tất cả; Q1_FILTER_NON_EMPTY = có dữ liệu cột; hoặc chuỗi khớp chính xác */
   const [finalStoreTypeQ1Filter, setFinalStoreTypeQ1Filter] = useState<string | null>(null);
   const [approvingCode, setApprovingCode] = useState<string | null>(null);
-  const [masterSearchQuery, setMasterSearchQuery] = useState('');
-  /** KH chọn qua ô tìm trên sheet (cùng nguồn DANGKYTBQ2, có thể trùng dropdown) */
-  const [supplementaryPick, setSupplementaryPick] = useState<Customer | null>(null);
+  const [cancellingCode, setCancellingCode] = useState<string | null>(null);
   /** 1: KH → 2: Tier & POSM → 3: Xác nhận / Hủy → 4: SDT & Submit */
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
   const [confirmSdt, setConfirmSdt] = useState('');
@@ -404,41 +420,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     [myRows]
   );
 
-  /** Tìm KH chưa đăng ký Q2 trực tiếp trong dữ liệu sheet DANGKYTBQ2 (đã fetch) */
-  const masterSearchMatches = useMemo(() => {
-    const q = masterSearchQuery.trim().toLowerCase();
-    if (q.length < 1) return [];
-    const seen = new Set<string>();
-    const out: Customer[] = [];
-    for (const r of normalizedRows) {
-      const code = r.customerCode.trim();
-      if (!code || seen.has(code)) continue;
-      if (isRegisteredRow(r)) continue;
-      if (!isAdmin && !repMatchesEmployee(r.rep, currentEmployee.name)) continue;
-      const name = r.customerName.toLowerCase();
-      const district = r.district.toLowerCase();
-      const sdt = r.sdt.replace(/\D/g, '');
-      const qDigits = q.replace(/\D/g, '');
-      const matchText =
-        code.toLowerCase().includes(q) ||
-        name.includes(q) ||
-        district.includes(q) ||
-        r.finalStoreTypeQ1.toLowerCase().includes(q) ||
-        r.saleQ1.toLowerCase().includes(q) ||
-        (qDigits.length >= 3 && sdt.includes(qDigits));
-      if (!matchText) continue;
-      seen.add(code);
-      out.push({
-        code,
-        name: r.customerName || code,
-        address: r.district.trim() || undefined,
-        rep: r.rep.trim() || undefined,
-      });
-      if (out.length >= 20) break;
-    }
-    return out;
-  }, [normalizedRows, masterSearchQuery, isAdmin, currentEmployee.name]);
-
   const selectedRow = useMemo(
     () => myRows.find(r => r.customerCode === selectedCustomerCode) ?? null,
     [myRows, selectedCustomerCode]
@@ -483,9 +464,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   useEffect(() => {
     if (!selectedCustomerCode) return;
     const inAssignable = assignableCustomers.some(c => c.customerCode === selectedCustomerCode);
-    const inSupplementary = supplementaryPick?.code === selectedCustomerCode;
-    if (!inAssignable && !inSupplementary) setSelectedCustomerCode('');
-  }, [assignableCustomers, selectedCustomerCode, supplementaryPick]);
+    if (!inAssignable) setSelectedCustomerCode('');
+  }, [assignableCustomers, selectedCustomerCode]);
 
   useEffect(() => {
     if (!imagePreviewModal) return;
@@ -511,19 +491,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [tier, choiceSingle, choiceMulti]);
 
   const customerOk =
-    selectedCustomerCode !== '' &&
-    ((!!selectedRow && !isRegisteredRow(selectedRow) && !supplementaryPick) ||
-      (!!supplementaryPick && supplementaryPick.code === selectedCustomerCode));
+    selectedCustomerCode !== '' && !!selectedRow && !isRegisteredRow(selectedRow);
   const tierOk = storeTierId !== '';
   const posmOk = tier ? posmValidation.ok : false;
   const sdtOk = isValidVnPhoneInput(confirmSdt);
   const canSubmitFinal =
     wizardStep === 4 && customerOk && tierOk && posmOk && sdtOk && !submitBusy;
 
-  const displayRegCode =
-    supplementaryPick?.code?.trim() || selectedRow?.customerCode || selectedCustomerCode;
-  const displayRegName =
-    (supplementaryPick?.name || selectedRow?.customerName || '').trim() || '—';
+  const displayRegCode = selectedRow?.customerCode || selectedCustomerCode;
+  const displayRegName = (selectedRow?.customerName || '').trim() || '—';
 
   useEffect(() => {
     setWizardStep(1);
@@ -580,7 +556,41 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const budgetPct =
     budgetCard.budget > 0 ? Math.min(100, Math.round((budgetCard.used / budgetCard.budget) * 100)) : 0;
 
-  const tableColSpan = isAdmin ? 11 : 10;
+  const tableColSpan = isAdmin ? 12 : 11;
+
+  const handleCancelRegistration = useCallback(
+    async (e: React.MouseEvent, row: DangKyTbq2RowView) => {
+      e.stopPropagation();
+      if (!canCancelTbq2Registration(row, currentEmployee.name, isAdmin)) return;
+      const ok = window.confirm(
+        `Hủy đăng ký PS 2026 cho "${row.customerName}" (${row.customerCode})?\n\n` +
+          `Ngân sách Rep sẽ được hoàn lại theo tier đã ghi (chỉ áp dụng khi trạng thái phê duyệt là Chờ duyệt).`
+      );
+      if (!ok) return;
+      setCancellingCode(row.customerCode);
+      const res = await submitCancelDisplayTBQ2Registration(scriptUrl, {
+        employeeCode: currentEmployee.code,
+        employeeName: currentEmployee.name,
+        customerCode: row.customerCode.trim(),
+      });
+      setCancellingCode(null);
+      if (res.status === 'success') {
+        const [dk, bud] = await Promise.all([
+          fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2),
+          fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2),
+        ]);
+        setSheetRows(dk);
+        setBudgetRows(bud);
+        if (selectedCustomerCode === row.customerCode) {
+          setSelectedCustomerCode('');
+        }
+        window.alert(res.message || 'Đã hủy đăng ký và hoàn ngân sách.');
+      } else {
+        window.alert(res.message || 'Hủy đăng ký thất bại.');
+      }
+    },
+    [scriptUrl, currentEmployee.code, currentEmployee.name, isAdmin, selectedCustomerCode]
+  );
 
   const handleApproveRow = async (e: React.MouseEvent, customerCode: string) => {
     e.stopPropagation();
@@ -612,20 +622,10 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     setSubmitAttempted(true);
     setSubmitMessage(null);
     if (wizardStep !== 4 || !canSubmitFinal || !tier) return;
-    let regCode: string;
-    let regName: string;
-    let regAddress: string | undefined;
-    if (supplementaryPick && supplementaryPick.code === selectedCustomerCode) {
-      regCode = supplementaryPick.code.trim();
-      regName = (supplementaryPick.name || '').trim();
-      regAddress = (supplementaryPick.address || '').trim() || undefined;
-    } else if (selectedRow) {
-      regCode = selectedRow.customerCode;
-      regName = selectedRow.customerName;
-      regAddress = undefined;
-    } else {
-      return;
-    }
+    if (!selectedRow) return;
+    const regCode = selectedRow.customerCode;
+    const regName = selectedRow.customerName;
+    const regAddress = undefined;
     const posmPayload = {
       mandatory: tier.mandatoryPosm,
       choiceSingle: tier.choiceMode === 'single' ? choiceSingle : undefined,
@@ -655,11 +655,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     }
     setSubmitBusy(false);
     if (res.status === 'success') {
-      const repDisplay =
-        (supplementaryPick?.rep?.trim() ||
-          selectedRow?.rep?.trim() ||
-          currentEmployee.name) ||
-        '—';
+      const repDisplay = (selectedRow.rep?.trim() || currentEmployee.name) || '—';
       setRegistrationSuccessModal({
         customerCode: regCode,
         customerName: regName || '—',
@@ -678,8 +674,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       setStoreTierId('');
       setChoiceSingle(null);
       setChoiceMulti(new Set());
-      setSupplementaryPick(null);
-      setMasterSearchQuery('');
       setWizardStep(1);
       setConfirmSdt('');
       setSubmitAttempted(false);
@@ -860,6 +854,19 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   Danh sách khách hàng
                 </h3>
               </div>
+              <div className="rounded-xl border border-teal-200/70 dark:border-teal-900/45 bg-teal-50/80 dark:bg-teal-950/20 px-4 py-3 text-[11px] leading-relaxed text-[#1b4332] dark:text-teal-100/90 space-y-2">
+                <p className="font-bold text-[#003629] dark:text-[#8abda9]">Hướng dẫn điều chỉnh</p>
+                <ul className="list-none space-y-1.5 text-[#404945] dark:text-slate-300 pl-0">
+                  <li>
+                    <span className="font-bold text-[#003629] dark:text-[#8abda9]">Bước 1 — Hủy:</span> bấm nút{' '}
+                    <strong className="text-teal-800 dark:text-teal-300">Hủy</strong> trên dòng. Số tiền tự động được cộng
+                    lại.
+                  </li>
+                  <li>
+                    <span className="font-bold text-[#003629] dark:text-[#8abda9]">Bước 2:</span> tiến hành đăng ký lại.
+                  </li>
+                </ul>
+              </div>
               {(tierRegisteredFilter || finalStoreTypeQ1Filter !== null) && (
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {tierRegisteredFilter && (
@@ -917,7 +924,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-[#c0c9c3]/20 min-w-0">
                 <div className="tbq2-scroll-xy max-h-[min(52vh,22rem)] sm:max-h-[280px] md:max-h-[320px]">
-                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[880px] sm:min-w-[960px]">
+                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[940px] sm:min-w-[1020px]">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-wider text-[#2d3b36] dark:text-slate-200 border-b border-[#c0c9c3]/40 dark:border-slate-600">
                         <th className="py-3 px-3 bg-sky-100 dark:bg-sky-950/90 border-r border-sky-200/60 dark:border-sky-800/50">
@@ -926,7 +933,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         <th className="py-3 px-3 bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40">
                           FinalStoreTypeQ1
                         </th>
-                        <th className="py-3 px-3 bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40">
+                        <th className="py-3 px-3 text-right tabular-nums bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40">
                           Sale Q1
                         </th>
                         <th className="py-3 px-3 bg-emerald-100/85 dark:bg-emerald-950/40 border-r border-emerald-200/50 dark:border-emerald-900/40">
@@ -949,6 +956,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th className="py-3 px-3 text-right bg-amber-100/80 dark:bg-amber-950/35 border-r border-amber-200/50 dark:border-amber-900/40">
                           Phê duyệt
+                        </th>
+                        <th className="py-3 px-2 text-center whitespace-nowrap bg-teal-100/85 dark:bg-teal-950/40 border-r border-teal-200/50 dark:border-teal-900/40">
+                          Hủy ĐK
                         </th>
                         {isAdmin && (
                           <th className="py-3 px-3 text-center whitespace-nowrap bg-rose-100/85 dark:bg-rose-950/40 border-rose-200/50 dark:border-rose-900/40">
@@ -977,7 +987,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                             key={row.customerCode || `row-${idx}`}
                             onClick={() => {
                               if (!isRegisteredRow(row)) {
-                                setSupplementaryPick(null);
                                 setSelectedCustomerCode(row.customerCode);
                               }
                             }}
@@ -996,8 +1005,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                             <td className="py-3 px-3 text-[10px] max-w-[7rem] break-words border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38">
                               {row.finalStoreTypeQ1 || '—'}
                             </td>
-                            <td className="py-3 px-3 text-[10px] max-w-[6rem] break-words border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38">
-                              {row.saleQ1 || '—'}
+                            <td className="py-3 px-3 text-[10px] text-right max-w-[9rem] border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38 tabular-nums break-words">
+                              {formatSheetSaleQ1Display(row.saleQ1)}
                             </td>
                             <td className="py-3 px-3 text-[10px] border-r border-emerald-200/35 dark:border-emerald-900/30 bg-emerald-50/70 group-hover/row:bg-emerald-100/80 dark:bg-emerald-950/20 dark:group-hover/row:bg-emerald-950/35">
                               {row.district || '—'}
@@ -1036,6 +1045,23 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                 </span>
                               ) : (
                                 <span className="text-slate-500 font-extrabold">{row.pheDuyet || '—'}</span>
+                              )}
+                            </td>
+                            <td
+                              className="py-2 px-2 text-center border-r border-teal-200/40 dark:border-teal-900/35 bg-teal-50/50 group-hover/row:bg-teal-100/55 dark:bg-teal-950/20 dark:group-hover/row:bg-teal-950/32"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {canCancelTbq2Registration(row, currentEmployee.name, isAdmin) ? (
+                                <button
+                                  type="button"
+                                  onClick={e => handleCancelRegistration(e, row)}
+                                  disabled={cancellingCode === row.customerCode}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-teal-800 text-white dark:bg-teal-700 dark:text-teal-50 disabled:opacity-50 whitespace-nowrap"
+                                >
+                                  {cancellingCode === row.customerCode ? '…' : 'Hủy'}
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">—</span>
                               )}
                             </td>
                             {isAdmin && (
@@ -1078,6 +1104,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                 <span>
                   <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-900 align-middle mr-1" /> Trạng thái / Phê duyệt
                 </span>
+                <span>
+                  <span className="inline-block w-2 h-2 rounded-sm bg-teal-200 dark:bg-teal-800 align-middle mr-1" /> Hủy ĐK
+                </span>
                 {isAdmin && (
                   <span>
                     <span className="inline-block w-2 h-2 rounded-sm bg-rose-200 dark:bg-rose-900 align-middle mr-1" /> Duyệt
@@ -1116,24 +1145,16 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[#404945] dark:text-slate-400 ml-1">
-                      Chọn cửa hàng (danh sách sheet) hoặc tìm KH bổ sung bên dưới
+                      Chọn cửa hàng (danh sách sheet — KH chưa đăng ký Q2)
                     </label>
                     <select
                       value={selectedCustomerCode}
-                      onChange={e => {
-                        setSupplementaryPick(null);
-                        setSelectedCustomerCode(e.target.value);
-                      }}
+                      onChange={e => setSelectedCustomerCode(e.target.value)}
                       className={`w-full h-12 px-4 bg-white dark:bg-slate-900 border rounded-xl text-sm focus:ring-2 focus:ring-[#003629]/20 outline-none border-[#c0c9c3]/30 dark:text-white ${
                         submitAttempted && !customerOk ? 'ring-2 ring-red-300' : ''
                       }`}
                     >
                       <option value="">— Chọn khách hàng —</option>
-                      {supplementaryPick && (
-                        <option value={supplementaryPick.code}>
-                          {supplementaryPick.name} ({supplementaryPick.code}) — từ sheet
-                        </option>
-                      )}
                       {assignableCustomers.map(c => (
                         <option key={c.customerCode} value={c.customerCode}>
                           {c.customerName} ({c.customerCode})
@@ -1142,76 +1163,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                     </select>
                     {submitAttempted && !customerOk && (
                       <p className="text-xs text-red-600 font-semibold">Chọn một khách hàng chưa đăng ký.</p>
-                    )}
-                  </div>
-
-                  <div className="pt-4 border-t border-[#c0c9c3]/30 dark:border-slate-600 space-y-2">
-                    <label className="text-xs font-semibold text-[#404945] dark:text-slate-400 ml-1">
-                      Tìm KH trên sheet {SHEET_DANGKYTBQ2} (chưa đăng ký Q2)
-                    </label>
-                    <input
-                      type="search"
-                      autoComplete="off"
-                      placeholder="Gõ mã, tên hoặc địa chỉ…"
-                      value={masterSearchQuery}
-                      onChange={e => setMasterSearchQuery(e.target.value)}
-                      className="w-full h-11 pl-3 pr-3 bg-white dark:bg-slate-900 border rounded-xl text-sm focus:ring-2 focus:ring-[#003629]/20 outline-none border-[#c0c9c3]/30 dark:text-white"
-                    />
-                    {masterSearchQuery.trim().length > 0 && masterSearchMatches.length === 0 && (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
-                        Không có dòng phù hợp trên sheet (hoặc KH đã đăng ký / không thuộc Rep của bạn).
-                      </p>
-                    )}
-                    {masterSearchMatches.length > 0 && (
-                      <ul className="rounded-xl border border-[#c0c9c3]/30 dark:border-slate-600 bg-white dark:bg-slate-900 max-h-56 overflow-y-auto divide-y divide-[#c0c9c3]/15 dark:divide-slate-700">
-                        {masterSearchMatches.map(c => (
-                          <li key={c.code}>
-                            <button
-                              type="button"
-                              className="w-full text-left px-3 py-2.5 hover:bg-[#edeeed] dark:hover:bg-slate-800 transition-colors"
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={() => {
-                                setSupplementaryPick(c);
-                                setSelectedCustomerCode(String(c.code).trim());
-                                setMasterSearchQuery('');
-                              }}
-                            >
-                              <div className="font-bold text-sm text-[#003629] dark:text-[#8abda9] tabular-nums">
-                                {c.code}
-                              </div>
-                              <div className="text-xs font-semibold text-[#191c1c] dark:text-slate-100">{c.name || '—'}</div>
-                              {c.address ? (
-                                <div className="text-[10px] text-[#404945] dark:text-slate-400 mt-0.5 line-clamp-2">
-                                  {c.address}
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-slate-400 italic mt-0.5">Chưa có địa chỉ</div>
-                              )}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {supplementaryPick && (
-                      <div className="flex flex-wrap items-start justify-between gap-2 rounded-xl bg-[#baeed9]/25 dark:bg-opella-green/15 border border-[#003629]/20 px-3 py-2 text-xs">
-                        <div className="min-w-0">
-                          <span className="font-bold text-[#003629] dark:text-[#8abda9]">Đang chọn từ sheet:</span>{' '}
-                          <span className="font-mono font-semibold">{supplementaryPick.code}</span> — {supplementaryPick.name}
-                          {supplementaryPick.address ? (
-                            <span className="block text-[10px] text-[#404945] dark:text-slate-400 mt-1">{supplementaryPick.address}</span>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSupplementaryPick(null);
-                            setSelectedCustomerCode('');
-                          }}
-                          className="shrink-0 text-[11px] font-bold underline text-red-700 dark:text-red-400"
-                        >
-                          Bỏ chọn
-                        </button>
-                      </div>
                     )}
                     {!loading && normalizedRows.length === 0 && (
                       <p className="text-[10px] text-amber-800 dark:text-amber-200/90">

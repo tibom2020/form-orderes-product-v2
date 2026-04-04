@@ -4,6 +4,7 @@ import type {
   CustomerSalesNoticePayload,
   RegisterDisplayTBQ2Payload,
   ApproveDisplayTBQ2Payload,
+  CancelDisplayTBQ2Payload,
 } from '../types';
 import type { AiChatRequestPayload, AiChatResponse } from '../types';
 
@@ -140,6 +141,38 @@ export const submitDisplayTBQ2Approval = async (
     }
   } catch (error) {
     console.error('submitDisplayTBQ2Approval:', error);
+    return { status: 'error', message: String(error) };
+  }
+};
+
+export const submitCancelDisplayTBQ2Registration = async (
+  url: string,
+  payload: Omit<CancelDisplayTBQ2Payload, 'action'>
+): Promise<{ status: string; message?: string }> => {
+  try {
+    const body: CancelDisplayTBQ2Payload = { action: 'cancelDisplayTBQ2', ...payload };
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { status?: string; ok?: boolean; message?: string };
+      if (parsed.status === 'success') return { status: 'success', message: parsed.message };
+      if (parsed.ok === true) return { status: 'success', message: parsed.message };
+      return {
+        status: 'error',
+        message: String(parsed.message || '') || 'Hủy đăng ký thất bại.',
+      };
+    } catch {
+      return { status: 'error', message: text?.slice(0, 200) || 'Phản hồi không hợp lệ' };
+    }
+  } catch (error) {
+    console.error('submitCancelDisplayTBQ2Registration:', error);
     return { status: 'error', message: String(error) };
   }
 };

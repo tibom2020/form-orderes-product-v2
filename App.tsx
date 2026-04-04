@@ -18,7 +18,7 @@ import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
-import StoreProgramRegistrationTab from './components/StoreProgramRegistrationTab';
+import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
@@ -823,7 +823,7 @@ const App: React.FC = () => {
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'storeRegistration' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <IdentificationIcon />
-            <span className="whitespace-nowrap">Đăng ký CT Trưng Bày 2026</span>
+            <span className="whitespace-nowrap">{STORE_PROGRAM_TAB_LABEL}</span>
           </button>
           <button
             onClick={() => setViewMode('purchaseHistory')}

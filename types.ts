@@ -388,3 +388,11 @@ export interface ApproveDisplayTBQ2Payload {
   employeeName: string;
   customerCode: string;
 }
+
+/** POST action cancelDisplayTBQ2 — hủy khi Chờ duyệt, hoàn Budget */
+export interface CancelDisplayTBQ2Payload {
+  action: 'cancelDisplayTBQ2';
+  employeeCode: string;
+  employeeName: string;
+  customerCode: string;
+}

@@ -361,3 +361,30 @@ export interface AiChatResponse {
   answer?: string;
   message?: string;
 }
+
+/** POST action registerDisplayTBQ2 → Apps Script */
+export interface RegisterDisplayTBQ2Payload {
+  action: 'registerDisplayTBQ2';
+  customerCode: string;
+  customerName: string;
+  /** Khi thêm dòng mới từ danh mục KH */
+  customerAddress?: string;
+  employeeName: string;
+  employeeCode: string;
+  storeTierId: string;
+  storeTypeLabel: string;
+  rewardVnd: number;
+  posmSummary: string;
+  /** SDT xác nhận trước khi gửi */
+  sdt?: string;
+  /** JSON: { "Frame OTC": 1, ... } — ghi số 1 vào cột trùng tên trên sheet */
+  posmFlagsJson?: string;
+}
+
+/** POST action approveDisplayTBQ2 — chỉ mã admin (Apps Script kiểm tra) */
+export interface ApproveDisplayTBQ2Payload {
+  action: 'approveDisplayTBQ2';
+  employeeCode: string;
+  employeeName: string;
+  customerCode: string;
+}

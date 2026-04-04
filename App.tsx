@@ -16,8 +16,9 @@ import SaleKhPsTab from './components/SaleKhPsTab';
 import QuarterSalesTrackingTab from './components/QuarterSalesTrackingTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
+import StoreProgramRegistrationTab from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
@@ -36,7 +37,7 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
-type ViewMode = 'order' | 'dashboard' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -818,6 +819,13 @@ const App: React.FC = () => {
             <span className="sm:hidden">BC</span>
           </button>
           <button
+            onClick={() => setViewMode('storeRegistration')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'storeRegistration' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <IdentificationIcon />
+            <span className="whitespace-nowrap">Đăng ký CT Trưng Bày 2026</span>
+          </button>
+          <button
             onClick={() => setViewMode('purchaseHistory')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'purchaseHistory' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -953,7 +961,9 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className={`container mx-auto p-4 flex-1 ${['order', 'dashboard', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}>
+      <main
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+      >
         {viewMode === 'order' && (
           <>
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
@@ -1016,6 +1026,14 @@ const App: React.FC = () => {
               setDashboardCustomerCode(null);
             }}
             onExportSales={handleExportSales}
+          />
+        )}
+
+        {viewMode === 'storeRegistration' && (
+          <StoreProgramRegistrationTab
+            currentEmployee={loggedInEmployee!}
+            scriptUrl={GOOGLE_SCRIPT_URL}
+            isAdmin={loggedInEmployee?.code === ADMIN_CODE}
           />
         )}
 

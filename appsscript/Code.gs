@@ -12,6 +12,38 @@ var GEMINI_MODEL = "gemini-2.5-flash";
 var clean = function(text) { return text ? text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; };
 var formatCurrency = function(amount) { return new Intl.NumberFormat('vi-VN').format(amount); };
 
+/** GET ?sheet=TEN_SHEET — trả JSON mảng object (hàng 1 = header). Cần deploy Web App: Anyone. */
+function doGet(e) {
+  try {
+    var sheetParam = e.parameter.sheet;
+    if (!sheetParam) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, message: "Missing sheet parameter" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(sheetParam);
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+    }
+    var values = sheet.getDataRange().getValues();
+    if (!values.length) {
+      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+    }
+    var headers = values[0].map(function (x) { return String(x).trim(); });
+    var out = [];
+    for (var r = 1; r < values.length; r++) {
+      var obj = {};
+      for (var c = 0; c < headers.length; c++) {
+        obj[headers[c]] = values[r][c];
+      }
+      out.push(obj);
+    }
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -22,6 +54,14 @@ function doPost(e) {
     output.setMimeType(ContentService.MimeType.JSON);
     var data = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // --- ACTION: ĐĂNG KÝ CT TRƯNG BÀY Q2 (DANGKYTBQ2 + REP_BUDGET_TBQ2) ---
+    if (data.action === "registerDisplayTBQ2") {
+      return handleRegisterDisplayTBQ2(data, ss, output);
+    }
+    if (data.action === "approveDisplayTBQ2") {
+      return handleApproveDisplayTBQ2(data, ss, output);
+    }
 
     // --- ACTION: MARKETING (Upload Ảnh & Đăng Ký Gói) ---
     if (data.action === "uploadImage" || data.action === "registerPackage") {
@@ -624,4 +664,245 @@ function saveGppCommentToSheet(data) {
       data.comment || ""
     ]);
   } catch (e) { Logger.log("Lỗi saveGppCommentToSheet: " + e.toString()); }
+}
+
+// ======================================================
+// CT TRƯNG BÀY Q2 — DANGKYTBQ2 & REP_BUDGET_TBQ2
+// ======================================================
+
+/** Trùng mã NV admin trong app (constants.ADMIN_CODE) */
+var TBQ2_ADMIN_EMPLOYEE_CODE = "20043741";
+
+function colIndexTBQ2_(headers, names) {
+  for (var i = 0; i < names.length; i++) {
+    var j = headers.indexOf(names[i]);
+    if (j !== -1) return j;
+  }
+  return -1;
+}
+
+function ensureRepBudgetSheetTBQ2_(ss) {
+  var name = "REP_BUDGET_TBQ2";
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow(["Rep", "Budget", "Đã Sử dụng", "Còn lại"]);
+    sh.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#d9ead3");
+  }
+  return sh;
+}
+
+function handleRegisterDisplayTBQ2(data, ss, output) {
+  var customerCode = String(data.customerCode || "").trim();
+  var customerName = String(data.customerName || "").trim();
+  var employeeName = String(data.employeeName || "").trim();
+  var employeeCode = String(data.employeeCode || "").trim();
+  var storeTypeLabel = String(data.storeTypeLabel || "").trim();
+  var storeTierId = String(data.storeTierId || "").trim();
+  var rewardVnd = Number(data.rewardVnd) || 0;
+  var posmSummary = String(data.posmSummary || "").trim();
+  var customerAddress = String(data.customerAddress || "").trim();
+  var sdtSubmit = String(data.sdt || "").trim();
+  var posmFlagsJson = String(data.posmFlagsJson || "").trim();
+  var isAdminRegister = String(employeeCode || "").trim() === TBQ2_ADMIN_EMPLOYEE_CODE;
+
+  if (!customerCode || !storeTypeLabel || !employeeName) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu mã KH, Storetype hoặc tên NV." }));
+  }
+
+  var sheet = ss.getSheetByName("DANGKYTBQ2");
+  if (!sheet) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy sheet DANGKYTBQ2. Tạo sheet và import mẫu Excel." }));
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet DANGKYTBQ2 chưa có dữ liệu." }));
+  }
+
+  var headers = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = colIndexTBQ2_(headers, ["CustomerCode", "MaKH", "Mã KH", "Code", "customerCode"]);
+  var repCol = colIndexTBQ2_(headers, ["Rep", "REP", "NV phụ trách"]);
+  var nameCol = colIndexTBQ2_(headers, ["CustomerName", "TenKH", "Tên KH", "Khách hàng"]);
+
+  if (codeCol < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "DANGKYTBQ2 thiếu cột mã KH (CustomerCode / MaKH)." }));
+  }
+
+  var rowIndex = -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() === customerCode) {
+      rowIndex = r + 1;
+      break;
+    }
+  }
+  if (rowIndex < 0) {
+    var newRow = [];
+    for (var zi = 0; zi < headers.length; zi++) newRow.push("");
+    newRow[codeCol] = customerCode;
+    if (nameCol >= 0) newRow[nameCol] = customerName;
+    if (repCol >= 0) newRow[repCol] = employeeName;
+    var addrColNew = colIndexTBQ2_(headers, ["Address", "DiaChi", "Địa chỉ", "Dia chi", "DC", "DiaChiKH"]);
+    if (addrColNew >= 0 && customerAddress) newRow[addrColNew] = customerAddress;
+    sheet.appendRow(newRow);
+    rowIndex = sheet.getLastRow();
+    values = sheet.getDataRange().getValues();
+  }
+
+  var rowData = values[rowIndex - 1];
+  if (repCol >= 0 && !isAdminRegister) {
+    var rowRep = String(rowData[repCol] || "").trim();
+    if (rowRep && employeeName && rowRep.toLowerCase() !== employeeName.toLowerCase()) {
+      return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng không thuộc Rep của bạn." }));
+    }
+  }
+
+  var ttCol = colIndexTBQ2_(headers, ["TrangThai", "Trạng thái", "Status"]);
+  if (ttCol >= 0) {
+    var st = String(rowData[ttCol] || "");
+    if (st.indexOf("Đã Đăng ký") >= 0 || st.toLowerCase().indexOf("da dang ky") >= 0) {
+      return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng đã được đăng ký." }));
+    }
+  }
+
+  function setCell(colNames, value) {
+    var ci = colIndexTBQ2_(headers, colNames);
+    if (ci >= 0) sheet.getRange(rowIndex, ci + 1).setValue(value);
+  }
+
+  function posmLabelHeaderCandidates_(label) {
+    var s = String(label).trim();
+    if (!s) return [];
+    var noSlash = s.replace(/\//g, " ");
+    return [
+      s,
+      noSlash,
+      s.replace(/\//g, ""),
+      "POSM " + s,
+      "POSM_" + s.replace(/[^a-zA-Z0-9À-ỹ]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "")
+    ];
+  }
+
+  function setPosmOneFromLabel_(label) {
+    var cands = posmLabelHeaderCandidates_(label);
+    for (var pi = 0; pi < cands.length; pi++) {
+      var ci = colIndexTBQ2_(headers, [cands[pi]]);
+      if (ci >= 0) {
+        sheet.getRange(rowIndex, ci + 1).setValue(1);
+        return;
+      }
+    }
+  }
+
+  setCell(["StoreType", "Store Type", "LoaiCH", "Tier"], storeTypeLabel);
+  setCell(["FinalStoreTypeQ2", "Final Store Type Q2", "FinalStoreType Q2"], storeTypeLabel);
+  setCell(["StoreTierId", "storeTierId"], storeTierId);
+  setCell(["POSM_CamKet", "POSM", "POSM Cam ket"], posmSummary);
+
+  try {
+    var flagsObj = posmFlagsJson ? JSON.parse(posmFlagsJson) : {};
+    if (flagsObj && typeof flagsObj === "object") {
+      Object.keys(flagsObj).forEach(function (k) {
+        var v = flagsObj[k];
+        if (v === 1 || v === "1" || v === true) setPosmOneFromLabel_(k);
+      });
+    }
+  } catch (pe) {
+    Logger.log("posmFlagsJson parse: " + pe);
+  }
+
+  if (sdtSubmit) {
+    setCell(["SDT", "Phone", "Điện thoại", "SoDT", "SĐT", "DienThoai"], sdtSubmit);
+  }
+  setCell(["TrangThai", "Trạng thái", "Status"], "Đã Đăng ký");
+  setCell(["PheDuyet", "Phê duyệt", "Phe duyet"], "Chờ duyệt");
+  setCell(["NgayDangKy", "Ngày đăng ký"], new Date());
+  setCell(["NVDangKy", "NV đăng ký"], employeeName);
+  setCell(["MaNVDangKy", "EmployeeCode", "Mã NV"], employeeCode);
+  if (customerName && nameCol >= 0) {
+    var curName = String(sheet.getRange(rowIndex, nameCol + 1).getValue() || "").trim();
+    if (!curName) sheet.getRange(rowIndex, nameCol + 1).setValue(customerName);
+  }
+
+  var bud = ensureRepBudgetSheetTBQ2_(ss);
+  var lastCol = Math.max(4, bud.getLastColumn());
+  var bh = bud.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  var repBC = colIndexTBQ2_(bh, ["Rep", "REP"]);
+  var budgetC = colIndexTBQ2_(bh, ["Budget", "Ngân sách"]);
+  var usedC = colIndexTBQ2_(bh, ["Đã Sử dụng", "Da su dung", "DaSuDung"]);
+  var leftC = colIndexTBQ2_(bh, ["Còn lại", "Con lai", "ConLai"]);
+  if (repBC < 0 || budgetC < 0 || usedC < 0 || leftC < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "REP_BUDGET_TBQ2 cần cột: Rep, Budget, Đã Sử dụng, Còn lại" }));
+  }
+
+  var bvals = bud.getDataRange().getValues();
+  var bRow = -1;
+  for (var br = 1; br < bvals.length; br++) {
+    if (String(bvals[br][repBC] || "").trim().toLowerCase() === employeeName.toLowerCase()) {
+      bRow = br + 1;
+      break;
+    }
+  }
+
+  if (bRow < 0) {
+    bud.appendRow([employeeName, 0, rewardVnd, -rewardVnd]);
+  } else {
+    var budget = Number(bud.getRange(bRow, budgetC + 1).getValue()) || 0;
+    var used = Number(bud.getRange(bRow, usedC + 1).getValue()) || 0;
+    used += rewardVnd;
+    bud.getRange(bRow, usedC + 1).setValue(used);
+    bud.getRange(bRow, leftC + 1).setValue(budget - used);
+  }
+
+  return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+function handleApproveDisplayTBQ2(data, ss, output) {
+  var empCode = String(data.employeeCode || "").trim();
+  if (empCode !== TBQ2_ADMIN_EMPLOYEE_CODE) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Chỉ tài khoản admin được phê duyệt." }));
+  }
+  var customerCode = String(data.customerCode || "").trim();
+  if (!customerCode) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu mã khách hàng." }));
+  }
+  var sheet = ss.getSheetByName("DANGKYTBQ2");
+  if (!sheet) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy sheet DANGKYTBQ2." }));
+  }
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet DANGKYTBQ2 chưa có dữ liệu." }));
+  }
+  var headers = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = colIndexTBQ2_(headers, ["CustomerCode", "MaKH", "Mã KH", "Code", "customerCode"]);
+  if (codeCol < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu cột mã KH." }));
+  }
+  var rowIndex = -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() === customerCode) {
+      rowIndex = r + 1;
+      break;
+    }
+  }
+  if (rowIndex < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy mã KH." }));
+  }
+  function setCellAppr(colNames, value) {
+    var ci = colIndexTBQ2_(headers, colNames);
+    if (ci >= 0) sheet.getRange(rowIndex, ci + 1).setValue(value);
+  }
+  var ttCol = colIndexTBQ2_(headers, ["TrangThai", "Trạng thái", "Status"]);
+  if (ttCol >= 0) {
+    var st = String(sheet.getRange(rowIndex, ttCol + 1).getValue() || "");
+    if (st.indexOf("Đã Đăng ký") < 0 && st.toLowerCase().indexOf("da dang ky") < 0) {
+      return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng chưa ở trạng thái đã đăng ký." }));
+    }
+  }
+  setCellAppr(["PheDuyet", "Phê duyệt", "Phe duyet"], "Đã duyệt");
+  setCellAppr(["NgayPheDuyet", "Ngày phê duyệt"], new Date());
+  var adminName = String(data.employeeName || "").trim();
+  if (adminName) setCellAppr(["NVPheDuyet", "NV phê duyệt"], adminName);
+  return output.setContent(JSON.stringify({ status: "success" }));
 }

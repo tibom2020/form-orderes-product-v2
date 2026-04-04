@@ -43,6 +43,15 @@ export const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
+/** Số đầy đủ kiểu VN: 5.000.000đ (dấu chấm phân tách hàng nghìn, hỗ trợ âm) */
+export const formatVndDong = (value: number): string => {
+    if (!Number.isFinite(value)) return '—';
+    const n = Math.round(value);
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    return `${sign}${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(abs)}đ`;
+};
+
 /** Lấy 2 chữ cái viết hoa từ tên (VD: "Ly Minh Dat" → "MD", "Le Huu Phuc" → "HP") */
 export const getInitials = (name: string | undefined | null): string => {
     try {

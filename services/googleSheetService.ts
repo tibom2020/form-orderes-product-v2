@@ -1,7 +1,23 @@
-
 import type { CartItem } from '../types';
-import type { RebateCustomerNoticePayload, CustomerSalesNoticePayload } from '../types';
+import type {
+  RebateCustomerNoticePayload,
+  CustomerSalesNoticePayload,
+  RegisterDisplayTBQ2Payload,
+  ApproveDisplayTBQ2Payload,
+} from '../types';
 import type { AiChatRequestPayload, AiChatResponse } from '../types';
+
+/**
+ * Bỏ ?query và #hash khỏi URL Web App.
+ * Tránh ?sheet= rỗng / tham số thừa khiến doGet báo "Missing sheet parameter".
+ */
+export function webAppScriptUrlBase(url: string): string {
+  const u = url.trim();
+  const q = u.indexOf('?');
+  const h = u.indexOf('#');
+  const cut = Math.min(q === -1 ? u.length : q, h === -1 ? u.length : h);
+  return u.slice(0, cut);
+}
 
 interface OrderPayload {
   employeeName: string;
@@ -47,18 +63,84 @@ export const postOrderToGoogleSheet = async (
  */
 export const fetchDataFromSheet = async <T>(url: string, sheetName: string): Promise<T[]> => {
   try {
-    // Thêm timestamp (_t) để tránh browser cache kết quả cũ
-    const separator = url.includes('?') ? '&' : '?';
+    const base = webAppScriptUrlBase(url);
     const timestamp = new Date().getTime();
-    const fetchUrl = `${url}${separator}sheet=${sheetName}&_t=${timestamp}`;
+    const enc = encodeURIComponent(sheetName);
+    const fetchUrl = `${base}?sheet=${enc}&_t=${timestamp}`;
 
     const response = await fetch(fetchUrl);
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
+    if (!Array.isArray(data)) return [];
     return data as T[];
   } catch (error) {
     console.error(`Error fetching from ${sheetName}:`, error);
     return [];
+  }
+};
+
+/** Đăng ký CT trưng bày Q2 — cần Web App trả JSON (CORS). */
+export const submitDisplayTBQ2Registration = async (
+  url: string,
+  payload: Omit<RegisterDisplayTBQ2Payload, 'action'>
+): Promise<{ status: string; message?: string }> => {
+  try {
+    const body: RegisterDisplayTBQ2Payload = { action: 'registerDisplayTBQ2', ...payload };
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { status?: string; ok?: boolean; message?: string };
+      if (parsed.status === 'success') return { status: 'success' };
+      if (parsed.ok === true) return { status: 'success' };
+      return {
+        status: 'error',
+        message: String(parsed.message || '') || 'Gửi thất bại.',
+      };
+    } catch {
+      return { status: 'error', message: text?.slice(0, 200) || 'Phản hồi không hợp lệ' };
+    }
+  } catch (error) {
+    console.error('submitDisplayTBQ2Registration:', error);
+    return { status: 'error', message: String(error) };
+  }
+};
+
+export const submitDisplayTBQ2Approval = async (
+  url: string,
+  payload: Omit<ApproveDisplayTBQ2Payload, 'action'>
+): Promise<{ status: string; message?: string }> => {
+  try {
+    const body: ApproveDisplayTBQ2Payload = { action: 'approveDisplayTBQ2', ...payload };
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { status?: string; ok?: boolean; message?: string };
+      if (parsed.status === 'success') return { status: 'success' };
+      if (parsed.ok === true) return { status: 'success' };
+      return {
+        status: 'error',
+        message: String(parsed.message || '') || 'Phê duyệt thất bại.',
+      };
+    } catch {
+      return { status: 'error', message: text?.slice(0, 200) || 'Phản hồi không hợp lệ' };
+    }
+  } catch (error) {
+    console.error('submitDisplayTBQ2Approval:', error);
+    return { status: 'error', message: String(error) };
   }
 };
 

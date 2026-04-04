@@ -8,6 +8,11 @@ export const PROMO_UPDATE_DATE = '29/04/2026';
 export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD5n_kNXKaJhIpfVHW014ZZ4AE8PEz-29d3i6ym-fhNIf2T10Gntq7F13N4CHmb9DTnA/exec';
 export const ADMIN_CODE = '20043741';
 
+/** Sheet danh sách KH đăng ký CT trưng bày Q2 — import từ mẫu DANGKYTBQ2.xlsx */
+export const SHEET_DANGKYTBQ2 = 'DANGKYTBQ2';
+/** Sheet quản lý ngân sách Rep: Rep | Budget | Đã Sử dụng | Còn lại */
+export const SHEET_REP_BUDGET_TBQ2 = 'REP_BUDGET_TBQ2';
+
 export const EMPLOYEES: Employee[] = [
   { name: 'Huynh Thi To Trinh', code: '20045852' },
   { name: 'Ly Minh Dat', code: '20044677' },

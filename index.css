@@ -1,1 +1,85 @@
 /* App styles - Tailwind loaded via CDN in index.html */
+
+/* Cuộn ngang/dọc mượt trên iOS/iPad; thanh cuộn mỏng khi nội dung rộng hơn màn hình */
+.tbq2-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 54, 41, 0.4) rgba(0, 0, 0, 0.06);
+}
+.tbq2-scroll-x::-webkit-scrollbar {
+  height: 10px;
+}
+.tbq2-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 54, 41, 0.35);
+  border-radius: 9999px;
+}
+.tbq2-scroll-x::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
+}
+.dark .tbq2-scroll-x {
+  scrollbar-color: rgba(138, 189, 169, 0.5) rgba(255, 255, 255, 0.06);
+}
+.dark .tbq2-scroll-x::-webkit-scrollbar-thumb {
+  background-color: rgba(138, 189, 169, 0.45);
+}
+.dark .tbq2-scroll-x::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tbq2-scroll-xy {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 54, 41, 0.4) rgba(0, 0, 0, 0.06);
+}
+.tbq2-scroll-xy::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.tbq2-scroll-xy::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 54, 41, 0.35);
+  border-radius: 9999px;
+}
+.tbq2-scroll-xy::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
+}
+.dark .tbq2-scroll-xy {
+  scrollbar-color: rgba(138, 189, 169, 0.5) rgba(255, 255, 255, 0.06);
+}
+.dark .tbq2-scroll-xy::-webkit-scrollbar-thumb {
+  background-color: rgba(138, 189, 169, 0.45);
+}
+.dark .tbq2-scroll-xy::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Bảng TBQ2: cố định hàng tiêu đề + cột Khách hàng khi cuộn (border-separate tránh lỗi sticky với collapse) */
+.tbq2-sticky-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.tbq2-sticky-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+}
+.tbq2-sticky-table thead th:first-child {
+  left: 0;
+  z-index: 22;
+  box-shadow: 2px 2px 0 0 rgba(15, 23, 42, 0.08);
+}
+.tbq2-sticky-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  box-shadow: 4px 0 14px -6px rgba(15, 23, 42, 0.2);
+}
+.dark .tbq2-sticky-table thead th:first-child {
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.35);
+}
+.dark .tbq2-sticky-table tbody td:first-child {
+  box-shadow: 4px 0 14px -6px rgba(0, 0, 0, 0.5);
+}

@@ -644,6 +644,89 @@ function sendCustomerSalesNotification(data) {
   } catch (e) { Logger.log("Lỗi sendCustomerSalesNotification: " + e.toString()); }
 }
 
+/** Đăng ký CT trưng bày Q2 (DANGKYTBQ2) — Telegram + N8N giống luồng đơn hàng */
+function sendDisplayTBQ2RegistrationNotification(payload) {
+  try {
+    var now = new Date();
+    var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm:ss");
+    var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
+    var posmLines = "";
+    try {
+      var fo = payload.posmFlagsJson ? JSON.parse(payload.posmFlagsJson) : {};
+      if (fo && typeof fo === "object") {
+        Object.keys(fo).forEach(function (k) {
+          var v = fo[k];
+          if (v === 1 || v === "1" || v === true) posmLines += "▪️ " + clean(k) + "\n";
+        });
+      }
+    } catch (pe) { Logger.log("TBQ2 notif posm parse: " + pe); }
+    if (!posmLines && payload.posmSummary) {
+      posmLines = "<code>" + clean(String(payload.posmSummary).replace(/</g, "")) + "</code>\n";
+    }
+    if (!posmLines) posmLines = "—\n";
+    var message =
+      "🏪 <b>THÔNG BÁO ĐĂNG KÝ THÀNH CÔNG PS 2026</b>\n" +
+      "--------------------------------\n" +
+      "⏰ <b>Thời gian:</b> " + timeStr + " | " + dateStr + "\n" +
+      "🔢 <b>Code KH:</b> " + clean(payload.customerCode) + "\n" +
+      "🏠 <b>Tên KH:</b> " + clean(payload.customerName) + "\n" +
+      "📱 <b>SDT:</b> " + clean(payload.sdt || "") + "\n" +
+      "👥 <b>Rep (sheet):</b> " + clean(payload.sheetRep || "") + "\n" +
+      "--------------------------------\n" +
+      "📌 <b>FinalStoreTypeQ2:</b> " + clean(payload.storeTypeLabel) + "\n" +
+      "🧾 <b>Hạng mục / POSM:</b>\n" + posmLines +
+      "--------------------------------\n" +
+      "💰 <b>Tiền thưởng dự kiến:</b> " + formatCurrency(Number(payload.rewardVnd || 0)) + " VNĐ\n" +
+      "--------------------------------\n" +
+      "✅ Đã ghi DANGKYTBQ2 + trừ ngân sách REP_BUDGET_TBQ2.";
+    if (BOT_TOKEN && CHAT_ID) {
+      UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+        muteHttpExceptions: true
+      });
+    }
+    if (N8N_WEBHOOK_URL) {
+      var posmList = [];
+      try {
+        var fo2 = payload.posmFlagsJson ? JSON.parse(payload.posmFlagsJson) : {};
+        if (fo2 && typeof fo2 === "object") {
+          Object.keys(fo2).forEach(function (k) {
+            var v = fo2[k];
+            if (v === 1 || v === "1" || v === true) posmList.push(k);
+          });
+        }
+      } catch (e2) {}
+      UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify({
+          event_type: "display_tbq2_registration",
+          data: {
+            customer_code: payload.customerCode,
+            customer_name: payload.customerName,
+            sdt: payload.sdt || "",
+            rep_sheet: payload.sheetRep || "",
+            employee_name: payload.employeeName,
+            employee_code: payload.employeeCode || "",
+            final_store_type_q2: payload.storeTypeLabel,
+            store_tier_id: payload.storeTierId || "",
+            reward_vnd: Number(payload.rewardVnd) || 0,
+            posm_summary: payload.posmSummary || "",
+            posm_items: posmList,
+            timestamp_iso: now.toISOString()
+          },
+          full_message: message
+        }),
+        muteHttpExceptions: true
+      });
+    }
+  } catch (e) {
+    Logger.log("Lỗi sendDisplayTBQ2RegistrationNotification: " + e.toString());
+  }
+}
+
 function saveGppCommentToSheet(data) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -853,6 +936,21 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
     bud.getRange(bRow, usedC + 1).setValue(used);
     bud.getRange(bRow, leftC + 1).setValue(budget - used);
   }
+
+  var sheetRepForNotif = repCol >= 0 ? String(rowData[repCol] || "").trim() : "";
+  sendDisplayTBQ2RegistrationNotification({
+    customerCode: customerCode,
+    customerName: customerName,
+    employeeName: employeeName,
+    employeeCode: employeeCode,
+    sdt: sdtSubmit,
+    sheetRep: sheetRepForNotif || employeeName,
+    storeTypeLabel: storeTypeLabel,
+    storeTierId: storeTierId,
+    rewardVnd: rewardVnd,
+    posmSummary: posmSummary,
+    posmFlagsJson: posmFlagsJson
+  });
 
   return output.setContent(JSON.stringify({ status: "success" }));
 }

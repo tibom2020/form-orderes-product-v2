@@ -247,6 +247,17 @@ function sumAllRepBudgetRows(rows: Record<string, unknown>[]) {
   return { budget, used, left: leftSum, rowCount };
 }
 
+/** Dữ liệu hiển thị modal sau đăng ký thành công */
+interface RegistrationSuccessSummary {
+  customerCode: string;
+  customerName: string;
+  sdt: string;
+  rep: string;
+  finalStoreTypeQ2: string;
+  posmItems: string[];
+  rewardVnd: number;
+}
+
 interface StoreProgramRegistrationTabProps {
   currentEmployee: Employee;
   scriptUrl: string;
@@ -277,6 +288,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     url: string;
     alt: string;
   } | null>(null);
+  const [registrationSuccessModal, setRegistrationSuccessModal] = useState<RegistrationSuccessSummary | null>(null);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
   /** Lọc theo FinalStoreTypeQ1: null = tất cả; Q1_FILTER_NON_EMPTY = có dữ liệu cột; hoặc chuỗi khớp chính xác */
@@ -484,6 +496,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [imagePreviewModal]);
 
+  useEffect(() => {
+    if (!registrationSuccessModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRegistrationSuccessModal(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [registrationSuccessModal]);
+
   const posmValidation = useMemo(() => {
     if (!tier) return { ok: false, message: null as string | null };
     return validatePosm(tier, choiceSingle, choiceMulti);
@@ -634,7 +655,21 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     }
     setSubmitBusy(false);
     if (res.status === 'success') {
-      setSubmitMessage({ type: 'ok', text: 'Đã gửi đăng ký thành công.' });
+      const repDisplay =
+        (supplementaryPick?.rep?.trim() ||
+          selectedRow?.rep?.trim() ||
+          currentEmployee.name) ||
+        '—';
+      setRegistrationSuccessModal({
+        customerCode: regCode,
+        customerName: regName || '—',
+        sdt: confirmSdt.replace(/\D/g, ''),
+        rep: repDisplay,
+        finalStoreTypeQ2: tier.label,
+        posmItems: getSelectedPosmLabels(tier, choiceSingle, choiceMulti),
+        rewardVnd: tier.reward,
+      });
+      setSubmitMessage(null);
       const dk = await fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2);
       const bud = await fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2);
       setSheetRows(dk);
@@ -1481,6 +1516,88 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           </>
         )}
       </main>
+
+      {registrationSuccessModal && (
+        <div
+          className="fixed inset-0 z-[101] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[3px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thông báo đăng ký thành công"
+          onClick={() => setRegistrationSuccessModal(null)}
+        >
+          <div
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-[#003629]/20 dark:border-[#8abda9]/30 bg-[#f9f9f8] dark:bg-slate-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 rounded-t-2xl bg-gradient-to-r from-[#003629] to-[#1b4d3e] text-white text-center">
+              <p className="text-[11px] font-bold tracking-[0.2em] opacity-90 mb-1">PS 2026</p>
+              <h2 className="text-base sm:text-lg font-extrabold leading-snug">
+                THÔNG BÁO ĐĂNG KÝ THÀNH CÔNG PS 2026
+              </h2>
+            </div>
+            <div className="divide-y divide-[#c0c9c3]/25 dark:divide-slate-600">
+              <div className="px-4 py-3 sm:px-5 bg-sky-50/90 dark:bg-sky-950/35">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-800 dark:text-sky-200">Code KH</p>
+                <p className="text-sm font-mono font-bold text-[#191c1c] dark:text-slate-100 mt-0.5">
+                  {registrationSuccessModal.customerCode}
+                </p>
+              </div>
+              <div className="px-4 py-3 sm:px-5 bg-white dark:bg-slate-900/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#404945] dark:text-slate-400">Tên KH</p>
+                <p className="text-sm font-bold text-[#003629] dark:text-[#8abda9] mt-0.5">
+                  {registrationSuccessModal.customerName}
+                </p>
+              </div>
+              <div className="px-4 py-3 sm:px-5 bg-emerald-50/85 dark:bg-emerald-950/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-200">SDT</p>
+                <p className="text-sm font-semibold tabular-nums text-[#191c1c] dark:text-slate-100 mt-0.5">
+                  {registrationSuccessModal.sdt || '—'}
+                </p>
+              </div>
+              <div className="px-4 py-3 sm:px-5 bg-violet-50/85 dark:bg-violet-950/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-violet-800 dark:text-violet-200">Rep</p>
+                <p className="text-sm font-semibold text-[#191c1c] dark:text-slate-100 mt-0.5">
+                  {registrationSuccessModal.rep}
+                </p>
+              </div>
+              <div className="px-4 py-3 sm:px-5 bg-amber-50/80 dark:bg-amber-950/25">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                  FinalStoreTypeQ2 — các hạng mục đăng ký
+                </p>
+                <p className="text-sm font-extrabold text-[#003629] dark:text-[#8abda9] mt-1">
+                  {registrationSuccessModal.finalStoreTypeQ2}
+                </p>
+                {registrationSuccessModal.posmItems.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-xs font-medium text-[#191c1c] dark:text-slate-200 list-disc list-inside">
+                    {registrationSuccessModal.posmItems.map(item => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-[#404945] dark:text-slate-400 mt-1">—</p>
+                )}
+              </div>
+              <div className="px-4 py-3 sm:px-5 bg-[#baeed9]/35 dark:bg-[#003629]/25">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#1b4d3e] dark:text-[#8abda9]">
+                  Tiền thưởng dự kiến
+                </p>
+                <p className="text-lg font-extrabold text-[#003629] dark:text-[#8abda9] tabular-nums mt-0.5">
+                  {formatCurrency(registrationSuccessModal.rewardVnd)} VNĐ
+                </p>
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 border-t border-[#c0c9c3]/25 dark:border-slate-600 bg-[#edeeed]/60 dark:bg-slate-800/50">
+              <button
+                type="button"
+                onClick={() => setRegistrationSuccessModal(null)}
+                className="w-full h-12 rounded-xl bg-[#003629] text-white dark:bg-[#8abda9] dark:text-[#1a3028] font-bold text-sm shadow-md hover:opacity-95 active:scale-[0.99] transition-all"
+              >
+                Quay lại trang đăng ký
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {imagePreviewModal && (
         <div

@@ -72,6 +72,8 @@ interface PurchaseHistoryTabProps {
     onReloadData?: () => void;
 }
 
+type ProductCustomerAggRow = { code: string; name: string; district: string; qty: number; val: number; hasBm: boolean };
+
 const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
     purchaseHistory,
     salesRecords,
@@ -94,7 +96,6 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
     const nameSearchWrapRef = useRef<HTMLDivElement>(null);
     const nameSearchInputRef = useRef<HTMLInputElement>(null);
 
-    const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [productCustomerSearch, setProductCustomerSearch] = useState('');
     const [showExportNoticeModal, setShowExportNoticeModal] = useState(false);
     const [includeProductInExport, setIncludeProductInExport] = useState(true);
@@ -166,6 +167,18 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
         });
     }, [userScopedHistory, channelFilter, typeFilter, monthFilter, productFilter]);
 
+    /** Cùng điều kiện kênh / loại / tháng nhưng chưa lọc theo sản phẩm — dùng cho dropdown chọn SP. */
+    const baseFilteredWithoutProduct = useMemo(() => {
+        return userScopedHistory.filter((h) => {
+            if (channelFilter === 'gg' && h.HistorySource !== 'GG') return false;
+            if (channelFilter === 'bm' && h.HistorySource !== 'BM') return false;
+            if (typeFilter === 'import' && !isImportRow(h)) return false;
+            if (typeFilter === 'local' && !isLocalRow(h)) return false;
+            if (monthFilter !== 'all' && getMonthKeyFromInvoiceDate(h.InvoiceDate) !== monthFilter) return false;
+            return true;
+        });
+    }, [userScopedHistory, channelFilter, typeFilter, monthFilter]);
+
     /** Danh sách KH duy nhất trong lịch sử đã lọc — dùng cho autocomplete. */
     const customerSearchOptions = useMemo(() => {
         const idToFallback = new Map<string, string | undefined>();
@@ -233,18 +246,18 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
 
     const uniqueProducts = useMemo(() => {
         const set = new Set<string>();
-        baseFiltered.forEach((h) => {
+        baseFilteredWithoutProduct.forEach((h) => {
             const p = (h.Product || '').trim();
             if (p) set.add(p);
         });
         return Array.from(set).sort((a, b) => a.localeCompare(b));
-    }, [baseFiltered]);
+    }, [baseFilteredWithoutProduct]);
 
     useEffect(() => {
-        if (subView === 'product' && selectedProduct && !uniqueProducts.includes(selectedProduct)) {
-            setSelectedProduct(uniqueProducts[0] || '');
+        if (productFilter !== 'all' && !uniqueProducts.includes(productFilter)) {
+            setProductFilter('all');
         }
-    }, [subView, uniqueProducts, selectedProduct]);
+    }, [uniqueProducts, productFilter]);
 
     const customerViewRows = useMemo(() => {
         const codeQ = customerCodeQuery.trim().toLowerCase();
@@ -278,22 +291,21 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
         return { count: customerViewRows.length, totalQty, totalVal };
     }, [customerViewRows]);
 
-    const productAggregates = useMemo(() => {
-        if (!selectedProduct) return { totalQty: 0, customerCount: 0, rows: [] as { code: string; name: string; district: string; qty: number; val: number; hasBm: boolean }[] };
+    /** Mặc định tab «Theo sản phẩm»: mọi KH có giao dịch trong baseFiltered (đã áp kênh / loại / tháng / SP ở bộ lọc). */
+    const productAllAggregates = useMemo(() => {
         const map = new Map<string, { qty: number; val: number; name?: string; hasBm: boolean }>();
-        baseFiltered
-            .filter((h) => (h.Product || '').trim() === selectedProduct)
-            .forEach((h) => {
-                const code = String(h.CustomerID).trim();
-                const cur = map.get(code) || { qty: 0, val: 0, name: h.CustomerName, hasBm: false };
-                map.set(code, {
-                    qty: cur.qty + (Number(h.Qty) || 0),
-                    val: cur.val + (Number(h.Value) || 0),
-                    name: cur.name || h.CustomerName,
-                    hasBm: cur.hasBm || isBmRow(h),
-                });
+        baseFiltered.forEach((h) => {
+            const code = String(h.CustomerID || '').trim();
+            if (!code) return;
+            const cur = map.get(code) || { qty: 0, val: 0, name: h.CustomerName, hasBm: false };
+            map.set(code, {
+                qty: cur.qty + (Number(h.Qty) || 0),
+                val: cur.val + (Number(h.Value) || 0),
+                name: cur.name || h.CustomerName,
+                hasBm: cur.hasBm || isBmRow(h),
             });
-        const rows = Array.from(map.entries())
+        });
+        const rows: ProductCustomerAggRow[] = Array.from(map.entries())
             .map(([code, v]) => {
                 const mappedName = salesByCode.get(code)?.CustomerName?.trim() || '';
                 const historyName = String(v.name || '').trim();
@@ -311,16 +323,17 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
         const q = productCustomerSearch.trim();
         const filtered = q
             ? rows.filter((r) => {
-                const t = removeVietnameseTones(q).toLowerCase();
-                return (
-                    removeVietnameseTones(r.name).toLowerCase().includes(t) ||
-                    String(r.code).toLowerCase().includes(t)
-                );
-            })
+                  const t = removeVietnameseTones(q).toLowerCase();
+                  return (
+                      removeVietnameseTones(r.name).toLowerCase().includes(t) ||
+                      String(r.code).toLowerCase().includes(t)
+                  );
+              })
             : rows;
         const totalQty = filtered.reduce((s, r) => s + r.qty, 0);
-        return { totalQty, customerCount: filtered.length, rows: filtered.sort((a, b) => b.val - a.val) };
-    }, [baseFiltered, selectedProduct, productCustomerSearch, salesByCode]);
+        const totalVal = filtered.reduce((s, r) => s + r.val, 0);
+        return { totalQty, totalVal, customerCount: filtered.length, rows: filtered.sort((a, b) => b.val - a.val) };
+    }, [baseFiltered, productCustomerSearch, salesByCode]);
 
     const buildCustomerExportMessage = (includeProducts: boolean): string => {
         const channelLabel = channelFilter === 'all' ? 'Tất cả' : channelFilter === 'gg' ? 'GG' : 'BM';
@@ -562,7 +575,7 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
                                     onChange={(e) => setProductFilter(e.target.value)}
                                     className="w-full appearance-none bg-[#e1e3e4] dark:bg-slate-700 border-none rounded-xl px-4 py-3 pr-10 text-sm font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-[#003725]/20"
                                 >
-                                    <option value="all">SẢN PHẨM: Tất cả</option>
+                                    <option value="all">Lọc Sản Phẩm: Tất cả</option>
                                     {uniqueProducts.map((p) => (
                                         <option key={p} value={p}>
                                             {p}
@@ -804,144 +817,178 @@ const PurchaseHistoryTab: React.FC<PurchaseHistoryTabProps> = ({
 
             {subView === 'product' && (
                 <div className="space-y-4 animate-fade-in">
-                    <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar">
-                        <div className="flex items-center gap-2 flex-shrink-0 bg-[#f2f4f5] dark:bg-slate-800 p-1 rounded-xl">
-                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 px-2 uppercase tracking-widest">Kênh</span>
-                            {(['all', 'gg', 'bm'] as const).map((k) => (
-                                <button
-                                    key={k}
-                                    type="button"
-                                    onClick={() => setChannelFilter(k)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${channelFilter === k ? 'bg-[#003725] text-white shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-                                >
-                                    {k === 'all' ? 'All' : k === 'gg' ? 'GG' : 'BM'}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 bg-[#f2f4f5] dark:bg-slate-800 p-1 rounded-xl">
-                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 px-2 uppercase tracking-widest">Loại</span>
-                            {(['all', 'import', 'local'] as const).map((k) => (
-                                <button
-                                    key={k}
-                                    type="button"
-                                    onClick={() => setTypeFilter(k)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${typeFilter === k ? 'bg-[#003725] text-white shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-                                >
-                                    {k === 'all' ? 'All' : k === 'import' ? 'IMPORT' : 'LOCAL'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="relative col-span-2">
-                            <select
-                                value={selectedProduct}
-                                onChange={(e) => setSelectedProduct(e.target.value)}
-                                className="w-full appearance-none bg-[#e1e3e4] dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-[#003725]/20"
-                            >
-                                <option value="">Chọn sản phẩm…</option>
-                                {uniqueProducts.map((p) => (
-                                    <option key={p} value={p}>
-                                        {p}
-                                    </option>
+                    <header className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-opella-beige/95 dark:bg-[#1a3028]/95 backdrop-blur rounded-b-xl">
+                        <h2 className="font-bold text-sm text-slate-800 dark:text-white uppercase tracking-wide mb-3">Bộ lọc</h2>
+                        <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar">
+                            <div className="flex items-center gap-2 flex-shrink-0 bg-[#f2f4f5] dark:bg-slate-800 p-1 rounded-xl">
+                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 px-2 uppercase tracking-widest">Kênh</span>
+                                {(['all', 'gg', 'bm'] as const).map((k) => (
+                                    <button
+                                        key={k}
+                                        type="button"
+                                        onClick={() => setChannelFilter(k)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${channelFilter === k ? 'bg-[#003725] text-white shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
+                                    >
+                                        {k === 'all' ? 'All' : k === 'gg' ? 'GG' : 'BM'}
+                                    </button>
                                 ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {selectedProduct && (
-                        <>
-                            <section className="px-1">
-                                <div className="bg-[#f2f4f5] dark:bg-slate-800 rounded-xl p-5 relative overflow-hidden border border-slate-200/60 dark:border-slate-600">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-[#0d4f38]/5 rounded-full -mr-8 -mt-8" />
-                                    <div className="flex items-start justify-between relative z-10 gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-slate-500 dark:text-slate-400 text-[10px] tracking-widest uppercase font-semibold mb-1 block">Thông tin sản phẩm</span>
-                                            <h2 className="font-bold text-xl text-[#003725] dark:text-white leading-tight break-words">{selectedProduct}</h2>
-                                        </div>
-                                        <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-xl shadow flex items-center justify-center shrink-0 text-[#0d4f38]">
-                                            <CubeIcon />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 mt-4">
-                                        <div className="bg-white dark:bg-slate-900/40 p-3 rounded-lg shadow-sm">
-                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mb-0.5">Tổng số lượng</p>
-                                            <p className="text-xl font-bold text-[#003725] dark:text-opella-green">
-                                                {productAggregates.totalQty.toLocaleString('vi-VN')} <span className="text-xs font-medium text-slate-500">đơn vị</span>
-                                            </p>
-                                        </div>
-                                        <div className="bg-rose-50/80 dark:bg-rose-950/20 p-3 rounded-lg border border-rose-200/40 dark:border-rose-800/40">
-                                            <p className="text-[10px] text-rose-900/80 dark:text-rose-200/90 font-medium mb-0.5">Khách hàng</p>
-                                            <p className="text-xl font-bold text-rose-800 dark:text-rose-200">
-                                                {productAggregates.customerCount} <span className="text-xs font-medium">đối tác</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
-                            <div className="px-1 mb-2">
-                                <div className="flex items-center gap-2 bg-[#e1e3e4] dark:bg-slate-700 rounded-full px-4 py-2.5">
-                                    <SearchIcon />
-                                    <input
-                                        type="search"
-                                        value={productCustomerSearch}
-                                        onChange={(e) => setProductCustomerSearch(e.target.value)}
-                                        placeholder="Tìm tên hoặc mã khách hàng…"
-                                        className="bg-transparent border-none focus:ring-0 text-sm p-0 w-full placeholder:text-slate-500 dark:text-slate-400 dark:text-white"
-                                    />
-                                </div>
                             </div>
+                            <div className="flex items-center gap-2 flex-shrink-0 bg-[#f2f4f5] dark:bg-slate-800 p-1 rounded-xl">
+                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 px-2 uppercase tracking-widest">Loại</span>
+                                {(['all', 'import', 'local'] as const).map((k) => (
+                                    <button
+                                        key={k}
+                                        type="button"
+                                        onClick={() => setTypeFilter(k)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${typeFilter === k ? 'bg-[#003725] text-white shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
+                                    >
+                                        {k === 'all' ? 'All' : k === 'import' ? 'IMPORT' : 'LOCAL'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="relative">
+                                <select
+                                    value={monthFilter}
+                                    onChange={(e) => setMonthFilter(e.target.value)}
+                                    className="w-full appearance-none bg-[#e1e3e4] dark:bg-slate-700 border-none rounded-xl px-4 py-3 pr-10 text-sm font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-[#003725]/20"
+                                >
+                                    <option value="all">THÁNG: Tất cả</option>
+                                    {uniqueMonths.map((m) => (
+                                        <option key={m} value={m}>
+                                            Tháng {formatMonthLabel(m)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="relative">
+                                <select
+                                    value={productFilter}
+                                    onChange={(e) => setProductFilter(e.target.value)}
+                                    className="w-full appearance-none bg-[#e1e3e4] dark:bg-slate-700 border-none rounded-xl px-4 py-3 pr-10 text-sm font-medium text-slate-800 dark:text-white focus:ring-2 focus:ring-[#003725]/20"
+                                >
+                                    <option value="all">Lọc Sản Phẩm: Tất cả</option>
+                                    {uniqueProducts.map((p) => (
+                                        <option key={p} value={p}>
+                                            {p}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </header>
 
-                            <div className="px-1 space-y-3">
-                                <div className="flex items-center justify-between mb-1">
-                                    <h3 className="font-bold text-slate-800 dark:text-white">Danh sách đối tác</h3>
-                                    <span className="text-[11px] font-medium text-slate-500 bg-slate-200/80 dark:bg-slate-700 px-2 py-0.5 rounded">Theo bộ lọc</span>
+                    {(() => {
+                        const agg = productAllAggregates;
+                        const emptyFilter = baseFiltered.length === 0;
+                        const oneProduct = productFilter !== 'all';
+                        return (
+                            <>
+                                <section className="px-1">
+                                    <div className="bg-[#f2f4f5] dark:bg-slate-800 rounded-xl p-5 relative overflow-hidden border border-slate-200/60 dark:border-slate-600">
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-[#0d4f38]/5 rounded-full -mr-8 -mt-8" />
+                                        <div className="flex items-start justify-between relative z-10 gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-slate-500 dark:text-slate-400 text-[10px] tracking-widest uppercase font-semibold mb-1 block">
+                                                    {oneProduct ? 'Theo một sản phẩm' : 'Tổng hợp (theo bộ lọc trên)'}
+                                                </span>
+                                                <h2 className="font-bold text-xl text-[#003725] dark:text-white leading-tight break-words">
+                                                    {oneProduct ? productFilter : 'Mọi khách hàng có mua hàng'}
+                                                </h2>
+                                                {!oneProduct && (
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                                        Dùng Lọc Sản Phẩm ở trên để xem theo từng mặt hàng; chọn Tất cả để gộp mọi sản phẩm theo khách.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="w-14 h-14 bg-white dark:bg-slate-700 rounded-xl shadow flex items-center justify-center shrink-0 text-[#0d4f38]">
+                                                <CubeIcon />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                                            <div className="bg-white dark:bg-slate-900/40 p-3 rounded-lg shadow-sm">
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mb-0.5">Tổng số lượng</p>
+                                                <p className="text-xl font-bold text-[#003725] dark:text-opella-green">
+                                                    {agg.totalQty.toLocaleString('vi-VN')} <span className="text-xs font-medium text-slate-500">đơn vị</span>
+                                                </p>
+                                            </div>
+                                            <div className="bg-rose-50/80 dark:bg-rose-950/20 p-3 rounded-lg border border-rose-200/40 dark:border-rose-800/40">
+                                                <p className="text-[10px] text-rose-900/80 dark:text-rose-200/90 font-medium mb-0.5">Tổng doanh số</p>
+                                                <p className="text-lg font-bold text-rose-800 dark:text-rose-200 leading-tight">{formatCurrency(agg.totalVal)}</p>
+                                            </div>
+                                            <div className="bg-white dark:bg-slate-900/40 p-3 rounded-lg shadow-sm border border-slate-200/60 dark:border-slate-600">
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mb-0.5">Số đối tác</p>
+                                                <p className="text-xl font-bold text-[#003725] dark:text-opella-green">
+                                                    {agg.customerCount} <span className="text-xs font-medium text-slate-500">KH</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div className="px-1 mb-2">
+                                    <div className="flex items-center gap-2 bg-[#e1e3e4] dark:bg-slate-700 rounded-full px-4 py-2.5">
+                                        <SearchIcon />
+                                        <input
+                                            type="search"
+                                            value={productCustomerSearch}
+                                            onChange={(e) => setProductCustomerSearch(e.target.value)}
+                                            placeholder="Tìm tên hoặc mã khách hàng…"
+                                            className="bg-transparent border-none focus:ring-0 text-sm p-0 w-full placeholder:text-slate-500 dark:text-slate-400 dark:text-white"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                    {productAggregates.rows.map((row) => (
-                                        <button
-                                            key={row.code}
-                                            type="button"
-                                            onClick={() => onCustomerSelect(resolveNavigateCustomerCode(row.code))}
-                                            className="w-full text-left bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-600 active:scale-[0.99] transition-all hover:border-opella-green/40"
-                                        >
-                                            <div className="flex justify-between items-start mb-3 gap-2">
-                                                <div className="min-w-0">
-                                                    <h4 className={`font-semibold text-base truncate ${row.hasBm ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-white'}`}>{row.name}</h4>
-                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                        <span className="bg-[#cfe8d9] dark:bg-slate-700 text-[#354b40] dark:text-slate-200 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                                            {row.code}
-                                                        </span>
-                                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">📍 {row.district}</span>
+
+                                <div className="px-1 space-y-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="font-bold text-slate-800 dark:text-white">Danh sách đối tác</h3>
+                                        <span className="text-[11px] font-medium text-slate-500 bg-slate-200/80 dark:bg-slate-700 px-2 py-0.5 rounded">Theo bộ lọc</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                        {agg.rows.map((row) => (
+                                            <button
+                                                key={row.code}
+                                                type="button"
+                                                onClick={() => onCustomerSelect(resolveNavigateCustomerCode(row.code))}
+                                                className="w-full text-left bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-600 active:scale-[0.99] transition-all hover:border-opella-green/40"
+                                            >
+                                                <div className="flex justify-between items-start mb-3 gap-2">
+                                                    <div className="min-w-0">
+                                                        <h4 className={`font-semibold text-base truncate ${row.hasBm ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-white'}`}>{row.name}</h4>
+                                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                            <span className="bg-[#cfe8d9] dark:bg-slate-700 text-[#354b40] dark:text-slate-200 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                                {row.code}
+                                                            </span>
+                                                            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">📍 {row.district}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-end justify-between border-t border-slate-200 dark:border-slate-600 pt-3">
-                                                <div>
-                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Số lượng mua</p>
-                                                    <p className="font-bold text-slate-800 dark:text-white text-lg">
-                                                        {row.qty.toLocaleString('vi-VN')} <span className="text-[10px] font-medium opacity-60">SL</span>
-                                                    </p>
+                                                <div className="flex items-end justify-between border-t border-slate-200 dark:border-slate-600 pt-3">
+                                                    <div>
+                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Số lượng mua</p>
+                                                        <p className="font-bold text-slate-800 dark:text-white text-lg">
+                                                            {row.qty.toLocaleString('vi-VN')} <span className="text-[10px] font-medium opacity-60">SL</span>
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Tổng thanh toán</p>
+                                                        <p className="font-extrabold text-[#003725] dark:text-opella-green text-xl">{formatCurrency(row.val)}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Tổng thanh toán</p>
-                                                    <p className="font-extrabold text-[#003725] dark:text-opella-green text-xl">{formatCurrency(row.val)}</p>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {emptyFilter && (
+                                        <p className="text-center text-sm text-slate-400 py-6 italic">Không có giao dịch khớp bộ lọc.</p>
+                                    )}
+                                    {!emptyFilter && agg.rows.length === 0 && (
+                                        <p className="text-center text-sm text-slate-400 py-6 italic">Không có khách hàng khớp tìm kiếm.</p>
+                                    )}
                                 </div>
-                                {productAggregates.rows.length === 0 && (
-                                    <p className="text-center text-sm text-slate-400 py-6 italic">Không có khách hàng cho sản phẩm này (sau lọc tìm kiếm).</p>
-                                )}
-                            </div>
-                        </>
-                    )}
-
-                    {!selectedProduct && uniqueProducts.length > 0 && (
-                        <p className="text-center text-sm text-slate-500 py-4">Chọn một sản phẩm để xem danh sách khách hàng mua.</p>
-                    )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
             {showExportNoticeModal && typeof document !== 'undefined' && createPortal(

@@ -79,11 +79,19 @@ export function isPheDuyetApproved(row: DangKyTbq2RowView): boolean {
   return p.includes('đã duyệt') || p.includes('da duyet');
 }
 
+/**
+ * Đồng bộ với Apps Script (register/cancel): ưu tiên cột Trạng thái;
+ * nếu ô trống / lạ — coi là đã đăng ký khi vẫn còn tier Q2 hoặc StoreType (tránh UI «Chưa ĐK» khi sheet còn Q2).
+ */
 export function isRegisteredRow(row: DangKyTbq2RowView): boolean {
-  const t = row.trangThai.toLowerCase();
-  if (t.includes('chưa đăng ký') || t.includes('chua dang ky')) return false;
-  if (t.includes('đã đăng ký') || t.includes('da dang ky')) return true;
-  return false;
+  const raw = row.trangThai.trim();
+  if (raw) {
+    const t = raw.normalize('NFC').toLowerCase();
+    if (t.includes('chưa đăng ký') || t.includes('chua dang ky')) return false;
+    if (t.includes('đã đăng ký') || t.includes('da dang ky')) return true;
+  }
+  const hasQ2OrTier = row.finalStoreTypeQ2.trim() !== '' || row.storeType.trim() !== '';
+  return hasQ2OrTier;
 }
 
 /** Hiển thị ngắn: 1.0B, 600M */

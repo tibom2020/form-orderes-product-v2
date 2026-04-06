@@ -292,6 +292,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [budgetRows, setBudgetRows] = useState<Record<string, unknown>[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Tải lại sheet khi đã có dữ liệu — không ẩn cả trang */
+  const [refreshing, setRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerCode, setSelectedCustomerCode] = useState('');
@@ -425,34 +427,38 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     [myRows, selectedCustomerCode]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
+  const loadTbq2Data = useCallback(
+    async (mode: 'initial' | 'refresh' = 'initial') => {
+      if (mode === 'initial') setLoading(true);
+      else setRefreshing(true);
       setLoadError(null);
       try {
         const [dk, bud] = await Promise.all([
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2),
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2),
         ]);
-        if (cancelled) return;
         setSheetRows(dk);
         setBudgetRows(bud);
         if (dk.length === 0) {
           setLoadError(
             `Không có dữ liệu sheet ${SHEET_DANGKYTBQ2}. Tạo sheet, import mẫu DANGKYTBQ2.xlsx và deploy Apps Script có doGet.`
           );
+        } else {
+          setLoadError(null);
         }
       } catch {
-        if (!cancelled) setLoadError('Không tải được dữ liệu. Kiểm tra sheet và URL Script.');
+        setLoadError('Không tải được dữ liệu. Kiểm tra sheet và URL Script.');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (mode === 'initial') setLoading(false);
+        else setRefreshing(false);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [scriptUrl]);
+    },
+    [scriptUrl]
+  );
+
+  useEffect(() => {
+    void loadTbq2Data('initial');
+  }, [loadTbq2Data]);
 
   useEffect(() => {
     setChoiceSingle(null);
@@ -695,6 +701,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           CT Trưng Bày 2026{isAdmin ? ' · Admin' : ''}
         </h1>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => void loadTbq2Data('refresh')}
+            disabled={loading || refreshing}
+            className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-white dark:bg-slate-800 text-[#003629] dark:text-[#8abda9] border border-[#c0c9c3]/50 dark:border-slate-600 hover:bg-[#edeeed] dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all"
+            title="Tải lại DANGKYTBQ2 & ngân sách Rep"
+          >
+            {refreshing ? 'Đang tải…' : 'Làm mới'}
+          </button>
           <button
             type="button"
             onClick={() =>

@@ -895,7 +895,12 @@ function handleCancelDisplayTBQ2(data, ss, output) {
 
   var rowData = values[rowIndex - 1];
   var st = ttCol >= 0 ? String(rowData[ttCol] || "") : "";
-  if (st.indexOf("Đã Đăng ký") < 0 && st.toLowerCase().indexOf("da dang ky") < 0) {
+  var stLo = st.toLowerCase();
+  var isDaDangKy =
+    st.indexOf("Đã Đăng ký") >= 0 || stLo.indexOf("da dang ky") >= 0 || stLo.indexOf("đã đăng ký") >= 0;
+  var fq2Cell = fq2Col >= 0 ? String(rowData[fq2Col] || "").trim() : "";
+  var tierCell = tierIdCol >= 0 ? String(rowData[tierIdCol] || "").trim() : "";
+  if (!isDaDangKy && !fq2Cell && !tierCell) {
     return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng chưa ở trạng thái đã đăng ký." }));
   }
 
@@ -981,11 +986,12 @@ function handleCancelDisplayTBQ2(data, ss, output) {
   setCell(["FinalStoreTypeQ2", "Final Store Type Q2", "FinalStoreType Q2"], "");
   setCell(["StoreTierId", "storeTierId"], "");
   setCell(["POSM_CamKet", "POSM", "POSM Cam ket"], "");
-  setCell(["TrangThai", "Trạng thái", "Status"], "Chưa Đăng ký");
+  setCell(["TrangThai", "Trạng thái", "Status"], "Chưa đăng ký");
   setCell(["PheDuyet", "Phê duyệt", "Phe duyet"], "");
   setCell(["NgayDangKy", "Ngày đăng ký"], "");
   setCell(["NVDangKy", "NV đăng ký"], "");
   setCell(["MaNVDangKy", "EmployeeCode", "Mã NV"], "");
+  setCell(["Item", "Mặt hàng", "Nhóm SP", "Ngành"], "");
 
   clearTbq2PosmFlagCells_(sheet, headers, rowIndex);
 
@@ -1058,10 +1064,32 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   }
 
   var ttCol = colIndexTBQ2_(headers, ["TrangThai", "Trạng thái", "Status"]);
+  var fq2DupCol = colIndexTBQ2_(headers, [
+    "FinalStoreTypeQ2",
+    "Final Store Type Q2",
+    "FinalStoreType Q2",
+    "Q2STATS",
+    "Q2_STATS",
+    "Q2 STATS"
+  ]);
+  var tierDupCol = colIndexTBQ2_(headers, ["StoreTierId", "storeTierId"]);
+
   if (ttCol >= 0) {
     var st = String(rowData[ttCol] || "");
-    if (st.indexOf("Đã Đăng ký") >= 0 || st.toLowerCase().indexOf("da dang ky") >= 0) {
+    var stLo = st.toLowerCase();
+    if (st.indexOf("Đã Đăng ký") >= 0 || stLo.indexOf("da dang ky") >= 0 || stLo.indexOf("đã đăng ký") >= 0) {
       return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng đã được đăng ký." }));
+    }
+  } else {
+    var fq2Left = fq2DupCol >= 0 ? String(rowData[fq2DupCol] || "").trim() : "";
+    var tidLeft = tierDupCol >= 0 ? String(rowData[tierDupCol] || "").trim() : "";
+    if (fq2Left || tidLeft) {
+      return output.setContent(
+        JSON.stringify({
+          status: "error",
+          message: "Sheet thiếu cột Trạng thái nhưng dòng vẫn có Q2/Tier — không đăng ký lại được. Thêm cột Trạng thái hoặc xóa Q2 trên sheet."
+        })
+      );
     }
   }
 
@@ -1101,7 +1129,7 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   if (sdtSubmit) {
     setCell(["SDT", "Phone", "Điện thoại", "SoDT", "SĐT", "DienThoai"], sdtSubmit);
   }
-  setCell(["TrangThai", "Trạng thái", "Status"], "Đã Đăng ký");
+  setCell(["TrangThai", "Trạng thái", "Status"], "Đã đăng ký");
   setCell(["PheDuyet", "Phê duyệt", "Phe duyet"], "Chờ duyệt");
   setCell(["NgayDangKy", "Ngày đăng ký"], new Date());
   setCell(["NVDangKy", "NV đăng ký"], employeeName);
@@ -1198,7 +1226,8 @@ function handleApproveDisplayTBQ2(data, ss, output) {
   var ttCol = colIndexTBQ2_(headers, ["TrangThai", "Trạng thái", "Status"]);
   if (ttCol >= 0) {
     var st = String(sheet.getRange(rowIndex, ttCol + 1).getValue() || "");
-    if (st.indexOf("Đã Đăng ký") < 0 && st.toLowerCase().indexOf("da dang ky") < 0) {
+    var stLoAp = st.toLowerCase();
+    if (st.indexOf("Đã Đăng ký") < 0 && stLoAp.indexOf("da dang ky") < 0 && stLoAp.indexOf("đã đăng ký") < 0) {
       return output.setContent(JSON.stringify({ status: "error", message: "Khách hàng chưa ở trạng thái đã đăng ký." }));
     }
   }

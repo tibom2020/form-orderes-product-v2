@@ -16,7 +16,7 @@ import SaleKhPsTab from './components/SaleKhPsTab';
 import QuarterSalesTrackingTab from './components/QuarterSalesTrackingTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
@@ -91,6 +91,24 @@ const App: React.FC = () => {
     }
     return false;
   });
+
+  /** Admin: mô phỏng viewport iPad 10 (Safari ~820×1180 CSS px) trên desktop */
+  const [adminIpadPreviewOn, setAdminIpadPreviewOn] = useState(false);
+  const [adminIpadLandscape, setAdminIpadLandscape] = useState(false);
+
+  useEffect(() => {
+    if (!adminIpadPreviewOn) return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => {
+      if (!mq.matches) {
+        setAdminIpadPreviewOn(false);
+        setAdminIpadLandscape(false);
+      }
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [adminIpadPreviewOn]);
 
   useEffect(() => {
     if (darkMode) {
@@ -738,8 +756,14 @@ const App: React.FC = () => {
 
   if (!loggedInEmployee) return <Login employees={EMPLOYEES} onLoginSuccess={handleLoginSuccess} />;
 
+  const isAdminUser = loggedInEmployee.code === ADMIN_CODE;
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
+    <div
+      className={`min-h-screen font-sans text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200 ${
+        adminIpadPreviewOn ? 'bg-slate-600 dark:bg-slate-950' : 'bg-slate-50 dark:bg-slate-900'
+      }`}
+    >
       {/* Hiển thị Modal khi có submittedOrder */}
       {submittedOrder && (
         <OrderSuccessModal
@@ -749,6 +773,59 @@ const App: React.FC = () => {
         />
       )}
 
+      {isAdminUser && adminIpadPreviewOn && (
+        <div
+          className="hidden lg:flex fixed top-3 right-4 z-[200] flex-col items-end gap-2"
+          role="toolbar"
+          aria-label="Chế độ xem iPad (admin)"
+        >
+          <button
+            type="button"
+            onClick={() => setAdminIpadLandscape(v => !v)}
+            className="flex items-center gap-2 rounded-xl bg-slate-900/92 text-white px-3 py-2 text-xs font-bold shadow-lg border border-white/15 hover:bg-slate-800"
+            title="Đổi dọc / ngang"
+          >
+            <ArrowsRotateIcon />
+            <span>{adminIpadLandscape ? 'Dọc' : 'Ngang'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdminIpadPreviewOn(false);
+              setAdminIpadLandscape(false);
+            }}
+            className="rounded-xl bg-white/95 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-xs font-bold shadow-lg border border-slate-200 dark:border-slate-600 hover:bg-white"
+          >
+            Thoát khung iPad
+          </button>
+        </div>
+      )}
+
+      <div
+        className={
+          adminIpadPreviewOn
+            ? 'flex-1 flex flex-col min-h-0 items-center justify-start py-3 px-2 overflow-auto'
+            : 'contents'
+        }
+      >
+        <div
+          className={
+            adminIpadPreviewOn
+              ? `flex flex-col shrink-0 overflow-hidden rounded-[2.25rem] border-[12px] border-slate-950 dark:border-slate-800 shadow-2xl ring-1 ring-black/25 dark:ring-white/10 ${
+                  adminIpadLandscape
+                    ? 'w-[min(1180px,96vw)] h-[min(820px,88dvh)]'
+                    : 'w-[min(820px,96vw)] h-[min(1180px,88dvh)]'
+                }`
+              : 'contents'
+          }
+        >
+          <div
+            className={
+              adminIpadPreviewOn
+                ? 'flex flex-col h-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 dark:bg-slate-900'
+                : 'contents'
+            }
+          >
       <header className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 transition-colors duration-200">
         <div className="container mx-auto px-4 py-1.5 sm:py-3 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -778,6 +855,18 @@ const App: React.FC = () => {
               </div>
             ) : (
               <span className="text-sm font-bold text-slate-600 dark:text-slate-300 hidden md:inline">{loggedInEmployee.name}</span>
+            )}
+
+            {isAdminUser && !adminIpadPreviewOn && (
+              <button
+                type="button"
+                onClick={() => setAdminIpadPreviewOn(true)}
+                className="hidden lg:inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 text-[10px] sm:text-xs font-bold shadow-sm border border-indigo-500/80"
+                title="Giới hạn khung app theo kích thước iPad 10 (820×1180 CSS px)"
+              >
+                <DeviceTabletIcon />
+                <span className="whitespace-nowrap">View iPad 10</span>
+              </button>
             )}
 
             <button
@@ -1148,6 +1237,9 @@ const App: React.FC = () => {
         newsItems={newsItems}
         onNewMessage={(newItem) => setNewsItems(prev => [...prev, newItem])}
       />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { fetchDataFromSheet } from '../services/googleSheetService';
-import { GOOGLE_SCRIPT_URL, ADMIN_CODE, OSTELIN_60V_GOI_SHEET } from '../constants';
-import { ChartBarIcon, PresentationChartLineIcon } from './icons';
+import { GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET } from '../constants';
+import { ChartBarIcon } from './icons';
 
 export interface Ostelin60VGoiRow {
   Timestamp?: string | number;
@@ -41,9 +41,6 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
   const [rawData, setRawData] = useState<Ostelin60VGoiRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [repReportOpen, setRepReportOpen] = useState(false);
-
-  const isAdmin = currentEmployee.code === ADMIN_CODE;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -108,14 +105,6 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
       .sort((a, b) => b.slGoi - a.slGoi || b.thanhTien - a.thanhTien);
   }, [rows]);
 
-  if (!isAdmin) {
-    return (
-      <div className="p-4 text-center text-slate-500 dark:text-slate-400">
-        Chỉ Admin mới xem được tab Theo dõi gói Ostelin 60V.
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 animate-fade-in">
       <div className="flex flex-col gap-4">
@@ -127,18 +116,6 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
             THEO DÕI GÓI OSTELIN 60V (5H — 21.97%)
           </h2>
           <div className="flex flex-wrap items-center gap-2 justify-end">
-            <button
-              type="button"
-              onClick={() => setRepReportOpen(v => !v)}
-              className={`px-3 py-1.5 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors ${
-                repReportOpen
-                  ? 'border-opella-green bg-opella-green/15 text-opella-green dark:bg-opella-green/25 dark:text-white'
-                  : 'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-              }`}
-            >
-              <PresentationChartLineIcon />
-              {repReportOpen ? 'Ẩn báo cáo theo Rep' : 'Báo cáo theo Rep'}
-            </button>
             <button
               type="button"
               onClick={loadData}
@@ -159,15 +136,12 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
           </div>
         )}
 
-        {!loading && !error && repReportOpen && (
+        {!loading && !error && (
           <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
             <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
               <h3 className="text-sm font-black text-opella-green dark:text-opella-green uppercase tracking-wide">
-                Báo cáo số lượng gói Ostelin 60V đã bán theo Rep
+                THỐNG KÊ THEO REP
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Gộp theo từng Rep: số đơn ghi nhận, tổng SL gói, tổng thành tiền.
-              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse min-w-[480px]">
@@ -205,7 +179,7 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
         )}
 
         {!loading && !error && (
-          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden">
+          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden mt-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-opella-green/10 dark:bg-opella-green/20 border-b border-slate-200 dark:border-slate-600">
               <div>
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Số dòng / đơn</p>

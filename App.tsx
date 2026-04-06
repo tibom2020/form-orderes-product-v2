@@ -37,7 +37,7 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -49,6 +49,7 @@ const App: React.FC = () => {
   const [allSalesRecords, setAllSalesRecords] = useState<SalesRecord[]>([]);
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
+  const [marketingDataBs, setMarketingDataBs] = useState<MarketingRecord[]>([]);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
   const [viewMode, setViewMode] = useState<ViewMode>('order');
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
@@ -152,6 +153,13 @@ const App: React.FC = () => {
       }
       setAllSalesRecords(sales);
       setMarketingData(marketing);
+      try {
+        const marketingBs = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs");
+        setMarketingDataBs(marketingBs || []);
+      } catch (e) {
+        console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
+        setMarketingDataBs([]);
+      }
     } catch (e) {
       console.error("Critical data load failed", e);
     }
@@ -258,7 +266,7 @@ const App: React.FC = () => {
 
   /** Lazy load Forecast khi mở Landing / Dashboard / Forecast */
   useEffect(() => {
-    if (viewMode === 'landing' || viewMode === 'dashboard' || viewMode === 'forecast') loadForecastData();
+    if (viewMode === 'landing' || viewMode === 'landingBsT3' || viewMode === 'dashboard' || viewMode === 'forecast') loadForecastData();
   }, [viewMode]);
 
   /** Reload toàn bộ dữ liệu (dùng cho nút Tải lại ở Forecast/Landing) */
@@ -684,8 +692,25 @@ const App: React.FC = () => {
     }
   };
 
+  const handleMarketingDataBsReload = async () => {
+    try {
+      const marketing = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs");
+      setMarketingDataBs(marketing);
+    } catch (e) {
+      console.error("Reload marketing Bs failed", e);
+    }
+  };
+
   const handleUpdateMarketingRecord = (customerCode: string, updates: Partial<MarketingRecord>) => {
     setMarketingData(prevData => prevData.map(record =>
+      String(record.CustomerCode).trim() === String(customerCode).trim()
+        ? { ...record, ...updates }
+        : record
+    ));
+  };
+
+  const handleUpdateMarketingRecordBs = (customerCode: string, updates: Partial<MarketingRecord>) => {
+    setMarketingDataBs(prevData => prevData.map(record =>
       String(record.CustomerCode).trim() === String(customerCode).trim()
         ? { ...record, ...updates }
         : record
@@ -938,6 +963,14 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Dummybox</span>
             <span className="sm:hidden">Dummy</span>
           </button>
+          <button
+            onClick={() => setViewMode('landingBsT3')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landingBsT3' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          >
+            <StarIcon />
+            <span className="hidden sm:inline">DummyBox-BsT3</span>
+            <span className="sm:hidden">BsT3</span>
+          </button>
           {SHOW_AO_TRACKING_TAB && (
             <button
               onClick={() => setViewMode('aoTracking')}
@@ -1162,6 +1195,20 @@ const App: React.FC = () => {
             onUpdateRecord={handleUpdateMarketingRecord}
             showReportOnMount={showDummyBoxReminderOnMount}
             onReminderShown={() => setShowDummyBoxReminderOnMount(false)}
+          />
+        )}
+
+        {viewMode === 'landingBsT3' && (
+          <LandingPage
+            currentEmployee={loggedInEmployee!}
+            marketingData={marketingDataBs}
+            salesRecords={allSalesRecords}
+            forecastData={forecastData}
+            onReloadData={handleMarketingDataBsReload}
+            onCustomerSelect={handleCustomerSelectFromDashboard}
+            onUpdateRecord={handleUpdateMarketingRecordBs}
+            sheetName="DummyBoxRecordBs"
+            enableReportTools={false}
           />
         )}
 

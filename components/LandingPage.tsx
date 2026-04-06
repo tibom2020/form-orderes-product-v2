@@ -23,6 +23,8 @@ interface LandingPageProps {
     onUpdateRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
     showReportOnMount?: boolean;
     onReminderShown?: () => void;
+    sheetName?: string;
+    enableReportTools?: boolean;
 }
 
 
@@ -35,7 +37,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
     onCustomerSelect,
     onUpdateRecord,
     showReportOnMount = false,
-    onReminderShown
+    onReminderShown,
+    sheetName = 'DummyBoxRecord',
+    enableReportTools = true
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<MarketingRecord | null>(null);
@@ -62,11 +66,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
     // Khi mount với showReportOnMount (nhắc nhở KPI sau đăng nhập): mở báo cáo DummyBox
     useEffect(() => {
-        if (showReportOnMount) {
+        if (enableReportTools && showReportOnMount) {
             setShowReport(true);
             onReminderShown?.();
         }
-    }, [showReportOnMount, onReminderShown]);
+    }, [enableReportTools, showReportOnMount, onReminderShown]);
 
     // Chỉ cho phép chỉnh sửa gói nếu mã nhân viên là 20043741
     const canEditPackages = currentEmployee.code === '20043741';
@@ -76,9 +80,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         // Dùng Map để lọc trùng theo CustomerCode, giữ lại record cuối cùng (mới nhất)
         const map = new Map<string, MarketingRecord>();
         marketingData.forEach(record => {
-            if (record.CustomerCode) {
-                map.set(String(record.CustomerCode).trim(), record);
-            }
+            if (!record) return;
+            const code = String(record.CustomerCode ?? '').trim();
+            if (!code) return;
+            map.set(code, record);
         });
         return Array.from(map.values());
     }, [marketingData]);
@@ -89,7 +94,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         uniqueMarketingData.forEach(record => {
             // Chuẩn hóa tên Rep
-            const repName = record.Rep ? record.Rep.trim() : 'Chưa phân công';
+            const repName = String(record.Rep ?? '').trim() || 'Chưa phân công';
             if (!stats[repName]) {
                 stats[repName] = { total: 0, upHinh: 0, local: 0, import: 0 };
             }
@@ -97,8 +102,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
             stats[repName].total += 1;
 
             // Check conditions
-            const hasImg1 = record.UpHinh && record.UpHinh !== 'NO' && record.UpHinh !== '';
-            const hasImg2 = record.UpHinh2 && record.UpHinh2 !== 'NO' && record.UpHinh2 !== '';
+            const up1 = String(record.UpHinh ?? '').trim();
+            const up2 = String(record.UpHinh2 ?? '').trim();
+            const hasImg1 = up1 !== '' && up1 !== 'NO';
+            const hasImg2 = up2 !== '' && up2 !== 'NO';
 
             // Chỉ cần có 1 trong 2 ảnh là tính
             if (hasImg1 || hasImg2) stats[repName].upHinh += 1;
@@ -193,8 +200,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
     };
 
     const myCustomers = uniqueMarketingData.filter(r => {
-        const codeMatch = r.StaffCode && String(r.StaffCode).trim() === currentEmployee.code;
-        const repMatch = r.Rep && r.Rep.toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
+        const codeMatch = String(r.StaffCode ?? '').trim() === currentEmployee.code;
+        const repMatch = String(r.Rep ?? '').toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
         if (currentEmployee.code === '20043741') return true;
         return codeMatch || repMatch;
     });
@@ -202,9 +209,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const filteredCustomers = myCustomers.filter(c => {
         // 1. Lọc theo Search Term (Có xử lý tiếng Việt không dấu)
         const normalizedSearch = removeVietnameseTones(searchTerm).toLowerCase();
-        const normalizedName = removeVietnameseTones(c.CustomerName || '').toLowerCase();
-        const normalizedAddress = removeVietnameseTones(c.District || '').toLowerCase();
-        const normalizedRep = removeVietnameseTones(c.Rep || '').toLowerCase();
+        const normalizedName = removeVietnameseTones(String(c.CustomerName ?? '')).toLowerCase();
+        const normalizedAddress = removeVietnameseTones(String(c.District ?? '')).toLowerCase();
+        const normalizedRep = removeVietnameseTones(String(c.Rep ?? '')).toLowerCase();
 
         const matchesSearch = normalizedName.includes(normalizedSearch) ||
             String(c.CustomerCode).includes(normalizedSearch) ||
@@ -215,13 +222,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         // 2. Lọc theo Rep (Nếu có chọn từ Báo cáo)
         if (selectedRepFilter) {
-            const repName = c.Rep ? c.Rep.trim() : 'Chưa phân công';
+            const repName = String(c.Rep ?? '').trim() || 'Chưa phân công';
             if (repName !== selectedRepFilter) return false;
         }
 
         // 3. Logic lọc ảnh
-        const hasImage = (c.UpHinh && c.UpHinh !== 'NO' && c.UpHinh !== '') ||
-            (c.UpHinh2 && c.UpHinh2 !== 'NO' && c.UpHinh2 !== '');
+        const up1 = String(c.UpHinh ?? '').trim();
+        const up2 = String(c.UpHinh2 ?? '').trim();
+        const hasImage = (up1 !== '' && up1 !== 'NO') || (up2 !== '' && up2 !== 'NO');
 
         if (imageFilterMode === 'HAS_IMAGE' && !hasImage) return false;
         if (imageFilterMode === 'NO_IMAGE' && hasImage) return false;
@@ -344,7 +352,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
             const response = await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'uploadImage',
-                sheetName: 'DummyBoxRecord',
+                sheetName,
                 customerCode: selectedCustomer.CustomerCode,
                 image: base64,
                 mimeType: 'image/jpeg',
@@ -402,7 +410,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         try {
             await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'registerPackage',
-                sheetName: 'DummyBoxRecord',
+                sheetName,
                 customerCode: selectedCustomer.CustomerCode,
                 packageType: type,
                 value: statusValue
@@ -702,9 +710,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 onChange={handleImageSelect}
             />
 
-            {renderReportModal()}
-            {renderConditionsModal()}
-            {showCalculatorModal && <DummyBoxCalculator onClose={() => setShowCalculatorModal(false)} />}
+            {enableReportTools && renderReportModal()}
+            {enableReportTools && renderConditionsModal()}
+            {enableReportTools && showCalculatorModal && <DummyBoxCalculator onClose={() => setShowCalculatorModal(false)} />}
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                 {/* Mobile: stack dọc; Desktop: hàng ngang */}
@@ -743,31 +751,33 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
 
                         {/* Nút chức năng: grid 2 cột mobile, hàng ngang desktop */}
-                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                            <button
-                                onClick={() => setShowReport(true)}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-opella-beige/50 hover:bg-opella-beige dark:bg-opella-green/20 dark:hover:bg-opella-green/30 text-opella-green dark:text-opella-green rounded-lg text-xs font-bold transition-all border border-opella-green/30 dark:border-opella-green/50"
-                            >
-                                <ChartBarIcon />
-                                <span>Báo Cáo</span>
-                            </button>
-                            <button
-                                onClick={() => setShowConditionsModal(true)}
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition-all border border-amber-200 dark:border-amber-800"
-                                title="Xem điều kiện đặt hàng DummyBox Local & Import"
-                            >
-                                <DocumentTextIcon />
-                                <span>Điều kiện</span>
-                            </button>
-                            <button
-                                onClick={() => setShowCalculatorModal(true)}
-                                className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold transition-all border border-green-200 dark:border-green-800"
-                                title="Tính toán gói DummyBox Local & Import"
-                            >
-                                <ChartBarIcon />
-                                <span>Tính DummyBox</span>
-                            </button>
-                        </div>
+                        {enableReportTools && (
+                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                                <button
+                                    onClick={() => setShowReport(true)}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-opella-beige/50 hover:bg-opella-beige dark:bg-opella-green/20 dark:hover:bg-opella-green/30 text-opella-green dark:text-opella-green rounded-lg text-xs font-bold transition-all border border-opella-green/30 dark:border-opella-green/50"
+                                >
+                                    <ChartBarIcon />
+                                    <span>Báo Cáo</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowConditionsModal(true)}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition-all border border-amber-200 dark:border-amber-800"
+                                    title="Xem điều kiện đặt hàng DummyBox Local & Import"
+                                >
+                                    <DocumentTextIcon />
+                                    <span>Điều kiện</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowCalculatorModal(true)}
+                                    className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs font-bold transition-all border border-green-200 dark:border-green-800"
+                                    title="Tính toán gói DummyBox Local & Import"
+                                >
+                                    <ChartBarIcon />
+                                    <span>Tính DummyBox</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 

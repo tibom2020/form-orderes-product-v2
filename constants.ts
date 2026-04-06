@@ -2,7 +2,7 @@
 import type { Product, Employee, Customer } from './types';
 
 // NGÀY CẬP NHẬT CTKM - Bạn có thể sửa ngày này thủ công tại đây
-export const PROMO_UPDATE_DATE = '29/04/2026';
+export const PROMO_UPDATE_DATE = '06/04/2026';
 
 // Đường dẫn Google Apps Script (Cập nhật mới nhất)
 export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD5n_kNXKaJhIpfVHW014ZZ4AE8PEz-29d3i6ym-fhNIf2T10Gntq7F13N4CHmb9DTnA/exec';
@@ -58,7 +58,7 @@ export const PRODUCTS: Product[] = [
   { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
   { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
   { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'ck 5.91% (đến 29.04.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 5h ck 21.97% (đến 20.04.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 15.76%, 4h ck 17.73%, 5h ck 21.67% (đến 29.04.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)

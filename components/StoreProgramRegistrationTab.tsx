@@ -4,7 +4,6 @@ import { formatCurrency, formatVndDong, formatSheetSaleQ1Display } from '../util
 import {
   normalizeDangKyTbq2Row,
   isRegisteredRow,
-  formatShortVnd,
   repMatchesEmployee,
   isPheDuyetApproved,
   type DangKyTbq2RowView,
@@ -830,7 +829,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                       </div>
                       <div className="mt-2">
                         <span className="font-extrabold text-2xl block">{String(s.count).padStart(2, '0')}</span>
-                        <span className="text-[10px] opacity-70 font-medium">Sử dụng: {formatShortVnd(s.used)}</span>
+                        <span className="text-[10px] opacity-70 font-medium tabular-nums">
+                          Sử dụng: {formatVndDong(s.used)}
+                        </span>
                       </div>
                     </div>
                   );

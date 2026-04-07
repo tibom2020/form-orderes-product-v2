@@ -66,8 +66,8 @@ function doPost(e) {
       return handleCancelDisplayTBQ2(data, ss, output);
     }
 
-    // --- ACTION: MARKETING (Upload Ảnh & Đăng Ký Gói) ---
-    if (data.action === "uploadImage" || data.action === "registerPackage") {
+    // --- ACTION: MARKETING (Upload Ảnh, Ghi URL ảnh có sẵn & Đăng Ký Gói) ---
+    if (data.action === "uploadImage" || data.action === "setImageUrl" || data.action === "registerPackage") {
       return handleMarketing(data, ss, output);
     }
 
@@ -145,6 +145,26 @@ function handleMarketing(data, ss, output) {
   }
   if (rowIndex === -1) {
     return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy Mã KH: " + customerCode }));
+  }
+
+  /** Ghi URL Drive có sẵn (không tạo file mới) — dùng đồng bộ DummyBoxRecord ↔ DummyBoxRecordBs */
+  if (data.action === "setImageUrl") {
+    var targetColSet = data.targetColumn || "UpHinh";
+    var colIdxSet = headers.indexOf(targetColSet);
+    if (colIdxSet === -1) {
+      return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy cột '" + targetColSet + "'" }));
+    }
+    var urlSet = String(data.imageUrl || "").trim();
+    if (!urlSet) {
+      return output.setContent(JSON.stringify({ status: "error", message: "Thiếu imageUrl" }));
+    }
+    sheet.getRange(rowIndex, colIdxSet + 1).setValue(urlSet);
+    var noteNameSet = (targetColSet === "UpHinh") ? "GhiChu1" : "GhiChu2";
+    var noteIdxSet = headers.indexOf(noteNameSet);
+    if (noteIdxSet !== -1 && data.note) {
+      sheet.getRange(rowIndex, noteIdxSet + 1).setValue(data.note);
+    }
+    return output.setContent(JSON.stringify({ status: "success", url: urlSet }));
   }
 
   if (data.action === "uploadImage") {

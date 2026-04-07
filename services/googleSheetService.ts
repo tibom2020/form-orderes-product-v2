@@ -181,10 +181,9 @@ export const submitMarketingData = async (
   url: string,
   payload: any
 ): Promise<{ status: string; message?: string; url?: string }> => {
-  // Với hành động upload ảnh, ta cần phản hồi JSON (URL ảnh) nên dùng mode 'cors'
-  // Với các hành động khác (registerPackage), dùng 'no-cors' để tránh lỗi chặn request, đảm bảo lệnh đi được
-  const isUpload = payload.action === 'uploadImage';
-  const mode = isUpload ? 'cors' : 'no-cors';
+  // uploadImage / setImageUrl: cần JSON (URL) → cors. registerPackage: no-cors.
+  const needsJsonResponse = payload.action === 'uploadImage' || payload.action === 'setImageUrl';
+  const mode = needsJsonResponse ? 'cors' : 'no-cors';
 
   try {
     const response = await fetch(url, {

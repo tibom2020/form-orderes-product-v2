@@ -1195,6 +1195,11 @@ const App: React.FC = () => {
             onUpdateRecord={handleUpdateMarketingRecord}
             showReportOnMount={showDummyBoxReminderOnMount}
             onReminderShown={() => setShowDummyBoxReminderOnMount(false)}
+            mirrorPeerSheetName="DummyBoxRecordBs"
+            mirrorPeerHasCustomer={(code) =>
+              marketingDataBs.some((r) => String(r.CustomerCode ?? '').trim() === String(code).trim())
+            }
+            onPeerMirrorRecordUpdate={handleUpdateMarketingRecordBs}
           />
         )}
 
@@ -1209,6 +1214,11 @@ const App: React.FC = () => {
             onUpdateRecord={handleUpdateMarketingRecordBs}
             sheetName="DummyBoxRecordBs"
             enableReportTools={false}
+            mirrorPeerSheetName="DummyBoxRecord"
+            mirrorPeerHasCustomer={(code) =>
+              marketingData.some((r) => String(r.CustomerCode ?? '').trim() === String(code).trim())
+            }
+            onPeerMirrorRecordUpdate={handleUpdateMarketingRecord}
           />
         )}
 

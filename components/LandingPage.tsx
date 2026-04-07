@@ -25,6 +25,13 @@ interface LandingPageProps {
     onReminderShown?: () => void;
     sheetName?: string;
     enableReportTools?: boolean;
+    /** Sheet còn lại (DummyBoxRecord ↔ DummyBoxRecordBs): nếu cùng mã KH thì ghi chung URL ảnh sau khi upload */
+    mirrorPeerSheetName?: string;
+    mirrorPeerHasCustomer?: (customerCode: string) => boolean;
+    onPeerMirrorRecordUpdate?: (
+        customerCode: string,
+        updates: Partial<Pick<MarketingRecord, 'UpHinh' | 'UpHinh2'>>
+    ) => void;
 }
 
 
@@ -39,7 +46,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
     showReportOnMount = false,
     onReminderShown,
     sheetName = 'DummyBoxRecord',
-    enableReportTools = true
+    enableReportTools = true,
+    mirrorPeerSheetName,
+    mirrorPeerHasCustomer,
+    onPeerMirrorRecordUpdate,
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<MarketingRecord | null>(null);
@@ -377,6 +387,22 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                 // Update global state
                 onUpdateRecord(selectedCustomer.CustomerCode, updates);
+
+                const codeTrim = String(selectedCustomer.CustomerCode).trim();
+                if (mirrorPeerSheetName && mirrorPeerHasCustomer?.(codeTrim)) {
+                    const peerRes = await submitMarketingData(GOOGLE_SCRIPT_URL, {
+                        action: 'setImageUrl',
+                        sheetName: mirrorPeerSheetName,
+                        customerCode: codeTrim,
+                        targetColumn,
+                        imageUrl: response.url,
+                        ...(uploadNote.trim() ? { note: uploadNote.trim() } : {}),
+                    });
+                    if (peerRes.status !== 'success') {
+                        console.warn('Đồng bộ ảnh sang sheet đối tác thất bại:', peerRes.message);
+                    }
+                    onPeerMirrorRecordUpdate?.(codeTrim, updates);
+                }
 
                 alert(`Thành công! Ảnh ${activeSlot} và ghi chú đã được lưu.`);
                 resetUploadState();

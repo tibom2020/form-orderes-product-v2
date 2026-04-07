@@ -965,7 +965,11 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={() => setViewMode('landingBsT3')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'landingBsT3' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'landingBsT3'
+                ? 'text-violet-900 border-violet-600 bg-violet-100 dark:bg-violet-950/55 dark:text-violet-50 dark:border-violet-400'
+                : 'text-violet-800/90 border-transparent bg-violet-50/70 dark:bg-violet-950/30 dark:text-violet-200/90 hover:bg-violet-100/90 dark:hover:bg-violet-900/45'
+            }`}
           >
             <StarIcon />
             <span className="hidden sm:inline">DummyBox-BsT3</span>
@@ -1003,7 +1007,11 @@ const App: React.FC = () => {
           )}
           <button
             onClick={() => setViewMode('calciPlus')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'calciPlus' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'calciPlus'
+                ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
+                : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
+            }`}
           >
             <CubeIcon />
             <span className="hidden sm:inline">Gói Ostelin 60V</span>

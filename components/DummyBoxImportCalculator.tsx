@@ -4,24 +4,28 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent } from '../utils/calculations';
 import {
     PRODUCTS,
-    DUMMY_BOX_IMPORT_PRODUCT_IDS,
     DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
 } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
 
-// Thứ tự hiển thị: Enterogermina 2B/20, GUT RESTORE 4B, Pharmaton Vitality, Essent, Kiddi, Fizzi, Energy
-const IMPORT_ORDER: number[] = [30, 12, 27, 18, 19, 20, 17];
+// Thứ tự hiển thị gói Import (bao gồm các sản phẩm bổ sung)
+const IMPORT_ORDER: number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20, 17];
 const CALC_PRODUCTS = IMPORT_ORDER
-    .filter(id => DUMMY_BOX_IMPORT_PRODUCT_IDS.includes(id as any))
-    .map(id => PRODUCTS.find(p => p.id === id)!)
-    .filter(Boolean);
+    .map(id => PRODUCTS.find(p => p.id === id))
+    .filter((p): p is Product => Boolean(p));
 
-/** VAT %: Enterogermina 2B/20 (30), GUT RESTORE 4B (12) = 5%; còn lại = 8% */
+/** VAT % theo cấu hình gói Import */
 const VAT_BY_PRODUCT_ID: Record<number, number> = {
     30: 0.05,  // ENTEROGERMINA 2 billion/5ml B/20 bottle - 5%
     12: 0.05,  // ENTEROGERMINA GUT RESTORE (4B) - 5%
+    13: 0.08,  // ENTEROGERMINA BABY COMFORT - 8%
+    14: 0.05,  // BISOLVON 8MG TAB - 5%
+    22: 0.08,  // OSTELIN VIT D & CALCI CHAI 130V - 8%
+    23: 0.08,  // OSTELIN VIT D & CALCI CHAI 275V - 8%
+    24: 0.08,  // OSTELIN VIT D & CALCI CHAI 30V - 8%
+    25: 0.08,  // OSTELIN VIT D & CALCI CHAI 60V - 8%
     17: 0.08,  // PHARMATON ENERGY - 8%
     18: 0.08,  // PHARMATON ESSENT - 8%
     19: 0.08,  // PHARMATON KIDDI - 8%

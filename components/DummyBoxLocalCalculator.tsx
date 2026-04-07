@@ -4,20 +4,29 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent } from '../utils/calculations';
 import {
     PRODUCTS,
-    DUMMY_BOX_LOCAL_PRODUCT_IDS,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
     TELFAST_GROUP_IDS
 } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
 
-const CALC_PRODUCTS = DUMMY_BOX_LOCAL_PRODUCT_IDS.map(id => PRODUCTS.find(p => p.id === id)!).filter(Boolean);
+// Sản phẩm hiển thị trong calculator gói Local (bao gồm các sản phẩm bổ sung)
+const LOCAL_ORDER: number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
+const CALC_PRODUCTS = LOCAL_ORDER
+    .map(id => PRODUCTS.find(p => p.id === id))
+    .filter((p): p is Product => Boolean(p));
 
 /** VAT % cố định: CORBIERE CALCIUM PLUS (id 1) = 8%, còn lại = 5% */
 const VAT_BY_PRODUCT_ID: Record<number, number> = {
     1: 0.08,   // CORBIERE CALCIUM PLUS - 8%
+    28: 0.05,  // CALCIUM CORBIERE EXTRA 10ML - 5%
+    2: 0.05,   // ACEMUC 200 CAP - 5%
+    3: 0.05,   // ACEMUC 200mg SAC - 5%
+    4: 0.05,   // ACEMUC Kids - 5%
     6: 0.05,   // TELFAST HD - 5%
     7: 0.05,   // TELFAST BD - 5%
+    8: 0.05,   // TELFAST 30MG - 5%
+    10: 0.05,  // BISOLVON KIDS 60ML - 5%
     26: 0.05,  // CALCIUM CORBIERE EXTRA 5ML - 5%
 };
 const getVatPercent = (p: Product): number => VAT_BY_PRODUCT_ID[p.id] ?? 0.05;

@@ -3,24 +3,25 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { CartItem, Rebate, Customer, SalesRecord } from '../types';
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
-import { buildCustomerSalesNoticePayload } from '../utils/customerSummarizer';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
-    DUMMY_BOX_LOCAL_PRODUCT_IDS,
-    DUMMY_BOX_LOCAL_MIN_AMOUNT,
-    DUMMY_BOX_IMPORT_PRODUCT_IDS,
-    DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
-    DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
+    DUMMY_BOX_IMPORT_MIN_AMOUNT,
+    DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
+    DUMMY_BOX_LOCAL_MIN_AMOUNT,
     TELFAST_GROUP_IDS,
     OSTELIN_GROUP_IDS,
 } from '../constants';
 
 /** Dòng ghi chú khi tick “gói Ostelin tặng cân” */
 const OSTELIN_TANG_CAN_NOTE = 'Gói Ostelin tặng cân';
+/** Điều kiện Local phải khớp DummyBoxLocalCalculator */
+const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
+/** Điều kiện Import phải khớp DummyBoxImportCalculator */
+const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20, 17];
 
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
@@ -37,7 +38,6 @@ interface CartItemRowProps {
     maxPayableFeeLine: number;
     monthlyDiscountPercent: number;
     isGrouped: boolean;
-    hasCalciPlusExtra?: boolean;
     onUpdateQuantity: (id: number, q: number) => void;
     onRemoveItem: (id: number) => void;
 }
@@ -49,7 +49,6 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
     maxPayableFeeLine,
     monthlyDiscountPercent,
     isGrouped,
-    hasCalciPlusExtra = false,
     onUpdateQuantity,
     onRemoveItem
 }) => {
@@ -191,7 +190,6 @@ interface CartProps {
     isLoading: boolean;
     successMessage: string | null;
     isOnTopLiXi: boolean;
-    onIsOnTopLiXiChange: (isChecked: boolean) => void;
     isDummyBoxLocal?: boolean;
     onIsDummyBoxLocalChange?: (isChecked: boolean) => void;
     isDummyBoxImport?: boolean;
@@ -212,7 +210,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onCustomerNameChange, customerAddress, onCustomerAddressChange,
         note, onNoteChange, onUpdateQuantity, onRemoveItem,
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
-        isOnTopLiXi, onIsOnTopLiXiChange, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
+        isOnTopLiXi, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [],
         currentSalesRecord,
@@ -304,35 +302,39 @@ const Cart: React.FC<CartProps> = (props) => {
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
 
-    // CTKM OPELLA 3/2026: điều kiện = doanh số sau chiết khấu = tổng (basePrice × số lượng × (1 - % CK tương ứng))
+    // Điều kiện auto-tick DummyBox Local theo đúng calculator Local
+    const telfastLocalConditionTotal = useMemo(() => {
+        return items
+            .filter(item => TELFAST_GROUP_IDS.includes(item.id))
+            .reduce((sum, item) => sum + (item.basePrice ?? item.price) * item.quantity, 0);
+    }, [items]);
+
     const eligibleDummyBoxLocal = useMemo(() => {
-        const localIds: number[] = [...DUMMY_BOX_LOCAL_PRODUCT_IDS];
-        const sum = items
-            .filter(item => localIds.includes(item.id))
-            .reduce((s, item) => {
-                const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-                const compareValue = isTelfastGroup ? telfastGroupTotal : item.price * item.quantity;
+        const sumAfterDiscount = items
+            .filter(item => DUMMY_BOX_LOCAL_CALC_IDS.includes(item.id))
+            .reduce((sum, item) => {
+                const isTelfast = TELFAST_GROUP_IDS.includes(item.id);
+                const compareValue = isTelfast ? telfastLocalConditionTotal : undefined;
                 const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue);
-                const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
-                return s + lineAfterDiscount;
+                const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
+                return sum + lineAfterDiscount;
             }, 0);
-        return sum >= DUMMY_BOX_LOCAL_MIN_AMOUNT;
-    }, [items, telfastGroupTotal]);
+        return sumAfterDiscount >= DUMMY_BOX_LOCAL_MIN_AMOUNT;
+    }, [items, telfastLocalConditionTotal]);
+
     const eligibleDummyBoxImport = useMemo(() => {
-        const importIds: number[] = [...DUMMY_BOX_IMPORT_PRODUCT_IDS];
-        const sum = items
-            .filter(item => importIds.includes(item.id))
-            .reduce((s, item) => {
-                // Pharmaton Energy: ko áp CK 29.5% → dùng giá gốc (originalPrice) cho dòng này
+        const sumAfterDiscount = items
+            .filter(item => DUMMY_BOX_IMPORT_CALC_IDS.includes(item.id))
+            .reduce((sum, item) => {
+                // Khớp DummyBoxImportCalculator: Pharmaton Energy không áp CK tháng, dùng giá gốc
                 if (item.id === DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID) {
-                    return s + (item.originalPrice ?? item.price ?? item.basePrice ?? 0) * item.quantity;
+                    return sum + (item.originalPrice ?? item.price ?? item.basePrice ?? 0) * item.quantity;
                 }
-                const compareValue = item.price * item.quantity;
-                const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue);
-                const lineAfterDiscount = (item.basePrice ?? 0) * item.quantity * (1 - discountPercent);
-                return s + lineAfterDiscount;
+                const discountPercent = getDiscountPercent(item.promotion, item.quantity, undefined);
+                const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
+                return sum + lineAfterDiscount;
             }, 0);
-        return sum >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
+        return sumAfterDiscount >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
     }, [items]);
 
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
@@ -582,8 +584,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                         compareValue,
                                         item.id
                                     );
-                                    const hasCalciPlusExtra = false;
-
                                     return (
                                         <CartItemRow
                                             key={item.id}
@@ -592,7 +592,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                             maxPayableFeeLine={maxPayableFeeLine}
                                             monthlyDiscountPercent={monthlyDiscountPercent}
                                             isGrouped={isTelfastGroup || isOstelinGroup}
-                                            hasCalciPlusExtra={hasCalciPlusExtra}
                                             onUpdateQuantity={onUpdateQuantity}
                                             onRemoveItem={onRemoveItem}
                                         />
@@ -637,18 +636,18 @@ const Cart: React.FC<CartProps> = (props) => {
                         </div>
                     )}
 
-                    {/* Toggles - CTKM OPELLA 3/2026: DummyBox Local / Import (chỉ bật khi đủ điều kiện) */}
+                    {/* Toggles - CTKM OPELLA 3/2026: DummyBox Local / Import (mở chọn tự do) */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 py-0.5">
                         {onIsDummyBoxLocalChange && (
                             <div className="flex items-center space-x-1.5">
                                 <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!eligibleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxLocal ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxLocal ? 'Đơn ≥1M (sau CK) nhóm Corbiere Calcium Plus, Telfast HD/BD, Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML' : 'Chưa đủ điều kiện: đơn ≥1M nhóm Corbiere/Telfast/Corbiere Extra 5ml + ít nhất 01 Corbiere Calcium Plus 10ML'}>DummyBox Local (-150k)</label>
+                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxLocal ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxLocal ? 'Đủ điều kiện gói Local: tổng đơn sau CK ≥ 1.000.000' : 'Chưa đủ điều kiện gói Local (xem calculator để kiểm tra)'}>DummyBox Local (-150k)</label>
                             </div>
                         )}
                         {onIsDummyBoxImportChange && (
                             <div className="flex items-center space-x-1.5">
                                 <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!eligibleDummyBoxImport} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đơn ≥1M (sau CK) nhóm Pharmaton (Energy ko CK 29.5%), Essent, Vitality, Fizzi + Enterogermina (GUT 2B, 4B, 2B/20) + ít nhất 01 Pharmaton Vitality' : 'Chưa đủ điều kiện: đơn ≥1M nhóm trên + ít nhất 01 Pharmaton Vitality'}>DummyBox Import (-150k)</label>
+                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đủ điều kiện gói Import: tổng đơn sau CK ≥ 1.000.000' : 'Chưa đủ điều kiện gói Import (xem calculator để kiểm tra)'}>DummyBox Import (-150k)</label>
                             </div>
                         )}
                         <div className="flex items-center space-x-1.5">

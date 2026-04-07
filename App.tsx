@@ -338,16 +338,6 @@ const App: React.FC = () => {
     setViewMode('order');
   };
 
-  const handleOnTopLiXiToggle = (checked: boolean) => {
-    setIsOnTopLiXi(checked);
-    const discountNote = "Ontop lì xì 250k";
-    if (checked) {
-      setNote(prevNote => prevNote.includes(discountNote) ? prevNote : (prevNote ? `${prevNote}\n${discountNote}` : discountNote));
-    } else {
-      setNote(prevNote => prevNote.split('\n').filter(line => line.trim() !== discountNote.trim()).join('\n'));
-    }
-  };
-
   const toggleNoteLine = (lineText: string, checked: boolean) => {
     setNote(prevNote => {
       const lines = prevNote
@@ -1113,7 +1103,7 @@ const App: React.FC = () => {
                     onClearCart={handleClearCart} onSaveDraft={handleSaveDraft}
                     onSubmitOrder={handleSubmitOrder} isLoading={isLoading}
                     successMessage={successMessage}
-                    isOnTopLiXi={isOnTopLiXi} onIsOnTopLiXiChange={handleOnTopLiXiToggle}
+                    isOnTopLiXi={isOnTopLiXi}
                     isDummyBoxLocal={isDummyBoxLocal} onIsDummyBoxLocalChange={handleDummyBoxLocalToggle}
                     isDummyBoxImport={isDummyBoxImport} onIsDummyBoxImportChange={handleDummyBoxImportToggle}
                     activeDraftId={activeDraftId}

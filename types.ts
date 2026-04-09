@@ -228,6 +228,7 @@ export interface Order {
   isDummyBox?: boolean; // Legacy: đơn DummyBox (cũ)
   isDummyBoxLocal?: boolean;  // CTKM OPELLA: DummyBox Local -150k (đủ điều kiện mới chọn)
   isDummyBoxImport?: boolean; // CTKM OPELLA: DummyBox Import -150k (đủ điều kiện mới chọn)
+  isCalciPlusPack476?: boolean; // CORBIERE CALCIUM PLUS: mỗi gói 21 hộp giảm 4.76%
   appliedRebates?: string[];
   createdAt: number;
   status: 'draft' | 'sent';

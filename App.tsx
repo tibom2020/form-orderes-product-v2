@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -69,6 +69,7 @@ const App: React.FC = () => {
   const [isOnTopLiXi, setIsOnTopLiXi] = useState(false);
   const [isDummyBoxLocal, setIsDummyBoxLocal] = useState(false);
   const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
+  const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
 
   const [selectedRebateIds, setSelectedRebateIds] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Order[]>([]);
@@ -327,6 +328,7 @@ const App: React.FC = () => {
     setIsOnTopLiXi(false);
     setIsDummyBoxLocal(false);
     setIsDummyBoxImport(false);
+    setIsCalciPlusPack476(false);
     setSelectedRebateIds([]);
     setActiveDraftId(null);
   }
@@ -361,6 +363,20 @@ const App: React.FC = () => {
   const handleDummyBoxImportToggle = (checked: boolean) => {
     setIsDummyBoxImport(checked);
     toggleNoteLine('DummyBox Import -150k', checked);
+  };
+  const handleCalciPlusPack476Toggle = (checked: boolean) => {
+    setIsCalciPlusPack476(checked);
+    setNote(prevNote => {
+      const legacy = 'CORBIERE CALCIUM PLUS gói 21h -4.76%';
+      const next = prevNote
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line && line !== legacy);
+      const lineText = 'Gói 4.76%';
+      const hasLine = next.includes(lineText);
+      if (checked) return hasLine ? next.join('\n') : [...next, lineText].join('\n');
+      return next.filter(line => line !== lineText).join('\n');
+    });
   };
 
   const handleSwitchEmployee = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -542,10 +558,20 @@ const App: React.FC = () => {
     const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
+    const calciPlusPack476Discount = isCalciPlusPack476
+      ? cart
+          .filter((i) => PACK_476_PRODUCT_IDS.includes(i.id))
+          .reduce((sum, item) => {
+            const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
+            if (eligibleQty <= 0) return sum;
+            const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity);
+            return sum + eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT;
+          }, 0)
+      : 0;
 
     const finalNote = note;
 
-    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount);
+    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
 
     const ostelin60vItem = cart.find(i => i.id === OSTELIN_60V_PRODUCT_ID);
     let ostelin60VPackages = 0;
@@ -569,6 +595,7 @@ const App: React.FC = () => {
       customerCode, customerName, customerAddress, note: finalNote, items: cart, isOnTopLiXi,
       isDummyBox: isDummyBoxLocal || isDummyBoxImport,
       isDummyBoxLocal, isDummyBoxImport,
+      isCalciPlusPack476,
       appliedRebates: selectedRebateIds,
       totalAmount, finalAmount, totalSales,
       ostelin60VPackages: ostelin60VPackages > 0 ? ostelin60VPackages : undefined,
@@ -647,6 +674,7 @@ const App: React.FC = () => {
     setIsOnTopLiXi(d.isOnTopLiXi);
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
+    setIsCalciPlusPack476(!!d.isCalciPlusPack476);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
       setIsDummyBoxLocal(true);
     }
@@ -1106,6 +1134,7 @@ const App: React.FC = () => {
                     isOnTopLiXi={isOnTopLiXi}
                     isDummyBoxLocal={isDummyBoxLocal} onIsDummyBoxLocalChange={handleDummyBoxLocalToggle}
                     isDummyBoxImport={isDummyBoxImport} onIsDummyBoxImportChange={handleDummyBoxImportToggle}
+                    isCalciPlusPack476={isCalciPlusPack476} onIsCalciPlusPack476Change={handleCalciPlusPack476Toggle}
                     activeDraftId={activeDraftId}
                     rebates={currentCustomerRebates}
                     selectedRebateIds={selectedRebateIds}

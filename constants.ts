@@ -29,7 +29,7 @@ export const EMPLOYEES: Employee[] = [
 export const CUSTOMERS: Customer[] = [];
 
 export const PRODUCTS: Product[] = [
-  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.9% (đến 29.04.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
+  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.95%, gói 21h ck 4.76% (đến 25.04.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
   { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/43ZXpknR/calci-10-(1).webp' },
   { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167425, type: 'Local', basePrice: 159453, image: 'https://i.postimg.cc/43JTm62S/calci-5.webp' },
   { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
@@ -42,7 +42,7 @@ export const PRODUCTS: Product[] = [
   { id: 9, name: 'NO-SPA 40mg', minOrder: '1', minOrderQuantity: 1, price: 45700, type: 'Local', basePrice: 43524, requireApproval: true, image: 'https://i.postimg.cc/QMmGZFm3/nospa-40.webp' },
   { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, promotion: 'ck 1.5% (đến 29.04.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
   { id: 11, name: 'ENTEROGERMINA GUT DEFEND (NEW)', minOrder: '1', minOrderQuantity: 1, price: 188321, type: 'Import', basePrice: 174371, promotion: 'Mua 4h ck 3.94%, 6h ck 5.91% (đến 31.03.2026)', image: 'https://i.postimg.cc/bvgcfZT5/entero-2b.webp' },
-  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, promotion: 'Mua 3h ck 2.96% (đến 29.04.2026)', requireApproval: true, image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
+  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, promotion: 'Mua 3h ck 2.96%, gói 21h ck 4.76% (đến 25.04.2026)', requireApproval: true, image: 'https://i.postimg.cc/SK2rsG43/images.webp' },
   { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 305130, type: 'Import', basePrice: 290600, promotion: 'Mua 3h ck 4.93% (đến 29.04.2026)', nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
   { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 15.8% (đến 29.04.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },
   { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 63901, type: 'Import', basePrice: 60858, promotion: 'ck 4.93% (đến 29.04.2026)', nearExpiry: 'HSD: 03/2027', image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
@@ -78,6 +78,12 @@ export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40
 export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;
+
+// CTKM CORBIERE CALCIUM PLUS: cứ mỗi 21 hộp được giảm trực tiếp 4.76%
+export const CALCIPLUS_PROMO_PACK_SIZE = 21;
+export const CALCIPLUS_PROMO_DISCOUNT_PERCENT = 0.0476;
+/** CTKM gói 4.76% dùng chung cho CORBIERE CALCIUM PLUS + ENTEROGERMINA 2B/20 */
+export const PACK_476_PRODUCT_IDS: readonly number[] = [1, 30];
 
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
 export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24, 25];

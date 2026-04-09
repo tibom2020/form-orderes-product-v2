@@ -8,10 +8,13 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
+    CALCIPLUS_PROMO_DISCOUNT_PERCENT,
+    CALCIPLUS_PROMO_PACK_SIZE,
     DUMMY_BOX_DISCOUNT,
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
+    PACK_476_PRODUCT_IDS,
     TELFAST_GROUP_IDS,
     OSTELIN_GROUP_IDS,
 } from '../constants';
@@ -194,6 +197,8 @@ interface CartProps {
     onIsDummyBoxLocalChange?: (isChecked: boolean) => void;
     isDummyBoxImport?: boolean;
     onIsDummyBoxImportChange?: (isChecked: boolean) => void;
+    isCalciPlusPack476?: boolean;
+    onIsCalciPlusPack476Change?: (isChecked: boolean) => void;
     activeDraftId: string | null;
     rebates: Rebate[];
     selectedRebateIds: string[];
@@ -211,6 +216,7 @@ const Cart: React.FC<CartProps> = (props) => {
         note, onNoteChange, onUpdateQuantity, onRemoveItem,
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
         isOnTopLiXi, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
+        isCalciPlusPack476, onIsCalciPlusPack476Change,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [],
         currentSalesRecord,
@@ -337,6 +343,24 @@ const Cart: React.FC<CartProps> = (props) => {
         return sumAfterDiscount >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
     }, [items]);
 
+    const pack476Rows = useMemo(() => {
+        return items
+            .filter((item) => PACK_476_PRODUCT_IDS.includes(item.id))
+            .map((item) => {
+                const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
+                const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity);
+                const discountAmount = eligibleQty > 0
+                    ? eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT
+                    : 0;
+                return { id: item.id, name: item.name, eligibleQty, discountAmount };
+            });
+    }, [items]);
+    const eligibleCalciPlusPack476 = pack476Rows.some((r) => r.eligibleQty >= CALCIPLUS_PROMO_PACK_SIZE);
+    const calciPlusPack476Discount =
+        !!isCalciPlusPack476
+            ? pack476Rows.reduce((s, r) => s + r.discountAmount, 0)
+            : 0;
+
     const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
     const localRebates = rebates.filter(r => r.Group === 'LOCAL');
@@ -412,7 +436,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onSubmitOrder();
     };
 
-    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount);
+    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col overflow-hidden h-[calc(100vh-190px)] transition-colors duration-200">
@@ -650,6 +674,29 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="dummy-box-import" className={`text-[11px] font-bold cursor-pointer ${eligibleDummyBoxImport ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`} title={eligibleDummyBoxImport ? 'Đủ điều kiện gói Import: tổng đơn sau CK ≥ 1.000.000' : 'Chưa đủ điều kiện gói Import (xem calculator để kiểm tra)'}>DummyBox Import (-150k)</label>
                             </div>
                         )}
+                        {onIsCalciPlusPack476Change && (
+                            <div className="flex items-center space-x-1.5">
+                                <input
+                                    type="checkbox"
+                                    id="calci-plus-pack-476"
+                                    checked={!!isCalciPlusPack476}
+                                    onChange={(e) => onIsCalciPlusPack476Change(e.target.checked)}
+                                    disabled={!eligibleCalciPlusPack476}
+                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                <label
+                                    htmlFor="calci-plus-pack-476"
+                                    className={`text-[11px] font-bold cursor-pointer ${eligibleCalciPlusPack476 ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}
+                                    title={
+                                        eligibleCalciPlusPack476
+                                            ? 'Đủ điều kiện: áp dụng thêm 4.76% theo bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
+                                            : 'Chưa đủ điều kiện bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
+                                    }
+                                >
+                                    Gói 4.76%
+                                </label>
+                            </div>
+                        )}
                         <div className="flex items-center space-x-1.5">
                             <input
                                 type="checkbox"
@@ -665,7 +712,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isOnTopLiXi || isDummyBoxLocal || isDummyBoxImport || rebateDiscount > 0) && (
+                    {(isOnTopLiXi || isDummyBoxLocal || isDummyBoxImport || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isOnTopLiXi && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
@@ -683,6 +730,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- Trừ DummyBox Import:</span>
                                     <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
+                                </div>
+                            )}
+                            {calciPlusPack476Discount > 0 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ gói 4.76%:</span>
+                                    <span>-{formatCurrency(calciPlusPack476Discount)}</span>
                                 </div>
                             )}
                             {rebateDiscount > 0 && (

@@ -96,6 +96,7 @@ export interface SalesRecord {
   GPP?: string | number;      // GPP
   Status?: string;            // Status
   FinalStoreType?: string;    // Final Store type T1
+  FinalStoreTypeQ2?: string;  // Final Store Type Q2 (sheet DANGKYTBQ2)
   TargetMonthly?: number;     // TARGET THÁNG (MỚI)
 
   // Số liệu Import

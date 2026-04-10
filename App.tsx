@@ -152,7 +152,37 @@ const App: React.FC = () => {
         console.warn("REBATE_BM sheet load failed (optional sheet)", e);
         setAllRebatesBm([]);
       }
-      setAllSalesRecords(sales);
+      // Ghép thêm dữ liệu đăng ký TB Q2 từ sheet DANGKYTBQ2 vào từng SalesRecord theo mã KH.
+      // Nếu sheet thiếu/không có dữ liệu thì vẫn giữ nguyên sales như cũ.
+      let salesWithTbQ2 = sales;
+      try {
+        const dangKyRows = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, "DANGKYTBQ2");
+        const byCode = new Map<string, string>();
+        (dangKyRows || []).forEach((row) => {
+          const code = String(
+            row['CustomerCode'] ??
+            row['Customer Code'] ??
+            row['MaKH'] ??
+            row['Mã KH'] ??
+            ''
+          ).trim();
+          if (!code) return;
+          const finalStoreTypeQ2 = String(
+            row['FinalStoreTypeQ2'] ??
+            row['Final Store Type Q2'] ??
+            row['FinalStoreType Q2'] ??
+            ''
+          ).trim();
+          byCode.set(code, finalStoreTypeQ2);
+        });
+        salesWithTbQ2 = (sales || []).map((s) => ({
+          ...s,
+          FinalStoreTypeQ2: byCode.get(String(s.CustomerCode || '').trim()) || '',
+        }));
+      } catch (e) {
+        console.warn("DANGKYTBQ2 sheet load failed (optional sheet)", e);
+      }
+      setAllSalesRecords(salesWithTbQ2);
       setMarketingData(marketing);
       try {
         const marketingBs = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs");

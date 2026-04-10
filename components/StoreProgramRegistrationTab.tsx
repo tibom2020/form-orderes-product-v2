@@ -547,24 +547,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
   const buildPosmFlagsJson = useCallback(() => {
     if (!tier) return '{}';
-    const labels = getSelectedPosmLabels(tier, choiceSingle, choiceMulti).map(l =>
-      swapFrontCounterToTopboard && FRONT_COUNTER_SWAP_TIER_IDS.has(tier.id) && l === POSM.FRONT_COUNTER
-        ? POSM.TOPBOARD
-        : l
-    );
+    const labels = getSelectedPosmLabels(tier, choiceSingle, choiceMulti);
     return JSON.stringify(Object.fromEntries(labels.map(l => [l, 1])));
-  }, [tier, choiceSingle, choiceMulti, swapFrontCounterToTopboard]);
+  }, [tier, choiceSingle, choiceMulti]);
 
   const selectedPosmLabelsForRecap = useMemo(
-    () =>
-      tier
-        ? getSelectedPosmLabels(tier, choiceSingle, choiceMulti).map(l =>
-            swapFrontCounterToTopboard && FRONT_COUNTER_SWAP_TIER_IDS.has(tier.id) && l === POSM.FRONT_COUNTER
-              ? POSM.TOPBOARD
-              : l
-          )
-        : [],
-    [tier, choiceSingle, choiceMulti, swapFrontCounterToTopboard]
+    () => (tier ? getSelectedPosmLabels(tier, choiceSingle, choiceMulti) : []),
+    [tier, choiceSingle, choiceMulti]
   );
 
   const canSwapFrontCounterToTopboard = useMemo(

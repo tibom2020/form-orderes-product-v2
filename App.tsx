@@ -18,6 +18,7 @@ import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
+import Ostelin60VTab from './components/Ostelin60VTab';
 import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
@@ -37,7 +38,7 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -1054,6 +1055,18 @@ const App: React.FC = () => {
             </button>
           )}
           <button
+            onClick={() => setViewMode('ostelin60v')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'ostelin60v'
+                ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
+                : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
+            }`}
+          >
+            <CubeIcon />
+            <span className="hidden sm:inline">Gói Ostelin 60V</span>
+            <span className="sm:hidden">Ostelin</span>
+          </button>
+          <button
             onClick={() => setViewMode('calciPlus')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
               viewMode === 'calciPlus'
@@ -1062,8 +1075,8 @@ const App: React.FC = () => {
             }`}
           >
             <CubeIcon />
-            <span className="hidden sm:inline">Gói Ostelin 60V</span>
-            <span className="sm:hidden">Ostelin</span>
+            <span className="hidden sm:inline">Gói 4.76%</span>
+            <span className="sm:hidden">4.76%</span>
           </button>
           {SHOW_PRICE_LIST_TAB && (
             <button
@@ -1140,7 +1153,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -1320,8 +1333,11 @@ const App: React.FC = () => {
           />
         )}
 
+        {viewMode === 'ostelin60v' && (
+          <Ostelin60VTab />
+        )}
         {viewMode === 'calciPlus' && (
-          <CalciPlusTab currentEmployee={loggedInEmployee!} />
+          <CalciPlusTab />
         )}
 
         {viewMode === 'aiTuVan' && loggedInEmployee?.code === ADMIN_CODE && (

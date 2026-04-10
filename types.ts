@@ -377,6 +377,8 @@ export interface RegisterDisplayTBQ2Payload {
   storeTypeLabel: string;
   rewardVnd: number;
   posmSummary: string;
+  /** Ghi chú đăng ký trên sheet DANGKYTBQ2 (cột Note) */
+  note?: string;
   /** SDT xác nhận trước khi gửi */
   sdt?: string;
   /** JSON: { "Frame OTC": 1, ... } — ghi số 1 vào cột trùng tên trên sheet */

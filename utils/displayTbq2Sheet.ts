@@ -14,7 +14,7 @@ export interface DangKyTbq2RowView {
   nvDangKy: string;
   /** Cột sheet FinalStoreTypeQ2 */
   finalStoreTypeQ2: string;
-  item: string;
+  note: string;
   trangThai: string;
   pheDuyet: string;
   storeType: string;
@@ -61,7 +61,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
       'Q2 Stats',
       'Q2STATS',
     ]),
-    item: pickCell(row, ['Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
+    note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
     trangThai: pickCell(row, ['TrangThai', 'Trạng thái', 'Status']),
     pheDuyet: pickCell(row, ['PheDuyet', 'Phê duyệt', 'Phe duyet']),
     storeType: pickCell(row, ['StoreType', 'Store Type', 'LoaiCH', 'Tier']),

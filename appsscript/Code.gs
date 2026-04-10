@@ -258,6 +258,45 @@ function handleOrder(data, ss, output) {
       ]);
     }
 
+    // --- GÓI 4.76%: Theo dõi CALCIPLUS (id=1) + ENTEROGERMINA 2B/20 (id=30) ---
+    // Chỉ ghi khi user bật checkbox gói 4.76% lúc gửi đơn.
+    var isPack476 = String(data.isCalciPlusPack476 || "").toLowerCase() === "true" || data.isCalciPlusPack476 === true;
+    if (isPack476) {
+      var sheetCalciGoi = ss.getSheetByName("CALCIPLUS_GOI");
+      if (!sheetCalciGoi) {
+        sheetCalciGoi = ss.insertSheet("CALCIPLUS_GOI");
+        sheetCalciGoi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "Product", "SL_hộp", "SL_goi", "Thanh_tien"]);
+        sheetCalciGoi.getRange(1, 1, 1, 8).setFontWeight("bold").setBackground("#d9ead3");
+      }
+
+      var packSize = 21;
+      for (var j = 0; j < items.length; j++) {
+        var it = items[j];
+        var pid = Number(it.id || 0);
+        if (pid !== 1 && pid !== 30) continue; // 1: CalciPlus, 30: Entero 2B/20
+
+        var qty = Number(it.quantity || 0);
+        if (qty <= 0) continue;
+        var slGoi476 = Math.floor(qty / packSize);
+        if (slGoi476 <= 0) continue; // Không đủ bội số 21 hộp thì không ghi
+
+        var slHopEligible = slGoi476 * packSize;
+        var gia = Number(it.price || 0);
+        var thanhTien = Math.round(slHopEligible * gia);
+
+        sheetCalciGoi.appendRow([
+          new Date(),
+          data.employeeName || "",
+          data.customerCode || "",
+          data.customerName || "",
+          it.name || "",
+          slHopEligible,
+          slGoi476,
+          thanhTien
+        ]);
+      }
+    }
+
     sendTelegramNotification(data);
   }
 
@@ -1012,6 +1051,7 @@ function handleCancelDisplayTBQ2(data, ss, output) {
   setCell(["NVDangKy", "NV đăng ký"], "");
   setCell(["MaNVDangKy", "EmployeeCode", "Mã NV"], "");
   setCell(["Item", "Mặt hàng", "Nhóm SP", "Ngành"], "");
+  setCell(["Note", "Ghi chú", "Ghi chu"], "");
 
   clearTbq2PosmFlagCells_(sheet, headers, rowIndex);
 
@@ -1027,6 +1067,7 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   var storeTierId = String(data.storeTierId || "").trim();
   var rewardVnd = Number(data.rewardVnd) || 0;
   var posmSummary = String(data.posmSummary || "").trim();
+  var note = String(data.note || "").trim();
   var customerAddress = String(data.customerAddress || "").trim();
   var sdtSubmit = String(data.sdt || "").trim();
   var posmFlagsJson = String(data.posmFlagsJson || "").trim();
@@ -1133,6 +1174,7 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   setCell(["FinalStoreTypeQ2", "Final Store Type Q2", "FinalStoreType Q2"], storeTypeLabel);
   setCell(["StoreTierId", "storeTierId"], storeTierId);
   setCell(["POSM_CamKet", "POSM", "POSM Cam ket"], posmSummary);
+  setCell(["Note", "Ghi chú", "Ghi chu"], note);
 
   try {
     var flagsObj = posmFlagsJson ? JSON.parse(posmFlagsJson) : {};

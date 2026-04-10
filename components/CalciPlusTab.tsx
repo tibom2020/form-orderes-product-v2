@@ -1,44 +1,49 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { fetchDataFromSheet } from '../services/googleSheetService';
-import { GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET } from '../constants';
+import { CALCIPLUS_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, GOOGLE_SCRIPT_URL } from '../constants';
 import { ChartBarIcon } from './icons';
 
-export interface Ostelin60VGoiRow {
+interface OrderSheetRow {
   Timestamp?: string | number;
-  timestamp?: string | number;
+  Employee?: string;
   Rep?: string;
-  employeeName?: string;
   CustomerCode?: string;
   CustomerName?: string;
-  SL_hộp?: number;
-  SL_hop?: number;
-  SL_goi?: number;
-  'SL gói 21.97%'?: number;
-  Thanh_tien?: number;
-  ThanhTien?: number;
+  Product?: string;
+  ProductName?: string;
+  Quantity?: number | string;
+  Qty?: number | string;
+  SL_hop?: number | string;
+  'SL_hộp'?: number | string;
+  SL_goi?: number | string;
+  'SL_gói'?: number | string;
+  Price?: number | string;
+  Total?: number | string;
+  Thanh_tien?: number | string;
+  ThanhTien?: number | string;
+  // Trường hợp sheet đã lưu sẵn theo cột tách sản phẩm
+  CalciQty?: number | string;
+  EnteroQty?: number | string;
+  CalciPack?: number | string;
+  EnteroPack?: number | string;
   [key: string]: unknown;
 }
 
-interface CalciPlusTabProps {
-  currentEmployee: Employee;
-}
+const CALCIPLUS_KEY = 'CORBIERE CALCIUM PLUS';
+const ENTERO_2B20_KEY = 'ENTEROGERMINA 2 BILLION/5ML B/20 BOTTLE';
 
-function formatSheetTimestamp(v: unknown): string {
-  if (v == null || v === '') return '—';
-  if (typeof v === 'number') {
-    const d = new Date(v > 1e12 ? v : v * 86400000);
-    if (!isNaN(d.getTime())) return d.toLocaleString('vi-VN');
+const normalizeKey = (s: unknown): string => String(s ?? '').trim().toUpperCase();
+const toNum = (...vals: unknown[]): number => {
+  for (const v of vals) {
+    const n = Number(v ?? 0);
+    if (!Number.isNaN(n) && Number.isFinite(n)) return n;
   }
-  const s = String(v);
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toLocaleString('vi-VN');
-  return s;
-}
+  return 0;
+};
 
-const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
-  const [rawData, setRawData] = useState<Ostelin60VGoiRow[]>([]);
+const CalciPlusTab: React.FC = () => {
+  const [rawData, setRawData] = useState<OrderSheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,10 +51,10 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDataFromSheet<Ostelin60VGoiRow>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET);
+      const data = await fetchDataFromSheet<OrderSheetRow>(GOOGLE_SCRIPT_URL, CALCIPLUS_GOI_SHEET);
       setRawData(data || []);
     } catch (e) {
-      setError('Không tải được dữ liệu gói Ostelin 60V.');
+      setError(`Không tải được dữ liệu sheet ${CALCIPLUS_GOI_SHEET}.`);
     } finally {
       setLoading(false);
     }
@@ -61,49 +66,160 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
 
   const rows = useMemo(() => {
     return rawData.map((row, idx) => {
-      const rep = String(row.Rep ?? row.employeeName ?? '').trim() || '—';
-      const code = String(row.CustomerCode ?? '').trim();
-      const name = String(row.CustomerName ?? '').trim();
-      const slHop = Number(row.SL_hộp ?? row.SL_hop ?? 0) || 0;
-      const slGoi = Number(row.SL_goi ?? row['SL gói 21.97%'] ?? 0) || 0;
-      const thanhTien = Number(row.Thanh_tien ?? row.ThanhTien ?? 0) || 0;
-      const ts = row.Timestamp ?? row.timestamp;
+      const repNormalized = String(row.Employee ?? row.Rep ?? '').trim() || '—';
+      const customerCode = String(row.CustomerCode ?? '').trim();
+      const customerName = String(row.CustomerName ?? '').trim();
+      const product = String(row.Product ?? row.ProductName ?? '').trim();
+      const qty = toNum(row.Quantity, row.Qty, row.SL_hop, row['SL_hộp']);
+      const slGoi = toNum(row.SL_goi, row['SL_gói']);
+      const total = toNum(row.Total, row.Thanh_tien, row.ThanhTien);
+      const calciQtyCol = toNum(row.CalciQty, row['SL_hop_calci'], row['SL_hộp_calci'], row['SL hop calci']);
+      const enteroQtyCol = toNum(row.EnteroQty, row['SL_hop_entero'], row['SL_hộp_entero'], row['SL hop entero']);
+      const calciPackCol = toNum(row.CalciPack, row['SL_goi_calci'], row['SL gói calci'], row['SL_goi_calcip']);
+      const enteroPackCol = toNum(row.EnteroPack, row['SL_goi_entero'], row['SL gói entero'], row['SL_goi_entero2b20']);
       return {
-        key: `${idx}-${rep}-${code}-${String(ts)}`,
-        tsRaw: ts,
-        rep,
-        code,
-        name,
-        slHop,
+        key: `${idx}-${repNormalized}-${product}`,
+        rep: repNormalized,
+        customerCode,
+        customerName,
+        product,
+        qty,
         slGoi,
-        thanhTien,
+        total,
+        calciQtyCol,
+        enteroQtyCol,
+        calciPackCol,
+        enteroPackCol,
       };
-    }).sort((a, b) => {
-      const ta = a.tsRaw != null ? new Date(a.tsRaw as string | number).getTime() : 0;
-      const tb = b.tsRaw != null ? new Date(b.tsRaw as string | number).getTime() : 0;
-      return tb - ta;
     });
   }, [rawData]);
 
-  const totals = useMemo(() => ({
-    don: rows.length,
-    thanhTien: rows.reduce((s, r) => s + r.thanhTien, 0),
-    slGoi: rows.reduce((s, r) => s + r.slGoi, 0),
-  }), [rows]);
-
   const byRep = useMemo(() => {
-    const m = new Map<string, { slGoi: number; thanhTien: number; soDon: number }>();
+    const m = new Map<string, {
+      calciQty: number;
+      calciPacks: number;
+      enteroQty: number;
+      enteroPacks: number;
+      totalAmount: number;
+    }>();
     rows.forEach(r => {
-      if (!m.has(r.rep)) m.set(r.rep, { slGoi: 0, thanhTien: 0, soDon: 0 });
+      if (!m.has(r.rep)) {
+        m.set(r.rep, { calciQty: 0, calciPacks: 0, enteroQty: 0, enteroPacks: 0, totalAmount: 0 });
+      }
       const cur = m.get(r.rep)!;
-      cur.slGoi += r.slGoi;
-      cur.thanhTien += r.thanhTien;
-      cur.soDon += 1;
+
+      // Nếu sheet ghi trực tiếp theo cột tổng hợp riêng từng SP thì ưu tiên dùng luôn
+      if (r.calciQtyCol > 0 || r.enteroQtyCol > 0 || r.calciPackCol > 0 || r.enteroPackCol > 0) {
+        cur.calciQty += r.calciQtyCol;
+        cur.enteroQty += r.enteroQtyCol;
+        cur.calciPacks += r.calciPackCol;
+        cur.enteroPacks += r.enteroPackCol;
+        cur.totalAmount += r.total;
+        return;
+      }
+
+      const p = normalizeKey(r.product);
+      if (p.includes(CALCIPLUS_KEY)) {
+        cur.calciQty += r.qty;
+        if (r.slGoi > 0) cur.calciPacks += r.slGoi;
+      } else if (p.includes(ENTERO_2B20_KEY)) {
+        cur.enteroQty += r.qty;
+        if (r.slGoi > 0) cur.enteroPacks += r.slGoi;
+      } else {
+        return;
+      }
+      cur.totalAmount += r.total;
+    });
+    m.forEach((cur) => {
+      if (cur.calciPacks <= 0 && cur.calciQty > 0) {
+        cur.calciPacks = Math.floor(cur.calciQty / CALCIPLUS_PROMO_PACK_SIZE);
+      }
+      if (cur.enteroPacks <= 0 && cur.enteroQty > 0) {
+        cur.enteroPacks = Math.floor(cur.enteroQty / CALCIPLUS_PROMO_PACK_SIZE);
+      }
     });
     return Array.from(m.entries())
       .map(([rep, v]) => ({ rep, ...v }))
-      .sort((a, b) => b.slGoi - a.slGoi || b.thanhTien - a.thanhTien);
+      .filter((r) => r.calciQty > 0 || r.enteroQty > 0)
+      .sort((a, b) => {
+        const aPacks = a.calciPacks + a.enteroPacks;
+        const bPacks = b.calciPacks + b.enteroPacks;
+        return bPacks - aPacks || b.totalAmount - a.totalAmount;
+      });
   }, [rows]);
+
+  const byCustomer = useMemo(() => {
+    const m = new Map<string, {
+      rep: string;
+      customerCode: string;
+      customerName: string;
+      calciQty: number;
+      calciPacks: number;
+      enteroQty: number;
+      enteroPacks: number;
+      totalAmount: number;
+    }>();
+
+    rows.forEach((r) => {
+      const code = r.customerCode;
+      const name = r.customerName;
+      const customerKey = `${r.rep}__${code || 'N/A'}__${name || 'N/A'}`;
+      if (!m.has(customerKey)) {
+        m.set(customerKey, {
+          rep: r.rep,
+          customerCode: code,
+          customerName: name,
+          calciQty: 0,
+          calciPacks: 0,
+          enteroQty: 0,
+          enteroPacks: 0,
+          totalAmount: 0,
+        });
+      }
+      const cur = m.get(customerKey)!;
+
+      // Trường hợp sheet đã tách sẵn cột theo sản phẩm
+      if (r.calciQtyCol > 0 || r.enteroQtyCol > 0 || r.calciPackCol > 0 || r.enteroPackCol > 0) {
+        cur.calciQty += r.calciQtyCol;
+        cur.enteroQty += r.enteroQtyCol;
+        cur.calciPacks += r.calciPackCol;
+        cur.enteroPacks += r.enteroPackCol;
+        cur.totalAmount += r.total;
+        return;
+      }
+
+      const p = normalizeKey(r.product);
+      if (p.includes(CALCIPLUS_KEY)) {
+        cur.calciQty += r.qty;
+        if (r.slGoi > 0) cur.calciPacks += r.slGoi;
+      } else if (p.includes(ENTERO_2B20_KEY)) {
+        cur.enteroQty += r.qty;
+        if (r.slGoi > 0) cur.enteroPacks += r.slGoi;
+      } else {
+        return;
+      }
+      cur.totalAmount += r.total;
+    });
+
+    const out = Array.from(m.values())
+      .filter((r) => r.calciQty > 0 || r.enteroQty > 0)
+      .map((r) => ({
+        ...r,
+        calciPacks: r.calciPacks > 0 ? r.calciPacks : (r.calciQty > 0 ? Math.floor(r.calciQty / CALCIPLUS_PROMO_PACK_SIZE) : 0),
+        enteroPacks: r.enteroPacks > 0 ? r.enteroPacks : (r.enteroQty > 0 ? Math.floor(r.enteroQty / CALCIPLUS_PROMO_PACK_SIZE) : 0),
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount || (b.calciPacks + b.enteroPacks) - (a.calciPacks + a.enteroPacks));
+    return out;
+  }, [rows]);
+
+  const totals = useMemo(() => ({
+    reps: byRep.length,
+    calciQty: byRep.reduce((s, r) => s + r.calciQty, 0),
+    calciPacks: byRep.reduce((s, r) => s + r.calciPacks, 0),
+    enteroQty: byRep.reduce((s, r) => s + r.enteroQty, 0),
+    enteroPacks: byRep.reduce((s, r) => s + r.enteroPacks, 0),
+    totalAmount: byRep.reduce((s, r) => s + r.totalAmount, 0),
+  }), [byRep]);
 
   return (
     <div className="p-4 animate-fade-in">
@@ -113,7 +229,7 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
             <div className="w-8 h-8 rounded-lg bg-opella-green/20 flex items-center justify-center">
               <ChartBarIcon />
             </div>
-            THEO DÕI GÓI OSTELIN 60V (5H — 21.97%)
+            THỐNG KÊ GÓI 4.76% THEO REP
           </h2>
           <div className="flex flex-wrap items-center gap-2 justify-end">
             <button
@@ -140,24 +256,26 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
           <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
             <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
               <h3 className="text-sm font-black text-opella-green dark:text-opella-green uppercase tracking-wide">
-                THỐNG KÊ THEO REP
+                THỐNG KÊ THEO REP (TẤT CẢ THÀNH VIÊN)
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse min-w-[480px]">
+              <table className="w-full text-left text-sm border-collapse min-w-[980px]">
                 <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
                   <tr>
                     <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
                     <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Số đơn</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng SL gói</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng thành tiền</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">CALCIPLUS (SL hộp)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">CALCIPLUS (SL gói 4.76%)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">ENTERO 2B/20 (SL hộp)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">ENTERO 2B/20 (SL gói 4.76%)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng doanh số 2 SP</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {byRep.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400 italic">
                         Chưa có dữ liệu để báo cáo
                       </td>
                     </tr>
@@ -166,9 +284,11 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
                       <tr key={row.rep} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                         <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
                         <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.soDon}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.slGoi}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.thanhTien)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciQty}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciPacks}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroQty}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroPacks}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.totalAmount)}</td>
                       </tr>
                     ))
                   )}
@@ -182,51 +302,66 @@ const CalciPlusTab: React.FC<CalciPlusTabProps> = ({ currentEmployee }) => {
           <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden mt-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-opella-green/10 dark:bg-opella-green/20 border-b border-slate-200 dark:border-slate-600">
               <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Số dòng / đơn</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.don}</p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Số Rep có phát sinh</p>
+                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.reps}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng SL gói</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.slGoi}</p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">CalciPlus (SL hộp / gói)</p>
+                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.calciQty} / {totals.calciPacks}</p>
               </div>
               <div className="col-span-2 sm:col-span-1">
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng thành tiền</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{formatCurrency(totals.thanhTien)}</p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Entero 2B/20 (SL hộp / gói)</p>
+                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.enteroQty} / {totals.enteroPacks}</p>
+              </div>
+              <div className="col-span-2 sm:col-span-3">
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng doanh số 2 sản phẩm</p>
+                <p className="text-xl font-black text-opella-green dark:text-opella-green">{formatCurrency(totals.totalAmount)}</p>
               </div>
             </div>
+          </div>
+        )}
 
+        {!loading && !error && (
+          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
+              <h3 className="text-sm font-black text-opella-green dark:text-opella-green uppercase tracking-wide">
+                CHI TIẾT KHÁCH HÀNG (CALCIPLUS VS ENTERO 2B/20)
+              </h3>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse min-w-[720px]">
+              <table className="w-full text-left text-sm border-collapse min-w-[1100px]">
                 <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
                   <tr>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 whitespace-nowrap">Thời gian</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600">Mã KH</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 min-w-[120px]">Tên KH</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 text-right">SL hộp</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 text-right">SL gói</th>
-                    <th className="px-3 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Thành tiền</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Rep</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Mã KH</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Tên KH</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Calci (SL hộp)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Calci (SL gói)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Entero (SL hộp)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Entero (SL gói)</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng doanh số</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {rows.length === 0 ? (
+                  {byCustomer.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
-                        Chưa có dữ liệu gói Ostelin 60V
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 italic">
+                        Chưa có dữ liệu chi tiết theo khách hàng
                       </td>
                     </tr>
                   ) : (
-                    rows.map((row, idx) => (
-                      <tr key={row.key} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="px-3 py-2.5 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
-                        <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs">{formatSheetTimestamp(row.tsRaw)}</td>
-                        <td className="px-3 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
-                        <td className="px-3 py-2.5 font-mono text-slate-700 dark:text-slate-200">{row.code || '—'}</td>
-                        <td className="px-3 py-2.5 text-slate-700 dark:text-slate-200">{row.name || '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.slHop || '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.slGoi}</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.thanhTien)}</td>
+                    byCustomer.map((row, idx) => (
+                      <tr key={`${row.rep}-${row.customerCode}-${row.customerName}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
+                        <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
+                        <td className="px-4 py-2.5 font-mono text-slate-700 dark:text-slate-200">{row.customerCode || '—'}</td>
+                        <td className="px-4 py-2.5 text-slate-700 dark:text-slate-200">{row.customerName || '—'}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciQty}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciPacks}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroQty}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroPacks}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.totalAmount)}</td>
                       </tr>
                     ))
                   )}

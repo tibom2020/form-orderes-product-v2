@@ -93,6 +93,8 @@ export const OSTELIN_60V_PRODUCT_ID = 25;
 /** Tối thiểu 5 hộp để áp CK 21.97% & ghi theo dõi (1 gói/đơn đủ điều kiện) */
 export const OSTELIN_60V_GOI_MIN_QTY = 5;
 export const OSTELIN_60V_GOI_SHEET = 'OSTELIN_60V_GOI';
+/** Theo dõi gói 4.76% (CalciPlus + Enterogermina 2B/20) */
+export const CALCIPLUS_GOI_SHEET = 'CALCIPLUS_GOI';
 
 export const CALCIPLUS_PRODUCT_ID = 1;
 

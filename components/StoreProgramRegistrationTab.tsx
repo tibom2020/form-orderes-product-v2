@@ -165,6 +165,14 @@ function findTierConfigByFinalStoreTypeQ2(cell: string): StoreTierConfig | null 
 
 /** Trong state `finalStoreTypeQ1Filter`: chỉ hiện KH có cột FinalStoreTypeQ1 khác rỗng */
 const Q1_FILTER_NON_EMPTY = '__Q1_NON_EMPTY__';
+const FRONT_COUNTER_SWAP_NOTE = 'Đổi FRONTCOUNTER -> TOPBOARD';
+const FRONT_COUNTER_SWAP_TIER_IDS: ReadonlySet<StoreTierId> = new Set([
+  'flagship_plus',
+  'flagship',
+  'platinum',
+  'gold',
+  'silver',
+]);
 
 function validatePosm(
   tier: StoreTierConfig,
@@ -317,6 +325,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   /** 1: KH → 2: Tier & POSM → 3: Xác nhận / Hủy → 4: SDT & Submit */
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
   const [confirmSdt, setConfirmSdt] = useState('');
+  const [swapFrontCounterToTopboard, setSwapFrontCounterToTopboard] = useState(false);
 
   const tier = useMemo(() => tierById(storeTierId || null), [storeTierId]);
 
@@ -412,6 +421,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         r.finalStoreTypeQ1.toLowerCase().includes(q) ||
         r.saleQ1.toLowerCase().includes(q) ||
         r.finalStoreTypeQ2.toLowerCase().includes(q) ||
+        r.note.toLowerCase().includes(q) ||
         r.rep.toLowerCase().includes(q)
     );
   }, [myRows, searchQuery, tierRegisteredFilter, finalStoreTypeQ1Filter]);
@@ -464,6 +474,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     setChoiceMulti(new Set());
     setSubmitAttempted(false);
     setSubmitMessage(null);
+    setSwapFrontCounterToTopboard(false);
   }, [storeTierId]);
 
   useEffect(() => {
@@ -536,13 +547,29 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
   const buildPosmFlagsJson = useCallback(() => {
     if (!tier) return '{}';
-    const labels = getSelectedPosmLabels(tier, choiceSingle, choiceMulti);
+    const labels = getSelectedPosmLabels(tier, choiceSingle, choiceMulti).map(l =>
+      swapFrontCounterToTopboard && FRONT_COUNTER_SWAP_TIER_IDS.has(tier.id) && l === POSM.FRONT_COUNTER
+        ? POSM.TOPBOARD
+        : l
+    );
     return JSON.stringify(Object.fromEntries(labels.map(l => [l, 1])));
-  }, [tier, choiceSingle, choiceMulti]);
+  }, [tier, choiceSingle, choiceMulti, swapFrontCounterToTopboard]);
 
   const selectedPosmLabelsForRecap = useMemo(
-    () => (tier ? getSelectedPosmLabels(tier, choiceSingle, choiceMulti) : []),
-    [tier, choiceSingle, choiceMulti]
+    () =>
+      tier
+        ? getSelectedPosmLabels(tier, choiceSingle, choiceMulti).map(l =>
+            swapFrontCounterToTopboard && FRONT_COUNTER_SWAP_TIER_IDS.has(tier.id) && l === POSM.FRONT_COUNTER
+              ? POSM.TOPBOARD
+              : l
+          )
+        : [],
+    [tier, choiceSingle, choiceMulti, swapFrontCounterToTopboard]
+  );
+
+  const canSwapFrontCounterToTopboard = useMemo(
+    () => !!tier && FRONT_COUNTER_SWAP_TIER_IDS.has(tier.id),
+    [tier]
   );
 
   const toggleBronze = useCallback(
@@ -636,6 +663,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       choiceSingle: tier.choiceMode === 'single' ? choiceSingle : undefined,
       choiceMulti: tier.choiceMode === 'exact2' ? [...choiceMulti] : undefined,
     };
+    const submitNote = canSwapFrontCounterToTopboard && swapFrontCounterToTopboard ? FRONT_COUNTER_SWAP_NOTE : '';
     setSubmitBusy(true);
     let res = await submitDisplayTBQ2Registration(scriptUrl, {
       customerCode: regCode,
@@ -647,6 +675,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       storeTypeLabel: tier.label,
       rewardVnd: tier.reward,
       posmSummary: JSON.stringify(posmPayload),
+      note: submitNote,
       sdt: confirmSdt.replace(/\D/g, ''),
       posmFlagsJson: buildPosmFlagsJson(),
     });
@@ -667,7 +696,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         sdt: confirmSdt.replace(/\D/g, ''),
         rep: repDisplay,
         finalStoreTypeQ2: tier.label,
-        posmItems: getSelectedPosmLabels(tier, choiceSingle, choiceMulti),
+        posmItems: selectedPosmLabelsForRecap,
         rewardVnd: tier.reward,
       });
       setSubmitMessage(null);
@@ -965,7 +994,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           FinalStoreTypeQ2
                         </th>
                         <th className="py-3 px-3 bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40">
-                          Item
+                          Note
                         </th>
                         <th className="py-3 px-3 bg-amber-100/80 dark:bg-amber-950/35 border-r border-amber-200/50 dark:border-amber-900/40">
                           Trạng thái
@@ -1037,7 +1066,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               {row.finalStoreTypeQ2 || '—'}
                             </td>
                             <td className="py-3 px-3 text-[10px] border-r border-violet-200/35 dark:border-violet-900/30 bg-violet-50/72 group-hover/row:bg-violet-100/82 dark:bg-violet-950/22 dark:group-hover/row:bg-violet-950/36">
-                              {row.item || '—'}
+                              {row.note || '—'}
                             </td>
                             <td className="py-3 px-3 border-r border-amber-200/40 dark:border-amber-900/30 bg-amber-50/65 group-hover/row:bg-amber-100/78 dark:bg-amber-950/18 dark:group-hover/row:bg-amber-950/32">
                               {isRegisteredRow(row) ? (
@@ -1115,7 +1144,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   <span className="inline-block w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-900 align-middle mr-1" /> Khu vực / Rep
                 </span>
                 <span>
-                  <span className="inline-block w-2 h-2 rounded-sm bg-violet-200 dark:bg-violet-900 align-middle mr-1" /> Q2 &amp; Item
+                  <span className="inline-block w-2 h-2 rounded-sm bg-violet-200 dark:bg-violet-900 align-middle mr-1" /> Q2 &amp; Note
                 </span>
                 <span>
                   <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-900 align-middle mr-1" /> Trạng thái / Phê duyệt
@@ -1345,6 +1374,19 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         ))}
                       </ul>
                     </div>
+                    {canSwapFrontCounterToTopboard && (
+                      <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={swapFrontCounterToTopboard}
+                          onChange={e => setSwapFrontCounterToTopboard(e.target.checked)}
+                          className="w-4 h-4 rounded border-[#707974] text-[#003629]"
+                        />
+                        <span className="text-xs font-semibold text-[#191c1c] dark:text-slate-200">
+                          {FRONT_COUNTER_SWAP_NOTE}
+                        </span>
+                      </label>
+                    )}
                   </div>
                   {wizardStep === 3 && (
                     <p className="text-[11px] text-[#404945] dark:text-slate-500">

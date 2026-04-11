@@ -91,7 +91,7 @@ const Ostelin60VTab: React.FC = () => {
     });
     return Array.from(m.entries())
       .map(([rep, v]) => ({ rep, ...v }))
-      .sort((a, b) => b.slGoi - a.slGoi || b.thanhTien - a.thanhTien);
+      .sort((a, b) => b.soDon - a.soDon || b.slGoi - a.slGoi || b.thanhTien - a.thanhTien);
   }, [rows]);
 
   const totals = useMemo(() => ({
@@ -151,9 +151,24 @@ const Ostelin60VTab: React.FC = () => {
                       <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">Chưa có dữ liệu</td>
                     </tr>
                   ) : byRep.map((row, idx) => (
-                    <tr key={row.rep}>
+                    <tr
+                      key={row.rep}
+                      className={idx === 0 ? 'bg-amber-50/80 dark:bg-amber-950/30' : undefined}
+                    >
                       <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
-                      <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-slate-800 dark:text-white">{row.rep}</span>
+                          {idx === 0 && (
+                            <span
+                              className="inline-flex items-center shrink-0 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm dark:from-amber-500 dark:to-amber-600 dark:text-amber-950"
+                              title="Nhiều đơn gói Ostelin 60V nhất (theo số đơn, sau đó SL gói)"
+                            >
+                              Top 1 đơn hàng
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.soDon}</td>
                       <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.slGoi}</td>
                       <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.thanhTien)}</td>

@@ -19,6 +19,7 @@ import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import Ostelin60VTab from './components/Ostelin60VTab';
+import GiaThamKhaoTab from './components/GiaThamKhaoTab';
 import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
@@ -38,7 +39,7 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -550,7 +551,8 @@ const App: React.FC = () => {
         const monthlyDiscountPercent = getDiscountPercent(
           item.promotion,
           item.quantity,
-          compareValue
+          compareValue,
+          item.id
         );
         const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
         const maxPayableFeeLine = Math.max(0, maxTotalDiscountLine - monthlyDiscountAmount);
@@ -595,7 +597,7 @@ const App: React.FC = () => {
           .reduce((sum, item) => {
             const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
             if (eligibleQty <= 0) return sum;
-            const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity);
+            const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity, item.id);
             return sum + eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT;
           }, 0)
       : 0;
@@ -1078,6 +1080,18 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Gói 4.76%</span>
             <span className="sm:hidden">4.76%</span>
           </button>
+          <button
+            onClick={() => setViewMode('giaThamKhao')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'giaThamKhao'
+                ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green'
+                : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            <TagIcon />
+            <span className="hidden sm:inline">Giá tham khảo</span>
+            <span className="sm:hidden">Giá TK</span>
+          </button>
           {SHOW_PRICE_LIST_TAB && (
             <button
               onClick={() => setViewMode('priceList')}
@@ -1153,7 +1167,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'giaThamKhao', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -1338,6 +1352,9 @@ const App: React.FC = () => {
         )}
         {viewMode === 'calciPlus' && (
           <CalciPlusTab />
+        )}
+        {viewMode === 'giaThamKhao' && (
+          <GiaThamKhaoTab products={PRODUCTS} />
         )}
 
         {viewMode === 'aiTuVan' && loggedInEmployee?.code === ADMIN_CODE && (

@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
-import { getMaxDiscountPercent, getDiscountPercent } from '../utils/calculations';
-import { CALCIPLUS_PRODUCT_ID } from '../constants';
+import { getMaxDiscountPercent } from '../utils/calculations';
 import { REBATE_TIERS } from './dashboard/DashboardUtils';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 

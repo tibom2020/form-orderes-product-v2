@@ -61,6 +61,746 @@ export const PRODUCTS: Product[] = [
   { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 15.76%, 4h ck 17.73%, 5h ck 21.67% (đến 29.04.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
+/**
+ * Giá gốc BM CVM (VNĐ / hộp) — dùng tab Giá tham khảo & đối chiếu BuyMed.
+ * Id 17 (PHARMATON ENERGY), 19 (PHARMATON KIDDI): 0 = không bán.
+ */
+export const BM_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
+  1: 211500,
+  2: 82600,
+  3: 90900,
+  4: 63100,
+  5: 97900,
+  6: 268000,
+  7: 128700,
+  8: 29900,
+  9: 45800,
+  10: 39900,
+  11: 166300,
+  12: 289100,
+  13: 385400,
+  14: 60400,
+  15: 131200,
+  16: 27600,
+  17: 0,
+  18: 175700,
+  19: 0,
+  20: 100000,
+  21: 117500,
+  22: 246200,
+  23: 492000,
+  24: 111200,
+  25: 193800,
+  26: 166200,
+  27: 209500,
+  28: 201500,
+  29: 145800,
+  30: 166300,
+};
+
+/** SP không bán kênh BM CVM (giá gốc = 0) */
+export const BM_CVM_NOT_SOLD_IDS: readonly number[] = [17, 19];
+
+/**
+ * Giá gốc BM NO CVM (VNĐ / hộp) — kênh không áp mức CVM.
+ * Id 17 (PHARMATON ENERGY), 19 (PHARMATON KIDDI): không có giá trong bảng → 0.
+ */
+export const BM_NON_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
+  1: 223200,
+  2: 83800,
+  3: 90600,
+  4: 62400,
+  5: 99400,
+  6: 258500,
+  7: 133700,
+  8: 29800,
+  9: 44700,
+  10: 39400,
+  11: 180800,
+  12: 299500,
+  13: 402400,
+  14: 60500,
+  15: 129600,
+  16: 28400,
+  17: 0,
+  18: 157300,
+  19: 0,
+  20: 106000,
+  21: 118800,
+  22: 247600,
+  23: 541000,
+  24: 110100,
+  25: 234100,
+  26: 149900,
+  27: 211500,
+  28: 201200,
+  29: 145600,
+  30: 180800,
+};
+
+/** SP không có giá kênh BM NO CVM (giống ô trống trên bảng) */
+export const BM_NON_CVM_NOT_SOLD_IDS: readonly number[] = [17, 19];
+
+/** Một dòng CTKM kênh BM CVM (% giảm + mô tả theo chương trình BuyMed) */
+export type BmCvmCtkmEntry = {
+  /** Nhãn hiển thị, ví dụ "GIẢM 2.4%" */
+  label: string;
+  /** Phần trăm chiết khấu dạng số thập phân (2.4% → 0.024) */
+  discountPercent: number;
+  description: string;
+  /**
+   * Trần tiền giảm (VNĐ) trên cả dòng hàng (giá gốc BM × SL) cho dòng CTKM này.
+   * Ví dụ "giảm tối đa 30K" → 30_000. Bỏ qua nếu không giới hạn theo tiền.
+   */
+  maxDiscountVnd?: number;
+  /**
+   * Chỉ áp dòng CTKM này khi số lượng hộp đặt đúng bằng giá trị (vd. 100 hộp cho mức 2.4%).
+   * Bỏ qua nếu không set.
+   */
+  requiresExactQty?: number;
+  /**
+   * Chỉ áp khi SL ≥ giá trị (vd. mua từ 2 hộp).
+   * BM NO CVM: khi tính với `minQtyMustBeMultipleOf`, SL phải là **bội số** của giá trị này (combo).
+   */
+  requiresMinQty?: number;
+};
+
+/**
+ * Dòng CTKM có đủ điều kiện SL để tham gia so mức CK (khớp logic `computeBmCtkmDiscountVnd`).
+ */
+export function bmCtkmEntryEligible(
+  qty: number,
+  e: BmCvmCtkmEntry,
+  minQtyMustBeMultipleOf?: boolean
+): boolean {
+  if (e.requiresExactQty != null && qty !== e.requiresExactQty) return false;
+  if (e.requiresMinQty != null) {
+    const m = e.requiresMinQty;
+    if (m <= 0) return false;
+    if (minQtyMustBeMultipleOf) {
+      if (qty < m || qty % m !== 0) return false;
+    } else if (qty < m) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Tiền CK CTKM BM (VNĐ) trên dòng: mỗi dòng = min(maxDiscountVnd, lineValue × %);
+ * Bỏ qua dòng có requiresExactQty / requiresMinQty không khớp qty; SP nhiều dòng → lấy mức CK tiền cao nhất trong các dòng áp dụng được.
+ *
+ * @param minQtyMustBeMultipleOf — BM NO CVM combo: khi `true`, mỗi dòng có `requiresMinQty` chỉ áp khi SL là **bội số** của ngưỡng (vd. min 20 → 20, 40, 60…). BM CVM để `false`/bỏ qua.
+ */
+export function computeBmCtkmDiscountVnd(
+  lineValueVnd: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number {
+  if (!entries?.length || lineValueVnd <= 0) return 0;
+  let best = 0;
+  for (const e of entries) {
+    if (!bmCtkmEntryEligible(qty, e, minQtyMustBeMultipleOf)) continue;
+    const raw = lineValueVnd * e.discountPercent;
+    const cap = e.maxDiscountVnd;
+    const applied = cap != null ? Math.min(cap, raw) : raw;
+    if (applied > best) best = applied;
+  }
+  return Math.round(best);
+}
+
+/**
+ * Chỉ số các dòng CTKM đang được áp (tiền CK = mức tối đa trong các dòng đủ điều kiện). Dùng hiển thị tích xanh trên UI.
+ */
+export function getBmCtkmWinningEntryIndices(
+  lineValueVnd: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number[] {
+  if (!entries?.length || lineValueVnd <= 0 || qty <= 0) return [];
+  const rounded: number[] = [];
+  let best = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (!bmCtkmEntryEligible(qty, e, minQtyMustBeMultipleOf)) {
+      rounded.push(-1);
+      continue;
+    }
+    const raw = lineValueVnd * e.discountPercent;
+    const cap = e.maxDiscountVnd;
+    const applied = cap != null ? Math.min(cap, raw) : raw;
+    const r = Math.round(applied);
+    rounded.push(r);
+    if (r > best) best = r;
+  }
+  if (best <= 0) return [];
+  return rounded.map((r, i) => (r === best ? i : -1)).filter((i) => i >= 0);
+}
+
+export function computeBmCtkmEffectivePercent(
+  lineValueVnd: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number {
+  if (lineValueVnd <= 0) return 0;
+  return computeBmCtkmDiscountVnd(lineValueVnd, entries, qty, minQtyMustBeMultipleOf) / lineValueVnd;
+}
+
+/**
+ * CTKM BM CVM theo từng SP (có SP có nhiều dòng — ví dụ Calci Extra 10ml).
+ * Giá trị tiền CK tôn trọng maxDiscountVnd (vd. tối đa 30K).
+ */
+export const BM_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCvmCtkmEntry[]>> = {
+  28: [
+    {
+      label: 'GIẢM 2.4%',
+      discountPercent: 0.024,
+      maxDiscountVnd: 1_000_000,
+      requiresMinQty: 100,
+      description:
+        'Giảm tối đa 1TR khi mua Calcium corbiere extra sanofi (hộp/30ống/10ml) — áp dụng từ 100 hộp trở lên.',
+    },
+    {
+      label: 'GIẢM 0.98%',
+      discountPercent: 0.0098,
+      maxDiscountVnd: 50_000,
+      description:
+        'Giảm tối đa 50K khi mua Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+  ],
+  4: [
+    {
+      label: 'GIẢM 1.7%',
+      discountPercent: 0.017,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc Kids Acetylcystein 100mg Sanofi (hộp/30gói/0.5gram)',
+    },
+  ],
+  3: [
+    {
+      label: 'GIẢM 7.3%',
+      discountPercent: 0.073,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc acetylcystein 200mg sanofi (Hộp/30gói/1gram)',
+    },
+  ],
+  2: [
+    {
+      label: 'GIẢM 5.4%',
+      discountPercent: 0.054,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc acetylcystein 200mg sanofi (hộp/30viên nang)',
+    },
+  ],
+  14: [
+    {
+      label: 'GIẢM 4.5%',
+      discountPercent: 0.045,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
+    },
+  ],
+  10: [
+    {
+      label: 'GIẢM 3.2%',
+      discountPercent: 0.032,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon kids bromhexin 4mg/5ml sanofi (chai/60ml)',
+    },
+  ],
+  15: [
+    {
+      label: 'GIẢM 6.1%',
+      discountPercent: 0.061,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Buscopan hyoscine 10mg sanofi (hộp/100 viên nén)',
+    },
+  ],
+  26: [
+    {
+      label: 'GIẢM 13.8%',
+      discountPercent: 0.138,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+  ],
+  12: [
+    {
+      label: 'GIẢM 4.1%',
+      discountPercent: 0.041,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Enterogermina Gut Restore 4 billion/5ml Opella (Hộp/20ống/5ml)',
+    },
+  ],
+  8: [
+    {
+      label: 'GIẢM 10.4%',
+      discountPercent: 0.104,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast kids fexofenadin 30mg sanofi (hộp/10 viên nén)',
+    },
+  ],
+  5: [
+    {
+      label: 'GIẢM 0.1%',
+      discountPercent: 0.001,
+      maxDiscountVnd: 30_000,
+      description: 'Giảm tối đa 30K khi mua Magne B6 Corbiere Sanofi (h/50v)',
+    },
+  ],
+  21: [
+    {
+      label: 'GIẢM 4.6%',
+      discountPercent: 0.046,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+  ],
+  29: [
+    {
+      label: 'GIẢM 1.1%',
+      discountPercent: 0.011,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua No-spa drotaverin 40mg/2ml sanofi (hộp/25ống/2ml)',
+    },
+  ],
+  9: [
+    {
+      label: 'GIẢM 1.9%',
+      discountPercent: 0.019,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua No-spa drotaverin 40mg sanofi (hộp/50 viên nén)',
+    },
+  ],
+  7: [
+    {
+      label: 'GIẢM 11.4%',
+      discountPercent: 0.114,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast bd fexofenadin 60mg sanofi (hộp/30 viên nén)',
+    },
+  ],
+  1: [
+    {
+      label: 'GIẢM 9.4%',
+      discountPercent: 0.094,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+  ],
+  6: [
+    {
+      label: 'GIẢM 8.2%',
+      discountPercent: 0.082,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast hd fexofenadin 180mg sanofi (hộp/30 viên)',
+    },
+  ],
+};
+
+/** CTKM kênh BM NO CVM (cùng cấu trúc bản ghi với BM CVM). Combo: requiresMinQty = SL hộp tối thiểu theo chương trình */
+export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCvmCtkmEntry[]>> = {
+  1: [
+    {
+      label: 'GIẢM 11.4%',
+      discountPercent: 0.114,
+      maxDiscountVnd: 5_130_000,
+      requiresMinQty: 200,
+      description:
+        'Giảm tối đa 5130K khi mua 10 Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+    {
+      label: 'GIẢM 10.12%',
+      discountPercent: 0.1012,
+      maxDiscountVnd: 2_170_000,
+      requiresMinQty: 20,
+      description:
+        'Giảm tối đa 2170K khi mua Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+    {
+      label: 'GIẢM 14.12%',
+      discountPercent: 0.1412,
+      maxDiscountVnd: 320_000,
+      description:
+        'Giảm tối đa 320K khi mua Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+    {
+      label: 'GIẢM 9.4%',
+      discountPercent: 0.094,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+  ],
+  2: [
+    {
+      label: 'GIẢM 4.52%',
+      discountPercent: 0.0452,
+      maxDiscountVnd: 1_810_000,
+      requiresMinQty: 98,
+      description:
+        'Giảm tối đa 1810K khi mua Combo 98 Acemuc acetylcystein 200mg sanofi (hộp/30viên nang)',
+    },
+    {
+      label: 'GIẢM 4.87%',
+      discountPercent: 0.0487,
+      maxDiscountVnd: 70_000,
+      description:
+        'Giảm tối đa 70K khi mua Acemuc acetylcystein 200mg sanofi (hộp/30viên nang)',
+    },
+    {
+      label: 'GIẢM 5.4%',
+      discountPercent: 0.054,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc acetylcystein 200mg sanofi (hộp/30viên nang)',
+    },
+  ],
+  3: [
+    {
+      label: 'GIẢM 6.78%',
+      discountPercent: 0.0678,
+      maxDiscountVnd: 2_890_000,
+      requiresMinQty: 96,
+      description:
+        'Giảm tối đa 2890K khi mua Combo 96 Acemuc acetylcystein 200mg sanofi (Hộp/30gói/1gram)',
+    },
+    {
+      label: 'GIẢM 7.03%',
+      discountPercent: 0.0703,
+      maxDiscountVnd: 70_000,
+      description:
+        'Giảm tối đa 70K khi mua Acemuc acetylcystein 200mg sanofi (Hộp/30gói/1gram)',
+    },
+    {
+      label: 'GIẢM 21.94%',
+      discountPercent: 0.2194,
+      maxDiscountVnd: 40_000,
+      description:
+        'Giảm tối đa 40K khi mua Acemuc acetylcystein 200mg sanofi (Hộp/30gói/1gram)',
+    },
+    {
+      label: 'GIẢM 7.3%',
+      discountPercent: 0.073,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc acetylcystein 200mg sanofi (Hộp/30gói/1gram)',
+    },
+  ],
+  4: [
+    {
+      label: 'GIẢM 2.45%',
+      discountPercent: 0.0245,
+      maxDiscountVnd: 730_000,
+      requiresMinQty: 96,
+      description:
+        'Giảm tối đa 730K khi mua Combo 96 Acemuc Kids Acetylcystein 100mg Sanofi (hộp/30gói/0.5gram)',
+    },
+    {
+      label: 'GIẢM 0.73%',
+      discountPercent: 0.0073,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc Kids Acetylcystein 100mg Sanofi (hộp/30gói/0.5gram)',
+    },
+    {
+      label: 'GIẢM 1.7%',
+      discountPercent: 0.017,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Acemuc Kids Acetylcystein 100mg Sanofi (hộp/30gói/0.5gram)',
+    },
+  ],
+  5: [
+    {
+      label: 'GIẢM 1.72%',
+      discountPercent: 0.0172,
+      maxDiscountVnd: 1_380_000,
+      requiresMinQty: 160,
+      description:
+        'Giảm tối đa 1380K khi mua Combo 160 Magne B6 Corbiere Sanofi (hộp/50 viên nén)',
+    },
+    {
+      label: 'GIẢM 1.69%',
+      discountPercent: 0.0169,
+      maxDiscountVnd: 30_000,
+      description: 'Giảm tối đa 30K khi mua Magne B6 Corbiere Sanofi (h/50v)',
+    },
+    {
+      label: 'GIẢM 0.1%',
+      discountPercent: 0.001,
+      maxDiscountVnd: 30_000,
+      description: 'Giảm tối đa 30K khi mua Magne B6 Corbiere Sanofi (h/50v)',
+    },
+  ],
+  6: [
+    {
+      label: 'GIẢM 8.5%',
+      discountPercent: 0.085,
+      maxDiscountVnd: 50_000,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Telfast hd fexofenadin 180mg sanofi (hộp/30 viên)',
+    },
+    {
+      label: 'GIẢM 8.2%',
+      discountPercent: 0.082,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast hd fexofenadin 180mg sanofi (hộp/30 viên)',
+    },
+  ],
+  7: [
+    {
+      label: 'GIẢM 1.73%',
+      discountPercent: 0.0173,
+      maxDiscountVnd: 50_000,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Telfast bd fexofenadin 60mg sanofi (hộp/30 viên nén)',
+    },
+    {
+      label: 'GIẢM 11.4%',
+      discountPercent: 0.114,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast bd fexofenadin 60mg sanofi (hộp/30 viên nén)',
+    },
+  ],
+  8: [
+    {
+      label: 'GIẢM 10.4%',
+      discountPercent: 0.104,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Telfast kids fexofenadin 30mg sanofi (hộp/10 viên nén)',
+    },
+  ],
+  9: [
+    {
+      label: 'GIẢM 1.9%',
+      discountPercent: 0.019,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua No-spa drotaverin 40mg sanofi (hộp/50 viên nén)',
+    },
+  ],
+  10: [
+    {
+      label: 'GIẢM 4.48%',
+      discountPercent: 0.0448,
+      maxDiscountVnd: 590_000,
+      requiresMinQty: 66,
+      description:
+        'Giảm tối đa 590K khi mua Combo 66 Bisolvon kids bromhexin 4mg/5ml sanofi (chai/60ml)',
+    },
+    {
+      label: 'GIẢM 2.04%',
+      discountPercent: 0.0204,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon bromhexin 4mg/5ml sanofi (chai/60ml)',
+    },
+    {
+      label: 'GIẢM 3.2%',
+      discountPercent: 0.032,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon kids bromhexin 4mg/5ml sanofi (chai/60ml)',
+    },
+  ],
+  12: [
+    {
+      label: 'GIẢM 4.1%',
+      discountPercent: 0.041,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Enterogermina Gut Restore 4 billion/5ml Opella (Hộp/20ống/5ml)',
+    },
+  ],
+  14: [
+    {
+      label: 'GIẢM 7.35%',
+      discountPercent: 0.0735,
+      maxDiscountVnd: 5_240_000,
+      requiresMinQty: 238,
+      description:
+        'Giảm tối đa 5240K khi mua Combo 238 Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
+    },
+    {
+      label: 'GIẢM 4.75%',
+      discountPercent: 0.0475,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
+    },
+    {
+      label: 'GIẢM 4.5%',
+      discountPercent: 0.045,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
+    },
+  ],
+  15: [
+    {
+      label: 'GIẢM 4.34%',
+      discountPercent: 0.0434,
+      maxDiscountVnd: 50_000,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Buscopan hyoscine 10mg sanofi (hộp/100 viên nén)',
+    },
+    {
+      label: 'GIẢM 6.1%',
+      discountPercent: 0.061,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Buscopan hyoscine 10mg sanofi (hộp/100 viên nén)',
+    },
+  ],
+  16: [
+    {
+      label: 'GIẢM 7.09%',
+      discountPercent: 0.0709,
+      maxDiscountVnd: 50_000,
+      requiresMinQty: 2,
+      description:
+        'Tối đa 50K khi mua từ 2 sản phẩm No-spa forte drotaverin 80mg sanofi (hộp/20 viên nén)',
+    },
+  ],
+  21: [
+    {
+      label: 'GIẢM 4.95%',
+      discountPercent: 0.0495,
+      maxDiscountVnd: 710_000,
+      requiresMinQty: 24,
+      description:
+        'Giảm tối đa 710K khi mua Combo 24 Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+    {
+      label: 'GIẢM 4.97%',
+      discountPercent: 0.0497,
+      maxDiscountVnd: 60_000,
+      description:
+        'Giảm tối đa 60K khi mua Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+    {
+      label: 'GIẢM 4.6%',
+      discountPercent: 0.046,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+  ],
+  26: [
+    {
+      label: 'GIẢM 4.8%',
+      discountPercent: 0.048,
+      maxDiscountVnd: 1_720_000,
+      requiresMinQty: 200,
+      description:
+        'Giảm tối đa 1720K khi mua 10 Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+    {
+      label: 'GIẢM 5.05%',
+      discountPercent: 0.0505,
+      maxDiscountVnd: 700_000,
+      requiresMinQty: 20,
+      description:
+        'Giảm tối đa 700K khi mua Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+    {
+      label: 'GIẢM 4.53%',
+      discountPercent: 0.0453,
+      maxDiscountVnd: 70_000,
+      description:
+        'Giảm tối đa 70K khi mua Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+    {
+      label: 'GIẢM 13.8%',
+      discountPercent: 0.138,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+  ],
+  28: [
+    {
+      label: 'GIẢM 1.64%',
+      discountPercent: 0.0164,
+      maxDiscountVnd: 3_240_000,
+      requiresMinQty: 200,
+      description:
+        'Giảm tối đa 3240K khi mua 10 Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+    {
+      label: 'GIẢM 0.62%',
+      discountPercent: 0.0062,
+      maxDiscountVnd: 570_000,
+      requiresMinQty: 20,
+      description:
+        'Giảm tối đa 570K khi mua Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+    {
+      label: 'GIẢM 2.4%',
+      discountPercent: 0.024,
+      maxDiscountVnd: 1_000_000,
+      requiresMinQty: 100,
+      description:
+        'Giảm tối đa 1TR khi mua Calcium corbiere extra sanofi (hộp/30ống/10ml) — áp dụng từ 100 hộp trở lên (SL combo là bội số của 100 hộp).',
+    },
+    {
+      label: 'GIẢM 1.99%',
+      discountPercent: 0.0199,
+      maxDiscountVnd: 50_000,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+  ],
+  29: [
+    {
+      label: 'GIẢM 1.1%',
+      discountPercent: 0.011,
+      maxDiscountVnd: 30_000,
+      description:
+        'Giảm tối đa 30K khi mua No-spa drotaverin 40mg/2ml sanofi (hộp/25ống/2ml)',
+    },
+  ],
+  30: [
+    {
+      label: 'GIẢM 16.6%',
+      discountPercent: 0.166,
+      maxDiscountVnd: 11_000_000,
+      requiresMinQty: 360,
+      description:
+        'Giảm tối đa 11TR khi mua 10 Combo 36 Enterogermina 2 billion/5ml Opella (H/20o/5ml)',
+    },
+    {
+      label: 'GIẢM 12.94%',
+      discountPercent: 0.1294,
+      maxDiscountVnd: 280_000,
+      description:
+        'Giảm tối đa 280K khi mua Enterogermina 2 billion/5ml Opella (H/20o/5ml)',
+    },
+  ],
+};
+
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
 // readonly number[] (không as const) để .includes(cartItem.id: number) hợp lệ với TypeScript
 export const TELFAST_GROUP_IDS: readonly number[] = [7, 8];

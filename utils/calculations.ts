@@ -10,7 +10,12 @@ export const getMaxDiscountPercent = (promotion: string | undefined): number | n
     return max > 0 ? max : null;
 };
 
-export const getDiscountPercent = (promotion: string | undefined, quantity: number, value?: number): number => {
+export const getDiscountPercent = (
+    promotion: string | undefined,
+    quantity: number,
+    value?: number,
+    _productId?: number
+): number => {
     if (!promotion) return 0;
 
     // Kiểm tra xem đây là KM theo giá trị đơn hàng (k) hay số lượng (h)
@@ -57,6 +62,6 @@ export const calculateLineTotal = (
     groupValue?: number,
     productId?: number
 ): number => {
-    const discount = getDiscountPercent(promotion, quantity, groupValue);
+    const discount = getDiscountPercent(promotion, quantity, groupValue, productId);
     return price * quantity * (1 - discount);
 };

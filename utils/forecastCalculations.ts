@@ -4,8 +4,10 @@
 import type { SalesRecord } from '../types';
 
 /** Kiểm tra KH Cover Q1 (hỗ trợ cả CoverQ1 và "Cover Q1" từ sheet) */
-export const isCoverQ1 = (r: Record<string, unknown>): boolean =>
-    String(r.CoverQ1 || r['Cover Q1'] || '').toUpperCase() === 'YES';
+export const isCoverQ1 = (r: SalesRecord | Record<string, unknown>): boolean => {
+    const row = r as Record<string, unknown>;
+    return String(row.CoverQ1 || row['Cover Q1'] || '').toUpperCase() === 'YES';
+};
 
 export const FORECAST_LEVELS = [
     { id: '0DONG', label: '0 đồng', sub: '', max: 0, avg: 0 },

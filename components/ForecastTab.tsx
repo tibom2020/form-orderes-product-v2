@@ -49,7 +49,7 @@ const ForecastTab: React.FC<ForecastTabProps> = ({
     currentEmployee,
     onUpdateForecast,
     onCustomerClick,
-    onReloadData
+    onReloadData: _onReloadData
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showStats, setShowStats] = useState(false);

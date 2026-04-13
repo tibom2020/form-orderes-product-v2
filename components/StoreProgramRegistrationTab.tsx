@@ -1046,13 +1046,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-[#c0c9c3]/20 min-w-0">
                 <div className="tbq2-scroll-xy max-h-[min(52vh,22rem)] sm:max-h-[280px] md:max-h-[320px]">
-                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1020px] sm:min-w-[1100px]">
+                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1080px] sm:min-w-[1160px]">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-wider text-[#2d3b36] dark:text-slate-200 border-b border-[#c0c9c3]/40 dark:border-slate-600">
-                        <th className="py-3 px-3 bg-sky-100 dark:bg-sky-950/90 border-r border-sky-200/60 dark:border-sky-800/50">
+                        <th className="py-3 px-3 min-w-[14rem] max-w-[min(22rem,45vw)] bg-sky-100 dark:bg-sky-950/90 border-r border-sky-200/60 dark:border-sky-800/50">
                           Khách hàng
                         </th>
-                        <th className="py-3 px-3 bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40">
+                        <th className="py-3 px-1.5 w-[5rem] max-w-[5rem] bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40 leading-tight">
                           FinalStoreTypeQ1
                         </th>
                         <th className="py-3 px-3 text-right tabular-nums bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/50 dark:border-blue-900/40">
@@ -1067,7 +1067,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         <th className="py-3 px-3 bg-emerald-100/85 dark:bg-emerald-950/40 border-r border-emerald-200/50 dark:border-emerald-900/40">
                           Rep
                         </th>
-                        <th className="py-3 px-3 bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40">
+                        <th className="py-3 px-1.5 w-[5rem] max-w-[5rem] bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40 leading-tight">
                           FinalStoreTypeQ2
                         </th>
                         <th
@@ -1125,13 +1125,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                 : ''
                             } ${!isRegisteredRow(row) ? 'cursor-pointer' : ''}`}
                           >
-                            <td className="py-3 px-3 border-r border-sky-200/40 dark:border-sky-800/30 bg-sky-100 group-hover/row:bg-sky-200/95 dark:bg-sky-950 dark:group-hover/row:bg-sky-900/95">
-                              <div className="flex flex-col">
-                                <span className="font-bold text-sm text-[#003629] dark:text-[#8abda9]">{row.customerName || '—'}</span>
+                            <td className="py-3 px-3 min-w-[14rem] max-w-[min(22rem,45vw)] border-r border-sky-200/40 dark:border-sky-800/30 bg-sky-100 group-hover/row:bg-sky-200/95 dark:bg-sky-950 dark:group-hover/row:bg-sky-900/95">
+                              <div className="flex flex-col gap-0.5 min-w-0">
+                                <span className="font-bold text-[15px] sm:text-base leading-snug text-[#003629] dark:text-[#8abda9] break-words">
+                                  {row.customerName || '—'}
+                                </span>
                                 <span className="text-[10px] text-[#404945] dark:text-slate-400">{row.customerCode || '—'}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-[10px] max-w-[7rem] break-words border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38">
+                            <td className="py-3 px-1.5 text-[9px] w-[5rem] max-w-[5rem] break-words border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38 leading-tight">
                               {row.finalStoreTypeQ1 || '—'}
                             </td>
                             <td className="py-3 px-3 text-[10px] text-right max-w-[9rem] border-r border-blue-200/35 dark:border-blue-900/30 bg-blue-50/75 group-hover/row:bg-blue-100/85 dark:bg-blue-950/22 dark:group-hover/row:bg-blue-950/38 tabular-nums break-words">
@@ -1146,7 +1148,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                             <td className="py-3 px-3 text-[10px] border-r border-emerald-200/35 dark:border-emerald-900/30 bg-emerald-50/70 group-hover/row:bg-emerald-100/80 dark:bg-emerald-950/20 dark:group-hover/row:bg-emerald-950/35">
                               {row.rep || '—'}
                             </td>
-                            <td className="py-3 px-3 text-[10px] max-w-[7rem] break-words border-r border-violet-200/35 dark:border-violet-900/30 bg-violet-50/72 group-hover/row:bg-violet-100/82 dark:bg-violet-950/22 dark:group-hover/row:bg-violet-950/36">
+                            <td className="py-3 px-1.5 text-[9px] w-[5rem] max-w-[5rem] break-words border-r border-violet-200/35 dark:border-violet-900/30 bg-violet-50/72 group-hover/row:bg-violet-100/82 dark:bg-violet-950/22 dark:group-hover/row:bg-violet-950/36 leading-tight">
                               {row.finalStoreTypeQ2 || '—'}
                             </td>
                             <td

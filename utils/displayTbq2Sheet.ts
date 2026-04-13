@@ -112,3 +112,33 @@ export function repMatchesEmployee(repCell: string, employeeName: string): boole
   if (!a) return false;
   return a === b || a.includes(b) || b.includes(a);
 }
+
+/**
+ * Sheet DOANH_SO: Sale T4 = MustWin + Other (VNĐ). Map theo CustomerCode và CodeBuyMed (lower).
+ */
+export function buildSaleT4ByCustomerCodeMap(rows: Record<string, unknown>[]): Map<string, number> {
+  const map = new Map<string, number>();
+  const setVal = (codeRaw: string, v: number) => {
+    const k = codeRaw.trim().toLowerCase();
+    if (k) map.set(k, v);
+  };
+  for (const raw of rows) {
+    const must = Number(pickCell(raw, ['MustWin', 'Must Win'])) || 0;
+    const other = Number(pickCell(raw, ['Other'])) || 0;
+    const saleT4 = must + other;
+    const code = pickCell(raw, ['CustomerCode', 'MaKH', 'Mã KH', 'Code', 'customerCode']);
+    const codeBm = pickCell(raw, ['CodeBuyMed', 'Code BuyMed', 'Code Buymed']);
+    setVal(code, saleT4);
+    if (codeBm.trim() && codeBm.trim().toLowerCase() !== code.trim().toLowerCase()) {
+      setVal(codeBm, saleT4);
+    }
+  }
+  return map;
+}
+
+/** Tra cứu Sale T4 (VNĐ) theo mã KH trên DANGKYTBQ2 */
+export function lookupSaleT4Vnd(map: Map<string, number>, customerCode: string): number | undefined {
+  const k = customerCode.trim().toLowerCase();
+  if (!k) return undefined;
+  return map.get(k);
+}

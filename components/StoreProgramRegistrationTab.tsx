@@ -6,6 +6,8 @@ import {
   isRegisteredRow,
   repMatchesEmployee,
   isPheDuyetApproved,
+  buildSaleT4ByCustomerCodeMap,
+  lookupSaleT4Vnd,
   type DangKyTbq2RowView,
 } from '../utils/displayTbq2Sheet';
 import {
@@ -14,7 +16,16 @@ import {
   submitDisplayTBQ2Approval,
   submitCancelDisplayTBQ2Registration,
 } from '../services/googleSheetService';
-import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2 } from '../constants';
+import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2, SHEET_DOANH_SO } from '../constants';
+
+/** Tải DOANH_SO — lỗi sheet/mạng thì trả [] để không chặn tab */
+async function fetchDoanhSoRowsSafe(scriptUrl: string): Promise<Record<string, unknown>[]> {
+  try {
+    return await fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DOANH_SO);
+  } catch {
+    return [];
+  }
+}
 
 /** Ảnh tiêu chí tham gia / phân hạng CT trưng bày */
 export const DISPLAY_TBQ2_CRITERIA_IMAGE_URL = 'https://i.postimg.cc/Cxs6WRtg/tieu-chi.png';
@@ -333,6 +344,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 }) => {
   const [sheetRows, setSheetRows] = useState<Record<string, unknown>[]>([]);
   const [budgetRows, setBudgetRows] = useState<Record<string, unknown>[]>([]);
+  const [doanhSoRows, setDoanhSoRows] = useState<Record<string, unknown>[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   /** Tải lại sheet khi đã có dữ liệu — không ẩn cả trang */
@@ -392,6 +404,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     () => (isAdmin ? buildRepBudgetUsedPctSeries(budgetRows) : []),
     [isAdmin, budgetRows]
   );
+
+  const saleT4ByCustomerCode = useMemo(() => buildSaleT4ByCustomerCodeMap(doanhSoRows), [doanhSoRows]);
 
   const budgetCard = useMemo(() => {
     if (isAdmin && adminBudgetAggregate) {
@@ -454,8 +468,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(
-      r =>
+    return rows.filter(r => {
+      const saleT4 = lookupSaleT4Vnd(saleT4ByCustomerCode, r.customerCode);
+      const saleT4Search =
+        saleT4 != null && Number.isFinite(saleT4)
+          ? `${saleT4} ${formatCurrency(Math.round(saleT4))}`.toLowerCase()
+          : '';
+      return (
         r.customerName.toLowerCase().includes(q) ||
         r.customerCode.toLowerCase().includes(q) ||
         r.district.toLowerCase().includes(q) ||
@@ -464,9 +483,11 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         r.saleQ1.toLowerCase().includes(q) ||
         r.finalStoreTypeQ2.toLowerCase().includes(q) ||
         r.note.toLowerCase().includes(q) ||
-        r.rep.toLowerCase().includes(q)
-    );
-  }, [myRows, searchQuery, tierRegisteredFilter, finalStoreTypeQ1Filter]);
+        r.rep.toLowerCase().includes(q) ||
+        saleT4Search.includes(q)
+      );
+    });
+  }, [myRows, searchQuery, tierRegisteredFilter, finalStoreTypeQ1Filter, saleT4ByCustomerCode]);
 
   const assignableCustomers = useMemo(
     () => myRows.filter(r => r.customerCode && !isRegisteredRow(r)),
@@ -488,8 +509,10 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2),
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2),
         ]);
+        const ds = await fetchDoanhSoRowsSafe(scriptUrl);
         setSheetRows(dk);
         setBudgetRows(bud);
+        setDoanhSoRows(ds);
         if (dk.length === 0) {
           setLoadError(
             `Không có dữ liệu sheet ${SHEET_DANGKYTBQ2}. Tạo sheet, import mẫu DANGKYTBQ2.xlsx và deploy Apps Script có doGet.`
@@ -628,7 +651,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const budgetPct =
     budgetCard.budget > 0 ? Math.min(100, Math.round((budgetCard.used / budgetCard.budget) * 100)) : 0;
 
-  const tableColSpan = isAdmin ? 12 : 11;
+  const tableColSpan = isAdmin ? 13 : 12;
 
   const handleCancelRegistration = useCallback(
     async (e: React.MouseEvent, row: DangKyTbq2RowView) => {
@@ -651,8 +674,10 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2),
           fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2),
         ]);
+        const ds = await fetchDoanhSoRowsSafe(scriptUrl);
         setSheetRows(dk);
         setBudgetRows(bud);
+        setDoanhSoRows(ds);
         if (selectedCustomerCode === row.customerCode) {
           setSelectedCustomerCode('');
         }
@@ -742,8 +767,10 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       setSubmitMessage(null);
       const dk = await fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_DANGKYTBQ2);
       const bud = await fetchDataFromSheet<Record<string, unknown>>(scriptUrl, SHEET_REP_BUDGET_TBQ2);
+      const ds = await fetchDoanhSoRowsSafe(scriptUrl);
       setSheetRows(dk);
       setBudgetRows(bud);
+      setDoanhSoRows(ds);
       setSelectedCustomerCode('');
       setStoreTierId('');
       setChoiceSingle(null);
@@ -1019,7 +1046,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-[#c0c9c3]/20 min-w-0">
                 <div className="tbq2-scroll-xy max-h-[min(52vh,22rem)] sm:max-h-[280px] md:max-h-[320px]">
-                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[940px] sm:min-w-[1020px]">
+                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1020px] sm:min-w-[1100px]">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-wider text-[#2d3b36] dark:text-slate-200 border-b border-[#c0c9c3]/40 dark:border-slate-600">
                         <th className="py-3 px-3 bg-sky-100 dark:bg-sky-950/90 border-r border-sky-200/60 dark:border-sky-800/50">
@@ -1042,6 +1069,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th className="py-3 px-3 bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40">
                           FinalStoreTypeQ2
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums whitespace-nowrap bg-red-100/95 dark:bg-red-950/50 border-r border-red-200/70 dark:border-red-900/50 text-red-950 dark:text-red-100"
+                          title="Sale T4 = MustWin + Other (sheet DOANH_SO)"
+                        >
+                          Sale T4
                         </th>
                         <th className="py-3 px-3 bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40">
                           Note
@@ -1077,6 +1110,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         filteredTableRows.map((row, idx) => {
                           const rowSelected =
                             selectedCustomerCode === row.customerCode && !isRegisteredRow(row);
+                          const saleT4Vnd = lookupSaleT4Vnd(saleT4ByCustomerCode, row.customerCode);
                           return (
                           <tr
                             key={row.customerCode || `row-${idx}`}
@@ -1114,6 +1148,14 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                             </td>
                             <td className="py-3 px-3 text-[10px] max-w-[7rem] break-words border-r border-violet-200/35 dark:border-violet-900/30 bg-violet-50/72 group-hover/row:bg-violet-100/82 dark:bg-violet-950/22 dark:group-hover/row:bg-violet-950/36">
                               {row.finalStoreTypeQ2 || '—'}
+                            </td>
+                            <td
+                              className="py-3 px-2 text-[10px] text-right font-semibold tabular-nums border-r border-red-200/60 dark:border-red-900/40 bg-red-50/90 group-hover/row:bg-red-100/90 dark:bg-red-950/35 dark:group-hover/row:bg-red-950/45 text-red-900 dark:text-red-100"
+                              title="MustWin + Other (DOANH_SO)"
+                            >
+                              {saleT4Vnd != null && Number.isFinite(saleT4Vnd)
+                                ? formatCurrency(Math.round(saleT4Vnd))
+                                : '—'}
                             </td>
                             <td className="py-3 px-3 text-[10px] border-r border-violet-200/35 dark:border-violet-900/30 bg-violet-50/72 group-hover/row:bg-violet-100/82 dark:bg-violet-950/22 dark:group-hover/row:bg-violet-950/36">
                               {row.note || '—'}
@@ -1194,7 +1236,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   <span className="inline-block w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-900 align-middle mr-1" /> Khu vực / Rep
                 </span>
                 <span>
-                  <span className="inline-block w-2 h-2 rounded-sm bg-violet-200 dark:bg-violet-900 align-middle mr-1" /> Q2 &amp; Note
+                  <span className="inline-block w-2 h-2 rounded-sm bg-violet-200 dark:bg-violet-900 align-middle mr-1" /> Q2
+                </span>
+                <span>
+                  <span className="inline-block w-2 h-2 rounded-sm bg-red-400 dark:bg-red-800 align-middle mr-1" /> Sale T4 (MustWin+Other · DOANH_SO)
+                </span>
+                <span>
+                  <span className="inline-block w-2 h-2 rounded-sm bg-violet-200 dark:bg-violet-900 align-middle mr-1" /> Note
                 </span>
                 <span>
                   <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-900 align-middle mr-1" /> Trạng thái / Phê duyệt

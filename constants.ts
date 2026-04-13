@@ -12,6 +12,8 @@ export const ADMIN_CODE = '20043741';
 export const SHEET_DANGKYTBQ2 = 'DANGKYTBQ2';
 /** Sheet quản lý ngân sách Rep: Rep | Budget | Đã Sử dụng | Còn lại */
 export const SHEET_REP_BUDGET_TBQ2 = 'REP_BUDGET_TBQ2';
+/** Doanh số KH: MustWin, Other — dùng Sale T4 = MustWin + Other ở tab DK PS */
+export const SHEET_DOANH_SO = 'DOANH_SO';
 
 export const EMPLOYEES: Employee[] = [
   { name: 'Huynh Thi To Trinh', code: '20045852' },

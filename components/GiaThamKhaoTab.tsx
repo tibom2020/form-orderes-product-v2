@@ -25,6 +25,9 @@ import {
 import { REBATE_TIERS, formatCompact } from './dashboard/DashboardUtils';
 import { TagIcon, MinusIcon, PlusIcon } from './icons';
 
+/** Mặc định chọn Lv5 cho khối CVM (GIGA & BM CVM) — index theo REBATE_TIERS */
+const DEFAULT_CVM_LV5_INDEX = REBATE_TIERS.findIndex((t) => t.level === 5);
+
 interface GiaThamKhaoTabProps {
   products?: Product[];
 }
@@ -163,7 +166,9 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
 
   const [productId, setProductId] = useState<number>(() => sorted[0]?.id ?? 0);
   const [qtyStr, setQtyStr] = useState<string>('1');
-  const [selectedCvmIndex, setSelectedCvmIndex] = useState<number | null>(null);
+  const [selectedCvmIndex, setSelectedCvmIndex] = useState<number | null>(() =>
+    DEFAULT_CVM_LV5_INDEX >= 0 ? DEFAULT_CVM_LV5_INDEX : null
+  );
 
   const product = useMemo(
     () => sorted.find((p) => p.id === productId) ?? sorted[0] ?? null,

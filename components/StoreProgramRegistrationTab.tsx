@@ -272,6 +272,42 @@ function sumAllRepBudgetRows(rows: Record<string, unknown>[]) {
   return { budget, used, left: leftSum, rowCount };
 }
 
+/** Chuỗi % ngân sách đã sử dụng theo từng Rep — biểu đồ cột (admin) */
+interface RepBudgetUsedPctPoint {
+  rep: string;
+  budget: number;
+  used: number;
+  left: number;
+  usedPct: number;
+}
+
+function buildRepBudgetUsedPctSeries(rows: Record<string, unknown>[]): RepBudgetUsedPctPoint[] {
+  const map = new Map<string, { budget: number; used: number; left: number }>();
+  for (const raw of rows) {
+    const rep = pickBudgetCell(raw, ['Rep', 'REP']);
+    if (!rep.trim()) continue;
+    const b = Number(pickBudgetCell(raw, ['Budget', 'Ngân sách'])) || 0;
+    const u = Number(pickBudgetCell(raw, ['Đã Sử dụng', 'DaSuDung', 'Da su dung'])) || 0;
+    const leftRaw = pickBudgetCell(raw, ['Còn lại', 'ConLai', 'Con lai']);
+    const l = leftRaw !== '' ? Number(leftRaw) : b - u;
+    const left = Number.isFinite(l) ? l : b - u;
+    const cur = map.get(rep) ?? { budget: 0, used: 0, left: 0 };
+    cur.budget += b;
+    cur.used += u;
+    cur.left += left;
+    map.set(rep, cur);
+  }
+  return [...map.entries()]
+    .map(([rep, v]) => {
+      const usedPct =
+        v.budget > 0
+          ? Math.min(100, Math.max(0, Math.round((v.used / v.budget) * 1000) / 10))
+          : 0;
+      return { rep, ...v, usedPct };
+    })
+    .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
+}
+
 /** Dữ liệu hiển thị modal sau đăng ký thành công */
 interface RegistrationSuccessSummary {
   customerCode: string;
@@ -316,6 +352,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     alt: string;
   } | null>(null);
   const [registrationSuccessModal, setRegistrationSuccessModal] = useState<RegistrationSuccessSummary | null>(null);
+  const [repBudgetChartOpen, setRepBudgetChartOpen] = useState(false);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
   /** Lọc theo FinalStoreTypeQ1: null = tất cả; Q1_FILTER_NON_EMPTY = có dữ liệu cột; hoặc chuỗi khớp chính xác */
@@ -348,6 +385,11 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
   const adminBudgetAggregate = useMemo(
     () => (isAdmin ? sumAllRepBudgetRows(budgetRows) : null),
+    [isAdmin, budgetRows]
+  );
+
+  const repBudgetUsedPctSeries = useMemo(
+    () => (isAdmin ? buildRepBudgetUsedPctSeries(budgetRows) : []),
     [isAdmin, budgetRows]
   );
 
@@ -500,6 +542,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [registrationSuccessModal]);
+
+  useEffect(() => {
+    if (!repBudgetChartOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRepBudgetChartOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [repBudgetChartOpen]);
 
   const posmValidation = useMemo(() => {
     if (!tier) return { ok: false, message: null as string | null };
@@ -727,6 +778,16 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           >
             {refreshing ? 'Đang tải…' : 'Làm mới'}
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setRepBudgetChartOpen(true)}
+              className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-violet-600/90 text-white dark:bg-violet-500/90 dark:text-white border border-violet-700/30 dark:border-violet-400/30 hover:bg-violet-700 dark:hover:bg-violet-500 active:scale-[0.98] transition-all"
+              title="Biểu đồ % ngân sách đã sử dụng theo từng Rep (chỉ admin)"
+            >
+              Biểu đồ NS
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>
@@ -1592,6 +1653,67 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
               >
                 Quay lại trang đăng ký
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && repBudgetChartOpen && (
+        <div
+          className="fixed inset-0 z-[102] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Biểu đồ ngân sách đã sử dụng theo Rep"
+          onClick={() => setRepBudgetChartOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-[min(100%,56rem)] max-h-[90vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-violet-200/50 dark:border-violet-900/50 bg-[#f9f9f8] dark:bg-slate-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-[#c0c9c3]/25 dark:border-slate-600 shrink-0">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#003629] dark:text-[#8abda9]">% Ngân sách đã sử dụng theo Rep</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRepBudgetChartOpen(false)}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#003629] text-white dark:bg-[#8abda9] dark:text-[#1a3028]"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="overflow-x-auto tbq2-scroll-xy flex-1 p-4 sm:p-5">
+              {repBudgetUsedPctSeries.length === 0 ? (
+                <p className="text-sm text-center text-slate-500 py-10">Chưa có dòng Rep nào trên sheet ngân sách.</p>
+              ) : (
+                <div className="flex flex-col gap-4 min-w-0">
+                  <div className="flex flex-nowrap items-end gap-2 sm:gap-3 pb-2 border-b border-[#c0c9c3]/30 dark:border-slate-600 overflow-x-auto">
+                    {repBudgetUsedPctSeries.map(p => (
+                      <div
+                        key={p.rep}
+                        className="flex flex-col items-center gap-1 shrink-0 w-[3.25rem] sm:w-16"
+                        title={`${p.rep}: đã dùng ${formatVndDong(p.used)} / ${formatVndDong(p.budget)} (${p.usedPct}%)`}
+                      >
+                        <span className="text-[9px] sm:text-[10px] font-bold tabular-nums text-[#003629] dark:text-[#8abda9]">
+                          {p.usedPct}%
+                        </span>
+                        <div className="h-40 w-full flex flex-col justify-end rounded-t-md bg-slate-200/80 dark:bg-slate-700/80 overflow-hidden">
+                          <div
+                            className="w-full min-h-0 rounded-t-md bg-gradient-to-t from-[#1b4d3e] to-[#9ed1bd] dark:from-[#003629] dark:to-[#8abda9]"
+                            style={{ height: `${p.usedPct}%` }}
+                          />
+                        </div>
+                        <span className="text-[8px] sm:text-[9px] font-semibold text-center text-[#404945] dark:text-slate-400 leading-tight line-clamp-3 w-full break-words">
+                          {p.rep}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[#404945] dark:text-slate-500">
+                    Di chuyển ngang nếu nhiều Rep. Budget = 0 hiển thị 0% đã dùng.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

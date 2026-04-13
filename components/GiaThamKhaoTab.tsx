@@ -5,7 +5,7 @@ import {
   PROMO_UPDATE_DATE,
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
-  CALCIPLUS_PRODUCT_ID,
+  PACK_476_PRODUCT_IDS,
   BM_CVM_BASE_PRICE_VND,
   BM_CVM_NOT_SOLD_IDS,
   BM_CVM_CTKM_BY_PRODUCT_ID,
@@ -17,7 +17,11 @@ import {
   getBmCtkmWinningEntryIndices,
 } from '../constants';
 import { formatCurrency } from '../utils/formatters';
-import { calculateLineTotal, getDiscountPercent } from '../utils/calculations';
+import {
+  calculateGigaReferenceLineTotal,
+  getGigaPackAdjacentTierPercent,
+  getGigaReferenceDiscountPercent,
+} from '../utils/calculations';
 import { REBATE_TIERS, formatCompact } from './dashboard/DashboardUtils';
 import { TagIcon, MinusIcon, PlusIcon } from './icons';
 
@@ -66,14 +70,60 @@ function tierReached(qty: number, lineValue: number, tier: { threshold: number; 
   return compare >= tier.threshold;
 }
 
-/** Mốc gói 21h CK 4.76% Calci Plus — hiển thị thêm 5.9% (mốc 5h) theo yêu cầu */
-function isCalciPlus21hPack476Tier(
+/** Mốc gói 21h CK ~4.76% — SP PACK_476 (id 1, 30), hiển thị cộng % mốc &lt;21h */
+function isPack476Goi21Tier(
   productId: number,
   tier: { thresholdRaw: number; unit: string; percent: string }
 ): boolean {
-  if (productId !== CALCIPLUS_PRODUCT_ID || tier.unit !== 'h') return false;
+  if (!PACK_476_PRODUCT_IDS.includes(productId) || tier.unit !== 'h') return false;
   const p = parseFloat(tier.percent);
   return tier.thresholdRaw === 21 && p >= 4.7 && p <= 4.8;
+}
+
+type GiaThamKhaoGroupKey =
+  | 'acemuc'
+  | 'telfast'
+  | 'corbiere'
+  | 'entero'
+  | 'bisolvon'
+  | 'buscopan_nospa'
+  | 'pharmaton'
+  | 'phosphalugel'
+  | 'ostelin'
+  | 'magne'
+  | 'other';
+
+const GIA_THAM_KHAO_GROUP_ORDER: ReadonlyArray<{
+  key: GiaThamKhaoGroupKey;
+  label: string;
+  selectClass: string;
+}> = [
+  { key: 'acemuc', label: 'ACEMUC', selectClass: 'border-emerald-400/70 focus:ring-emerald-500/45 bg-emerald-50/40 dark:bg-emerald-950/25' },
+  { key: 'telfast', label: 'TELFAST', selectClass: 'border-sky-400/70 focus:ring-sky-500/45 bg-sky-50/40 dark:bg-sky-950/25' },
+  { key: 'corbiere', label: 'CORBIERE / CALCI', selectClass: 'border-teal-400/70 focus:ring-teal-500/45 bg-teal-50/35 dark:bg-teal-950/25' },
+  { key: 'entero', label: 'ENTEROGERMINA', selectClass: 'border-cyan-400/70 focus:ring-cyan-500/45 bg-cyan-50/35 dark:bg-cyan-950/25' },
+  { key: 'bisolvon', label: 'BISOLVON', selectClass: 'border-indigo-400/70 focus:ring-indigo-500/45 bg-indigo-50/35 dark:bg-indigo-950/25' },
+  { key: 'buscopan_nospa', label: 'BUSCOPAN / NO-SPA', selectClass: 'border-orange-400/70 focus:ring-orange-500/45 bg-orange-50/35 dark:bg-orange-950/20' },
+  { key: 'pharmaton', label: 'PHARMATON', selectClass: 'border-violet-400/70 focus:ring-violet-500/45 bg-violet-50/35 dark:bg-violet-950/25' },
+  { key: 'phosphalugel', label: 'PHOSPHALUGEL', selectClass: 'border-amber-400/70 focus:ring-amber-500/45 bg-amber-50/35 dark:bg-amber-950/20' },
+  { key: 'ostelin', label: 'OSTELIN', selectClass: 'border-lime-400/70 focus:ring-lime-500/45 bg-lime-50/40 dark:bg-lime-950/20' },
+  { key: 'magne', label: 'MAGNE-B6', selectClass: 'border-fuchsia-400/70 focus:ring-fuchsia-500/45 bg-fuchsia-50/30 dark:bg-fuchsia-950/20' },
+  { key: 'other', label: 'KHÁC', selectClass: 'border-slate-300/80 focus:ring-slate-400/40 bg-white dark:bg-slate-800' },
+];
+
+function giaThamKhaoGroupKey(p: Product): GiaThamKhaoGroupKey {
+  const n = p.name.toUpperCase();
+  if (n.includes('ACEMUC')) return 'acemuc';
+  if (n.includes('TELFAST')) return 'telfast';
+  if (n.includes('CORBIERE') || n.includes('CALCIUM') || /^CALCI\b/i.test(p.name.trim())) return 'corbiere';
+  if (n.includes('ENTEROGERMINA')) return 'entero';
+  if (n.includes('BISOLVON')) return 'bisolvon';
+  if (n.includes('BUSCOPAN') || n.includes('NO-SPA') || n.includes('NOSPA')) return 'buscopan_nospa';
+  if (n.includes('PHARMATON')) return 'pharmaton';
+  if (n.includes('PHOSPHALUGEL')) return 'phosphalugel';
+  if (n.includes('OSTELIN')) return 'ostelin';
+  if (n.includes('MAGNE')) return 'magne';
+  return 'other';
 }
 
 const KHI_MUA_IN_DESC = /(\s+khi mua\s+)/i;
@@ -100,6 +150,17 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
     () => [...products].sort((a, b) => a.name.localeCompare(b.name, 'vi')),
     [products]
   );
+
+  const productsByGiaGroup = useMemo(() => {
+    const m = new Map<GiaThamKhaoGroupKey, Product[]>();
+    for (const { key } of GIA_THAM_KHAO_GROUP_ORDER) m.set(key, []);
+    for (const p of sorted) {
+      m.get(giaThamKhaoGroupKey(p))!.push(p);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    return m;
+  }, [sorted]);
+
   const [productId, setProductId] = useState<number>(() => sorted[0]?.id ?? 0);
   const [qtyStr, setQtyStr] = useState<string>('1');
   const [selectedCvmIndex, setSelectedCvmIndex] = useState<number | null>(null);
@@ -108,6 +169,12 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
     () => sorted.find((p) => p.id === productId) ?? sorted[0] ?? null,
     [sorted, productId]
   );
+
+  const selectGroupClass = useMemo(() => {
+    if (!product) return GIA_THAM_KHAO_GROUP_ORDER.find((g) => g.key === 'other')!.selectClass;
+    const k = giaThamKhaoGroupKey(product);
+    return GIA_THAM_KHAO_GROUP_ORDER.find((g) => g.key === k)?.selectClass ?? '';
+  }, [product]);
 
   const qty = Math.max(0, parseInt(qtyStr, 10) || 0);
 
@@ -118,6 +185,7 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
         discountPercent: 0,
         compareValue: 0,
         tiers: [] as ReturnType<typeof parsePromotionTiers>,
+        packAdjacentPct: 0,
       };
     }
     const isTelfast = TELFAST_GROUP_IDS.includes(product.id);
@@ -130,10 +198,11 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
       : isOstelin
         ? ostelinGroupBaseTotal
         : linePriceTotal;
-    const discountPercent = getDiscountPercent(product.promotion, qty, compareValue, product.id);
-    const lineTotal = calculateLineTotal(product.price, qty, product.promotion, compareValue, product.id);
+    const discountPercent = getGigaReferenceDiscountPercent(product.promotion, qty, compareValue, product.id);
+    const lineTotal = calculateGigaReferenceLineTotal(product.price, qty, product.promotion, compareValue, product.id);
+    const packAdjacentPct = getGigaPackAdjacentTierPercent(product.promotion, qty, compareValue, product.id);
     const tiers = parsePromotionTiers(product);
-    return { lineTotal, discountPercent, compareValue, tiers };
+    return { lineTotal, discountPercent, compareValue, tiers, packAdjacentPct };
   }, [product, qty]);
 
   const lineTotalSauGiga = gigaCalc.lineTotal;
@@ -283,13 +352,21 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
                   setProductId(Number(e.target.value));
                   setQtyStr('1');
                 }}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold px-3 py-2.5 outline-none focus:ring-2 focus:ring-opella-green/50"
+                className={`w-full rounded-xl border-2 text-slate-900 dark:text-white text-sm font-semibold px-3 py-2.5 outline-none focus:ring-2 transition-colors ${selectGroupClass}`}
               >
-                {sorted.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.id}] {p.name}
-                  </option>
-                ))}
+                {GIA_THAM_KHAO_GROUP_ORDER.map(({ key, label }) => {
+                  const items = productsByGiaGroup.get(key);
+                  if (!items?.length) return null;
+                  return (
+                    <optgroup key={key} label={label}>
+                      {items.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [{p.id}] {p.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
             <div className="w-full lg:w-52 shrink-0">
@@ -349,6 +426,18 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
                       <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(product.price)}</p>
                     </section>
 
+                    {PACK_476_PRODUCT_IDS.includes(product.id) && (
+                      <p className="text-[10px] leading-snug text-emerald-950 dark:text-emerald-100/95 rounded-lg border border-emerald-300/60 bg-emerald-50/90 dark:bg-emerald-950/35 px-2.5 py-2">
+                        <span className="font-black text-emerald-900 dark:text-emerald-200">Gói 4,76% (SP id 1 &amp; 30):</span>{' '}
+                        từ <span className="font-bold tabular-nums">21</span> hộp, % CK cột GIGA = % cao nhất tại mốc &lt;21h (đã đạt){' '}
+                        + 4,76%. Quy tắc lưu trong{' '}
+                        <code className="rounded bg-emerald-100/90 dark:bg-emerald-900/50 px-1 text-[9px] font-mono">
+                          utils/calculations.ts
+                        </code>{' '}
+                        → <code className="rounded bg-emerald-100/90 dark:bg-emerald-900/50 px-1 text-[9px] font-mono">getGigaReferenceDiscountPercent</code>.
+                      </p>
+                    )}
+
                     <div className="flex-1 flex flex-col min-h-0 gap-3">
                       <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
                         <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">
@@ -387,10 +476,10 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
                                     ) : (
                                       <>
                                         Mua ≥ {tier.thresholdRaw}h → CK {tier.percent}%
-                                        {isCalciPlus21hPack476Tier(product.id, tier) && (
+                                        {isPack476Goi21Tier(product.id, tier) && qty >= 21 && (
                                           <span className="font-bold text-opella-green dark:text-emerald-300">
                                             {' '}
-                                            + thêm 5.9% (CK mốc 5h)
+                                            — GIGA: +{(gigaCalc.packAdjacentPct * 100).toFixed(2)}% (mốc &lt;21h) + 4,76% (gói)
                                           </span>
                                         )}
                                       </>

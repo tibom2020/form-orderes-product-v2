@@ -12,9 +12,15 @@ import {
   BM_NON_CVM_BASE_PRICE_VND,
   BM_NON_CVM_NOT_SOLD_IDS,
   BM_NO_CVM_CTKM_BY_PRODUCT_ID,
+  BM_NO_CVM_COMBO_CTKM_BY_PRODUCT_ID,
+  comboEntryLineValueVnd,
+  comboReferencePerBoxVndFromEntry,
   computeBmCtkmDiscountVnd,
+  computeBmCtkmDiscountVndCombo,
   computeBmCtkmEffectivePercent,
+  computeBmCtkmEffectivePercentCombo,
   getBmCtkmWinningEntryIndices,
+  getBmCtkmWinningEntryIndicesCombo,
 } from '../constants';
 import { formatCurrency } from '../utils/formatters';
 import {
@@ -315,6 +321,31 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
     return Math.round(bmNoTongSauCkCtkmVnd / qty);
   }, [bmNoTongSauCkCtkmVnd, qty]);
 
+  const bmNoComboCtkmEntries = product ? BM_NO_CVM_COMBO_CTKM_BY_PRODUCT_ID[product.id] : undefined;
+  const bmNoComboCtkmDiscountVnd = useMemo(
+    () => computeBmCtkmDiscountVndCombo(lineValueBmNonVnd, bmNoComboCtkmEntries, qty, true),
+    [lineValueBmNonVnd, bmNoComboCtkmEntries, qty]
+  );
+  const bmNoComboCtkmEffectivePercent = useMemo(
+    () => computeBmCtkmEffectivePercentCombo(lineValueBmNonVnd, bmNoComboCtkmEntries, qty, true),
+    [lineValueBmNonVnd, bmNoComboCtkmEntries, qty]
+  );
+  const bmNoComboTongSauCkCtkmVnd = useMemo(() => {
+    if (qty <= 0) return 0;
+    const disc = computeBmCtkmDiscountVndCombo(lineValueBmNonVnd, bmNoComboCtkmEntries, qty, true);
+    if (disc <= 0) return lineValueBmNonVnd > 0 ? lineValueBmNonVnd : 0;
+    const idxs = getBmCtkmWinningEntryIndicesCombo(lineValueBmNonVnd, bmNoComboCtkmEntries, qty, true);
+    if (!bmNoComboCtkmEntries?.length || idxs.length === 0) {
+      return Math.max(0, Math.round(lineValueBmNonVnd - disc));
+    }
+    const lineWin = comboEntryLineValueVnd(bmNoComboCtkmEntries[idxs[0]], qty, lineValueBmNonVnd);
+    return Math.max(0, Math.round(lineWin - disc));
+  }, [qty, lineValueBmNonVnd, bmNoComboCtkmEntries]);
+  const bmNoComboSauCkCtkmMoiHopVnd = useMemo(() => {
+    if (qty <= 0 || bmNoComboTongSauCkCtkmVnd <= 0) return 0;
+    return Math.round(bmNoComboTongSauCkCtkmVnd / qty);
+  }, [bmNoComboTongSauCkCtkmVnd, qty]);
+
   const bmCvmCtkmWinningIndices = useMemo(
     () => new Set(getBmCtkmWinningEntryIndices(lineValueBmVnd, bmCvmCtkmEntries, qty, false)),
     [lineValueBmVnd, bmCvmCtkmEntries, qty]
@@ -323,9 +354,24 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
     () => new Set(getBmCtkmWinningEntryIndices(lineValueBmNonVnd, bmNoCvmCtkmEntries, qty, true)),
     [lineValueBmNonVnd, bmNoCvmCtkmEntries, qty]
   );
+  const bmNoComboCtkmWinningIndices = useMemo(
+    () => new Set(getBmCtkmWinningEntryIndicesCombo(lineValueBmNonVnd, bmNoComboCtkmEntries, qty, true)),
+    [lineValueBmNonVnd, bmNoComboCtkmEntries, qty]
+  );
+
+  const bmNoComboDerivedPerBoxSummary = useMemo(() => {
+    if (!bmNoComboCtkmEntries?.length) return null;
+    const vals = bmNoComboCtkmEntries
+      .map((e) => comboReferencePerBoxVndFromEntry(e))
+      .filter((v): v is number => v != null);
+    if (vals.length === 0) return null;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    return { min, max, single: min === max };
+  }, [bmNoComboCtkmEntries]);
 
   return (
-    <div className="p-4 animate-fade-in max-w-[1400px] mx-auto">
+    <div className="p-4 animate-fade-in max-w-[min(100%,112rem)] mx-auto">
       <div className="rounded-2xl border border-opella-green/25 dark:border-opella-green/40 bg-gradient-to-br from-white via-opella-beige/40 to-emerald-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-[#142920] shadow-lg overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-opella-green/15 dark:border-opella-green/30 bg-opella-green text-white">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
@@ -413,7 +459,7 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 lg:items-stretch gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 lg:items-stretch gap-4">
             {/* —— GIGA —— */}
             <div className="rounded-2xl border-2 border-opella-green/35 dark:border-opella-green/50 bg-white/90 dark:bg-slate-800/90 shadow-md flex flex-col min-h-[420px] lg:h-full">
               <div className="px-4 py-3 border-b border-opella-green/20 bg-opella-green/10 dark:bg-opella-green/20 shrink-0">
@@ -880,6 +926,174 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
                         <>
                           <p className="text-xl font-black text-amber-800 dark:text-amber-300">
                             {formatCurrency(bmNoSauCkCtkmMoiHopVnd)}
+                          </p>
+                          {product && qty > 0 && qty < product.minOrderQuantity && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold mt-1">
+                              Chưa đạt SL tối thiểu đặt hàng
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </section>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* —— BM NO CVM (COMBO) —— */}
+            <div className="rounded-2xl border-2 border-teal-300/85 dark:border-teal-700/80 bg-white/90 dark:bg-slate-800/90 shadow-md flex flex-col min-h-[420px] lg:h-full">
+              <div className="px-4 py-3 border-b border-teal-200/70 dark:border-teal-900/50 bg-teal-50/90 dark:bg-teal-950/40 shrink-0">
+                <h3 className="text-center text-sm font-black uppercase tracking-widest text-teal-900 dark:text-teal-200">
+                  BM NO CVM (COMBO)
+                </h3>
+              </div>
+              <div className="p-4 flex flex-col flex-1 gap-4 text-sm min-h-0">
+                {!product ? (
+                  <p className="text-slate-400 italic text-center">Chọn sản phẩm</p>
+                ) : (
+                  <>
+                    <section className="shrink-0">
+                      <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Giá gốc BM NO CVM (COMBO)
+                      </p>
+                      {bmNonCvmNotSold ? (
+                        <p className="text-lg font-black text-amber-700 dark:text-amber-400">Không có giá</p>
+                      ) : bmNoComboDerivedPerBoxSummary ? (
+                        <>
+                          <p className="text-lg font-black text-teal-900 dark:text-teal-100 tabular-nums">
+                            {bmNoComboDerivedPerBoxSummary.single
+                              ? formatCurrency(bmNoComboDerivedPerBoxSummary.min)
+                              : `${formatCurrency(bmNoComboDerivedPerBoxSummary.min)} – ${formatCurrency(bmNoComboDerivedPerBoxSummary.max)}`}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                            Đơn giá /hộp = <span className="font-semibold text-teal-800 dark:text-teal-400/95">GIÁ GỐC</span> (cột
+                            bảng) ÷ <span className="font-semibold">số hộp sau «Combo»</span> (vd. Combo 20 → chia 20). Chi tiết
+                            từng mức ở các dòng CTKM bên dưới.
+                          </p>
+                        </>
+                      ) : bmNonCvmBaseVnd != null && bmNonCvmBaseVnd > 0 ? (
+                        <>
+                          <p className="text-lg font-black text-teal-900 dark:text-teal-100">
+                            {formatCurrency(bmNonCvmBaseVnd)}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                            /hộp (BM NO CVM). SP không có dòng combo trong bảng.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-400 italic">Chưa có giá cho SP này</p>
+                      )}
+                    </section>
+
+                    <div className="flex-1 flex flex-col min-h-0 gap-3">
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
+                        <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">
+                          Các CTKM khuyến mãi (BM NO CVM — COMBO)
+                        </p>
+                        {bmNonCvmNotSold ? (
+                          <p className="text-slate-400 italic text-xs">—</p>
+                        ) : !bmNoComboCtkmEntries?.length ? (
+                          <p className="text-slate-400 italic text-xs">Không có CTKM combo trong bảng cho SP này</p>
+                        ) : (
+                          <>
+                            <ul className="space-y-2">
+                              {bmNoComboCtkmEntries.map((row, i) => {
+                                const on = bmNoComboCtkmWinningIndices.has(i);
+                                const comboPerBoxVnd = comboReferencePerBoxVndFromEntry(row);
+                                return (
+                                  <li
+                                    key={i}
+                                    className={`flex items-start gap-2 rounded-lg px-2.5 py-2 border text-xs leading-snug ${
+                                      on
+                                        ? 'border-emerald-400/70 bg-emerald-50/90 dark:bg-emerald-950/40 dark:border-emerald-600'
+                                        : 'border-teal-200/90 dark:border-teal-800/70 bg-teal-50/40 dark:bg-teal-950/25'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                                        on ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-500'
+                                      }`}
+                                      aria-hidden
+                                    >
+                                      {on ? '✓' : '·'}
+                                    </span>
+                                    <div className="min-w-0 text-slate-800 dark:text-slate-100">
+                                      <span className="font-black text-teal-900 dark:text-teal-200">{row.label}</span>
+                                      <span className="text-slate-600 dark:text-slate-300">
+                                        {' '}
+                                        — <BmCvmCtkmDescriptionText description={row.description} />
+                                      </span>
+                                      {row.referenceLineBaseVnd != null && row.referenceLineBaseVnd > 0 && (
+                                        <div className="mt-1 space-y-0.5 text-[10px] text-teal-800/95 dark:text-teal-300/95 tabular-nums">
+                                          <p>
+                                            <span className="font-semibold">GIÁ GỐC (dòng):</span>{' '}
+                                            {formatCurrency(row.referenceLineBaseVnd)}
+                                          </p>
+                                          {comboPerBoxVnd != null && row.referenceLineBaseVnd != null && (
+                                            <p>
+                                              <span className="font-semibold">Giá gốc /hộp:</span>{' '}
+                                              {formatCurrency(comboPerBoxVnd)}{' '}
+                                              <span className="text-slate-500 dark:text-slate-400 font-normal">
+                                                (= {formatCurrency(row.referenceLineBaseVnd)} ÷ {row.comboPackCount} hộp)
+                                              </span>
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                            {bmNoComboCtkmDiscountVnd > 0 && (
+                              <p className="mt-2 text-[11px] font-bold text-teal-800 dark:text-teal-300">
+                                Ước tính CK CTKM −{formatCurrency(bmNoComboCtkmDiscountVnd)} (≈
+                                −{(bmNoComboCtkmEffectivePercent * 100).toFixed(2)}%).
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {!bmNonCvmNotSold && lineValueBmNonVnd > 0 && (
+                        <div className="shrink-0 space-y-2">
+                          <div className="rounded-lg border border-emerald-300/70 bg-gradient-to-r from-emerald-50/95 to-teal-50/80 dark:from-emerald-950/45 dark:to-teal-950/35 dark:border-emerald-700/45 px-3 py-2.5 shadow-sm">
+                            <p className="text-[11px] leading-snug text-emerald-950 dark:text-emerald-50">
+                              <span className="font-black text-emerald-800 dark:text-emerald-200">Giá HD+ VAT</span>
+                              <span className="text-emerald-900/85 dark:text-emerald-100/90"> = </span>
+                              <span className="font-black tabular-nums text-emerald-700 dark:text-emerald-300">
+                                {formatCurrency(bmNoComboSauCkCtkmMoiHopVnd)}
+                              </span>
+                              <span className="text-emerald-900/80 dark:text-emerald-200/90">/hộp.</span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-violet-300/70 bg-gradient-to-r from-violet-50/95 to-indigo-50/80 dark:from-violet-950/45 dark:to-indigo-950/35 dark:border-violet-700/45 px-3 py-2.5 shadow-sm">
+                            <p className="text-[11px] leading-snug text-violet-950 dark:text-violet-50">
+                              <span className="font-bold text-violet-800 dark:text-violet-200">Tổng đơn:</span>
+                              <span className="text-violet-900/90 dark:text-violet-100/90">
+                                {' '}
+                                Giá HD+ VAT × {qty} ={' '}
+                              </span>
+                              <span className="font-black tabular-nums text-violet-700 dark:text-violet-300">
+                                {formatCurrency(bmNoComboTongSauCkCtkmVnd)}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <section className="shrink-0 pt-2 border-t border-slate-200 dark:border-slate-600">
+                      <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Giá cuối BM NO CVM (COMBO)
+                      </p>
+                      {bmNonCvmNotSold || !bmNonCvmBaseVnd ? (
+                        <p className="text-slate-400 italic text-sm">—</p>
+                      ) : qty <= 0 ? (
+                        <p className="text-xl font-black text-slate-400">—</p>
+                      ) : (
+                        <>
+                          <p className="text-xl font-black text-teal-800 dark:text-teal-300">
+                            {formatCurrency(bmNoComboSauCkCtkmMoiHopVnd)}
                           </p>
                           {product && qty > 0 && qty < product.minOrderQuantity && (
                             <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold mt-1">

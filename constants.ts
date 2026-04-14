@@ -95,7 +95,7 @@ export const BM_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
   27: 209500,
   28: 201500,
   29: 145800,
-  30: 166300,
+  30: 176200,
 };
 
 /** SP không bán kênh BM CVM (giá gốc = 0) */
@@ -162,7 +162,46 @@ export type BmCvmCtkmEntry = {
    * BM NO CVM: khi tính với `minQtyMustBeMultipleOf`, SL phải là **bội số** của giá trị này (combo).
    */
   requiresMinQty?: number;
+  /**
+   * Tổng giá gốc dòng tham chiếu (VNĐ) theo bảng BM NO CVM (COMBO) — chỉ hiển thị, không thay đổi công thức CK.
+   */
+  referenceLineBaseVnd?: number;
+  /**
+   * Số hộp ngay sau chữ “Combo” trong CTKM (vd. Combo 20 → 20). Dùng để hiển thị giá gốc/hộp = `referenceLineBaseVnd / comboPackCount`.
+   */
+  comboPackCount?: number;
 };
+
+/** Giá gốc /hộp từ bảng combo: GIÁ GỐC ÷ số hộp sau “Combo”. */
+export function comboReferencePerBoxVndFromEntry(e: BmCvmCtkmEntry): number | undefined {
+  if (
+    e.referenceLineBaseVnd == null ||
+    e.comboPackCount == null ||
+    e.comboPackCount <= 0
+  ) {
+    return undefined;
+  }
+  return Math.round(e.referenceLineBaseVnd / e.comboPackCount);
+}
+
+/**
+ * Giá trị dòng (VNĐ) để tính CK CTKM cột BM NO CVM (COMBO): đơn giá theo bảng combo × SL.
+ * Không có `referenceLineBaseVnd` / `comboPackCount` → dùng `fallbackLineValueVnd` (BM NO CVM × SL).
+ */
+export function comboEntryLineValueVnd(
+  e: BmCvmCtkmEntry,
+  qty: number,
+  fallbackLineValueVnd: number
+): number {
+  if (
+    e.referenceLineBaseVnd != null &&
+    e.comboPackCount != null &&
+    e.comboPackCount > 0
+  ) {
+    return Math.round((e.referenceLineBaseVnd / e.comboPackCount) * qty);
+  }
+  return fallbackLineValueVnd;
+}
 
 /**
  * Dòng CTKM có đủ điều kiện SL để tham gia so mức CK (khớp logic `computeBmCtkmDiscountVnd`).
@@ -246,6 +285,73 @@ export function computeBmCtkmEffectivePercent(
 ): number {
   if (lineValueVnd <= 0) return 0;
   return computeBmCtkmDiscountVnd(lineValueVnd, entries, qty, minQtyMustBeMultipleOf) / lineValueVnd;
+}
+
+/** CK CTKM cho cột BM NO CVM (COMBO) — mỗi dòng dùng `comboEntryLineValueVnd`, không dùng chung BM×SL. */
+export function computeBmCtkmDiscountVndCombo(
+  lineValueFallback: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number {
+  if (!entries?.length || qty <= 0) return 0;
+  let best = 0;
+  for (const e of entries) {
+    if (!bmCtkmEntryEligible(qty, e, minQtyMustBeMultipleOf)) continue;
+    const lineV = comboEntryLineValueVnd(e, qty, lineValueFallback);
+    if (lineV <= 0) continue;
+    const raw = lineV * e.discountPercent;
+    const cap = e.maxDiscountVnd;
+    const applied = cap != null ? Math.min(cap, raw) : raw;
+    if (applied > best) best = applied;
+  }
+  return Math.round(best);
+}
+
+export function getBmCtkmWinningEntryIndicesCombo(
+  lineValueFallback: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number[] {
+  if (!entries?.length || qty <= 0) return [];
+  const rounded: number[] = [];
+  let best = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (!bmCtkmEntryEligible(qty, e, minQtyMustBeMultipleOf)) {
+      rounded.push(-1);
+      continue;
+    }
+    const lineV = comboEntryLineValueVnd(e, qty, lineValueFallback);
+    if (lineV <= 0) {
+      rounded.push(-1);
+      continue;
+    }
+    const raw = lineV * e.discountPercent;
+    const cap = e.maxDiscountVnd;
+    const applied = cap != null ? Math.min(cap, raw) : raw;
+    const r = Math.round(applied);
+    rounded.push(r);
+    if (r > best) best = r;
+  }
+  if (best <= 0) return [];
+  return rounded.map((r, i) => (r === best ? i : -1)).filter((i) => i >= 0);
+}
+
+export function computeBmCtkmEffectivePercentCombo(
+  lineValueFallback: number,
+  entries: readonly BmCvmCtkmEntry[] | undefined,
+  qty: number,
+  minQtyMustBeMultipleOf?: boolean
+): number {
+  const disc = computeBmCtkmDiscountVndCombo(lineValueFallback, entries, qty, minQtyMustBeMultipleOf);
+  if (disc <= 0) return 0;
+  const idxs = getBmCtkmWinningEntryIndicesCombo(lineValueFallback, entries, qty, minQtyMustBeMultipleOf);
+  if (!idxs.length || !entries) return 0;
+  const lineV = comboEntryLineValueVnd(entries[idxs[0]], qty, lineValueFallback);
+  if (lineV <= 0) return 0;
+  return disc / lineV;
 }
 
 /**
@@ -419,22 +525,6 @@ export const BM_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCvmCt
 export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCvmCtkmEntry[]>> = {
   1: [
     {
-      label: 'GIẢM 11.4%',
-      discountPercent: 0.114,
-      maxDiscountVnd: 5_130_000,
-      requiresMinQty: 200,
-      description:
-        'Giảm tối đa 5130K khi mua 10 Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
-    },
-    {
-      label: 'GIẢM 10.12%',
-      discountPercent: 0.1012,
-      maxDiscountVnd: 2_170_000,
-      requiresMinQty: 20,
-      description:
-        'Giảm tối đa 2170K khi mua Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
-    },
-    {
       label: 'GIẢM 14.12%',
       discountPercent: 0.1412,
       maxDiscountVnd: 320_000,
@@ -451,14 +541,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   2: [
     {
-      label: 'GIẢM 4.52%',
-      discountPercent: 0.0452,
-      maxDiscountVnd: 1_810_000,
-      requiresMinQty: 98,
-      description:
-        'Giảm tối đa 1810K khi mua Combo 98 Acemuc acetylcysteine 200mg sanofi (hộp/30viên nang)',
-    },
-    {
       label: 'GIẢM 4.87%',
       discountPercent: 0.0487,
       maxDiscountVnd: 70_000,
@@ -474,14 +556,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
     },
   ],
   3: [
-    {
-      label: 'GIẢM 6.78%',
-      discountPercent: 0.0678,
-      maxDiscountVnd: 2_890_000,
-      requiresMinQty: 96,
-      description:
-        'Giảm tối đa 2890K khi mua Combo 96 Acemuc acetylcysteine 200mg sanofi (Hộp/30gói/1gram)',
-    },
     {
       label: 'GIẢM 7.03%',
       discountPercent: 0.0703,
@@ -506,14 +580,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   4: [
     {
-      label: 'GIẢM 2.45%',
-      discountPercent: 0.0245,
-      maxDiscountVnd: 730_000,
-      requiresMinQty: 96,
-      description:
-        'Giảm tối đa 730K khi mua Combo 96 Acemuc Kids Acetylcysteine 100mg Sanofi (hộp/30gói/0.5gram)',
-    },
-    {
       label: 'GIẢM 0.73%',
       discountPercent: 0.0073,
       maxDiscountVnd: 30_000,
@@ -530,14 +596,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   5: [
     {
-      label: 'GIẢM 1.72%',
-      discountPercent: 0.0172,
-      maxDiscountVnd: 1_380_000,
-      requiresMinQty: 160,
-      description:
-        'Giảm tối đa 1380K khi mua Combo 160 Magne B6 Corbiere Sanofi (hộp/50 viên nén)',
-    },
-    {
       label: 'GIẢM 1.69%',
       discountPercent: 0.0169,
       maxDiscountVnd: 30_000,
@@ -549,8 +607,24 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
       maxDiscountVnd: 30_000,
       description: 'Giảm tối đa 30K khi mua Magne B6 Corbiere Sanofi (h/50v)',
     },
+    {
+      label: 'GIẢM 8.73%',
+      discountPercent: 0.0873,
+      maxDiscountVnd: 18_000,
+      requiresMinQty: 1,
+      description:
+        'Mừng bạn trở lại_Giảm tối đa 18K khi mua từ 1 sản phẩm Magne B6 Corbiere Sanofi (h/50v)',
+    },
   ],
   6: [
+    {
+      label: 'GIẢM 8.5%',
+      discountPercent: 0.085,
+      maxDiscountVnd: 50_000,
+      requiresMinQty: 1,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Telfast hd fexofenadin 180mg sanofi (hộp/30 viên)',
+    },
     {
       label: 'GIẢM 8.2%',
       discountPercent: 0.082,
@@ -560,6 +634,14 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
     },
   ],
   7: [
+    {
+      label: 'GIẢM 0.61%',
+      discountPercent: 0.0061,
+      maxDiscountVnd: 50_000,
+      requiresMinQty: 1,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Telfast bd fexofenadin 60mg sanofi (hộp/30 viên nén)',
+    },
     {
       label: 'GIẢM 11.4%',
       discountPercent: 0.114,
@@ -579,6 +661,14 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   9: [
     {
+      label: 'GIẢM 11.8%',
+      discountPercent: 0.118,
+      maxDiscountVnd: 50_000,
+      requiresMinQty: 1,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm No-spa drotaverin 40mg sanofi (hộp/50 viên nén)',
+    },
+    {
       label: 'GIẢM 1.9%',
       discountPercent: 0.019,
       maxDiscountVnd: 30_000,
@@ -587,14 +677,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
     },
   ],
   10: [
-    {
-      label: 'GIẢM 4.48%',
-      discountPercent: 0.0448,
-      maxDiscountVnd: 590_000,
-      requiresMinQty: 66,
-      description:
-        'Giảm tối đa 590K khi mua Combo 66 Bisolvon kids bromhexin 4mg/5ml sanofi (chai/60ml)',
-    },
     {
       label: 'GIẢM 2.04%',
       discountPercent: 0.0204,
@@ -621,14 +703,6 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   14: [
     {
-      label: 'GIẢM 7.35%',
-      discountPercent: 0.0735,
-      maxDiscountVnd: 5_240_000,
-      requiresMinQty: 238,
-      description:
-        'Giảm tối đa 5240K khi mua Combo 238 Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
-    },
-    {
       label: 'GIẢM 4.75%',
       discountPercent: 0.0475,
       maxDiscountVnd: 30_000,
@@ -645,6 +719,14 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   15: [
     {
+      label: 'GIẢM 7.6%',
+      discountPercent: 0.076,
+      maxDiscountVnd: 50_000,
+      requiresMinQty: 1,
+      description:
+        'Giảm tối đa 50K khi mua từ 1 sản phẩm Buscopan hyoscine 10mg sanofi (hộp/100 viên nén)',
+    },
+    {
       label: 'GIẢM 6.1%',
       discountPercent: 0.061,
       maxDiscountVnd: 30_000,
@@ -654,23 +736,15 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   16: [
     {
-      label: 'GIẢM 7.09%',
-      discountPercent: 0.0709,
+      label: 'GIẢM 7.1%',
+      discountPercent: 0.071,
       maxDiscountVnd: 50_000,
       requiresMinQty: 2,
       description:
-        'Tối đa 50K khi mua từ 2 sản phẩm No-spa forte drotaverin 80mg sanofi (hộp/20 viên nén)',
+        'Giảm tối đa 50K khi mua từ 2 sản phẩm No-spa forte drotaverin 80mg sanofi (hộp/20 viên nén)',
     },
   ],
   21: [
-    {
-      label: 'GIẢM 4.95%',
-      discountPercent: 0.0495,
-      maxDiscountVnd: 710_000,
-      requiresMinQty: 24,
-      description:
-        'Giảm tối đa 710K khi mua Combo 24 Phosphalugel sanofi (hộp/26gói/20gram)',
-    },
     {
       label: 'GIẢM 4.97%',
       discountPercent: 0.0497,
@@ -685,24 +759,23 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
       description:
         'Giảm tối đa 30K khi mua Phosphalugel sanofi (hộp/26gói/20gram)',
     },
+    {
+      label: 'GIẢM 15%',
+      discountPercent: 0.15,
+      maxDiscountVnd: 60_000,
+      description:
+        'Mừng bạn trở lại - Giảm tối đa 60K khi mua Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+    {
+      label: 'GIẢM 11.7%',
+      discountPercent: 0.117,
+      maxDiscountVnd: 28_000,
+      requiresMinQty: 1,
+      description:
+        'Mừng bạn trở lại_Giảm tối đa 28K khi mua từ 1 sản phẩm Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
   ],
   26: [
-    {
-      label: 'GIẢM 4.8%',
-      discountPercent: 0.048,
-      maxDiscountVnd: 1_720_000,
-      requiresMinQty: 200,
-      description:
-        'Giảm tối đa 1720K khi mua 10 Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
-    },
-    {
-      label: 'GIẢM 5.05%',
-      discountPercent: 0.0505,
-      maxDiscountVnd: 700_000,
-      requiresMinQty: 20,
-      description:
-        'Giảm tối đa 700K khi mua Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
-    },
     {
       label: 'GIẢM 4.53%',
       discountPercent: 0.0453,
@@ -720,28 +793,20 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   28: [
     {
-      label: 'GIẢM 1.64%',
-      discountPercent: 0.0164,
-      maxDiscountVnd: 3_240_000,
-      requiresMinQty: 200,
-      description:
-        'Giảm tối đa 3240K khi mua 10 Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
-    },
-    {
-      label: 'GIẢM 0.62%',
-      discountPercent: 0.0062,
-      maxDiscountVnd: 570_000,
-      requiresMinQty: 20,
-      description:
-        'Giảm tối đa 570K khi mua Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
-    },
-    {
       label: 'GIẢM 2.4%',
       discountPercent: 0.024,
       maxDiscountVnd: 1_000_000,
-      requiresMinQty: 100,
+      requiresExactQty: 100,
       description:
         'Giảm tối đa 1TR khi mua 100 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+    {
+      label: 'GIẢM 4.72%',
+      discountPercent: 0.0472,
+      maxDiscountVnd: 60_000,
+      requiresMinQty: 1,
+      description:
+        'Giảm tối đa 60K khi mua từ 1 sản phẩm Calcium corbiere extra sanofi (hộp/30ống/10ml)',
     },
     {
       label: 'GIẢM 0.98%',
@@ -762,19 +827,180 @@ export const BM_NO_CVM_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCv
   ],
   30: [
     {
-      label: 'GIẢM 14.6%',
-      discountPercent: 0.146,
-      maxDiscountVnd: 11_000_000,
-      requiresMinQty: 360,
-      description:
-        'Giảm tối đa 11TR khi mua 10 Combo 36 Enterogermina gut defense 2 billion/5ml Opella (H/20o/5ml)',
-    },
-    {
       label: 'GIẢM 12.94%',
       discountPercent: 0.1294,
       maxDiscountVnd: 280_000,
       description:
         'Giảm tối đa 280K khi mua Enterogermina gut defense 2 billion/5ml Opella (H/20o/5ml)',
+    },
+  ],
+};
+
+/**
+ * CTKM kênh BM NO CVM (COMBO).
+ * `referenceLineBaseVnd`: cột GIÁ GỐC (tổng dòng). `comboPackCount`: số hộp sau “Combo” → giá gốc/hộp = GIÁ GỐC ÷ comboPackCount.
+ */
+export const BM_NO_CVM_COMBO_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonly BmCvmCtkmEntry[]>> = {
+  30: [
+    {
+      label: 'GIẢM 14.6%',
+      discountPercent: 0.146,
+      maxDiscountVnd: 11_000_000,
+      requiresMinQty: 360,
+      referenceLineBaseVnd: 6_514_200,
+      comboPackCount: 36,
+      description:
+        'Giảm tối đa 11TR khi mua 10 Combo 36 Enterogermina gut defense 2 billion/5ml Opella (H/20o/5ml)',
+    },
+  ],
+  14: [
+    {
+      label: 'GIẢM 7.35%',
+      discountPercent: 0.0735,
+      maxDiscountVnd: 5_240_000,
+      requiresMinQty: 238,
+      referenceLineBaseVnd: 14_249_100,
+      comboPackCount: 238,
+      description:
+        'Giảm tối đa 5240K khi mua Combo 238 Bisolvon bromhexin 8mg sanofi (hộp/30 viên nén)',
+    },
+  ],
+  1: [
+    {
+      label: 'GIẢM 11.4%',
+      discountPercent: 0.114,
+      maxDiscountVnd: 5_130_000,
+      requiresMinQty: 200,
+      referenceLineBaseVnd: 4_157_100,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 5130K khi mua 10 Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+    {
+      label: 'GIẢM 10.12%',
+      discountPercent: 0.1012,
+      maxDiscountVnd: 2_170_000,
+      requiresMinQty: 20,
+      referenceLineBaseVnd: 4_157_100,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 2170K khi mua Combo 20 Bổ Sung Canxi Hỗ Trợ Loãng Xương Corbiere Calcium Plus Sanofi (H/30o/10ml)',
+    },
+  ],
+  28: [
+    {
+      label: 'GIẢM 1.64%',
+      discountPercent: 0.0164,
+      maxDiscountVnd: 3_240_000,
+      requiresMinQty: 200,
+      referenceLineBaseVnd: 4_024_000,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 3240K khi mua 10 Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+    {
+      label: 'GIẢM 0.62%',
+      discountPercent: 0.0062,
+      maxDiscountVnd: 570_000,
+      requiresMinQty: 20,
+      referenceLineBaseVnd: 4_024_000,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 570K khi mua Combo 20 Calcium corbiere extra sanofi (hộp/30ống/10ml)',
+    },
+  ],
+  3: [
+    {
+      label: 'GIẢM 6.78%',
+      discountPercent: 0.0678,
+      maxDiscountVnd: 2_890_000,
+      requiresMinQty: 96,
+      referenceLineBaseVnd: 8_515_600,
+      comboPackCount: 96,
+      description:
+        'Giảm tối đa 2890K khi mua Combo 96 Acemuc acetylcysteine 200mg sanofi (Hộp/30gói/1gram)',
+    },
+  ],
+  2: [
+    {
+      label: 'GIẢM 4.52%',
+      discountPercent: 0.0452,
+      maxDiscountVnd: 1_810_000,
+      requiresMinQty: 98,
+      referenceLineBaseVnd: 7_966_000,
+      comboPackCount: 98,
+      description:
+        'Giảm tối đa 1810K khi mua Combo 98 Acemuc acetylcysteine 200mg sanofi (hộp/30viên nang)',
+    },
+  ],
+  26: [
+    {
+      label: 'GIẢM 4.8%',
+      discountPercent: 0.048,
+      maxDiscountVnd: 1_720_000,
+      requiresMinQty: 200,
+      referenceLineBaseVnd: 2_982_200,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 1720K khi mua 10 Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+    {
+      label: 'GIẢM 5.05%',
+      discountPercent: 0.0505,
+      maxDiscountVnd: 700_000,
+      requiresMinQty: 20,
+      referenceLineBaseVnd: 2_982_200,
+      comboPackCount: 20,
+      description:
+        'Giảm tối đa 700K khi mua Combo 20 Calcium corbiere kids extra sanofi (hộp/30ống/5ml)',
+    },
+  ],
+  5: [
+    {
+      label: 'GIẢM 1.72%',
+      discountPercent: 0.0172,
+      maxDiscountVnd: 1_380_000,
+      requiresMinQty: 160,
+      referenceLineBaseVnd: 15_909_700,
+      comboPackCount: 160,
+      description:
+        'Giảm tối đa 1380K khi mua Combo 160 Magne B6 Corbiere Sanofi (hộp/50 viên nén)',
+    },
+  ],
+  4: [
+    {
+      label: 'GIẢM 2.45%',
+      discountPercent: 0.0245,
+      maxDiscountVnd: 730_000,
+      requiresMinQty: 96,
+      referenceLineBaseVnd: 5_899_600,
+      comboPackCount: 96,
+      description:
+        'Giảm tối đa 730K khi mua Combo 96 Acemuc Kids Acetylcystein 100mg Sanofi (hộp/30gói/0.5gram)',
+    },
+  ],
+  21: [
+    {
+      label: 'GIẢM 4.95%',
+      discountPercent: 0.0495,
+      maxDiscountVnd: 710_000,
+      requiresMinQty: 24,
+      referenceLineBaseVnd: 2_850_600,
+      comboPackCount: 24,
+      description:
+        'Giảm tối đa 710K khi mua Combo 24 Phosphalugel sanofi (hộp/26gói/20gram)',
+    },
+  ],
+  10: [
+    {
+      label: 'GIẢM 4.48%',
+      discountPercent: 0.0448,
+      maxDiscountVnd: 590_000,
+      requiresMinQty: 66,
+      referenceLineBaseVnd: 2_611_700,
+      comboPackCount: 66,
+      description:
+        'Giảm tối đa 590K khi mua Combo 66 Bisolvon kids bromhexin 4mg/5ml sanofi (chai/60ml)',
     },
   ],
 };

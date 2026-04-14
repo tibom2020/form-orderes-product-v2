@@ -134,7 +134,7 @@ export const BM_NON_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
   27: 211500,
   28: 201200,
   29: 145600,
-  30: 180800,
+  30: 185400,
 };
 
 /** SP không có giá kênh BM NO CVM (giống ô trống trên bảng) */

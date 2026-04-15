@@ -1,6 +1,6 @@
 
 import type { SalesRecord, ForecastItem, CustomerSalesNoticePayload } from '../types';
-import { formatCurrency } from './formatters';
+import { formatCurrency, removeVietnameseTones } from './formatters';
 
 const REBATE_TIERS = [
     { level: 1, amount: 1500000, percent: 3.0 },
@@ -103,6 +103,41 @@ const safeStr = (r: Record<string, unknown>, ...keys: string[]): string => {
     return '';
 };
 
+/** RỚT / rớt → hiển thị CHƯA ĐẠT (Counter Top / CDU) */
+export const formatCounterCduStatusDisplay = (raw: string): string => {
+    const t = (raw || '').trim();
+    if (!t) return '';
+    const ascii = removeVietnameseTones(t).toLowerCase().replace(/\s+/g, ' ');
+    if (ascii === 'rot') return 'CHƯA ĐẠT';
+    return t;
+};
+
+export type CounterCduTone = 'pass' | 'fail' | 'neutral';
+
+/** Màu chữ theo tình trạng (sau format RỚT → CHƯA ĐẠT) */
+export const getCounterCduTone = (displayText: string): CounterCduTone => {
+    const s = (displayText || '').trim();
+    if (!s) return 'neutral';
+    const u = removeVietnameseTones(s).toLowerCase();
+    if (u.includes('chua') && u.includes('dat')) return 'fail';
+    if (u === 'rot') return 'fail';
+    if (u.includes('dat') && !u.includes('chua')) return 'pass';
+    return 'neutral';
+};
+
+export const counterCduToneClassName = (tone: CounterCduTone): string => {
+    if (tone === 'fail') return 'text-red-600 dark:text-red-400';
+    if (tone === 'pass') return 'text-emerald-600 dark:text-emerald-400';
+    return 'text-amber-700 dark:text-amber-300';
+};
+
+/** Class cho giá trị Counter Top / CDU (trống = xám nhạt; CHƯA ĐẠT đỏ; ĐẠT xanh; còn lại vàng đậm) */
+export const getCounterCduValueClassName = (raw: string): string => {
+    const display = formatCounterCduStatusDisplay(raw);
+    if (!display.trim()) return 'text-slate-400 dark:text-slate-500 font-normal';
+    return `font-bold ${counterCduToneClassName(getCounterCduTone(display))}`;
+};
+
 const isPassStatus = (status: string): boolean => {
     const s = (status || '').toLowerCase().trim();
     return s.includes('đạt') || s.includes('dat') || s.includes('pass') || s === 'yes' || s === 'ok';
@@ -113,18 +148,18 @@ const normalizeTierLabelForMatch = (s: string): string =>
     s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/\s*\+\s*/g, '+');
 
 /**
- * Mục tiêu doanh số tháng cho Điều kiện TB khi KH đã đăng ký TB Q2 (cột FinalStoreTypeQ2).
- * Platinum, Flagship+/Flagship (và biến thể Flaship), Gold: ≥ 15tr — Silver: ≥ 6tr — Bronze: ≥ 3tr
+ * Mục tiêu doanh số trưng bày tháng theo Loại TB (cột FinalStoreType), không dùng ĐK TB Q2.
+ * Bronze 500k — Silver 1,5tr — Gold / Platinum / Flagship 3tr.
  */
-const getQ2MonthlyTargetVnd = (finalStoreTypeQ2Raw: string): number | null => {
-    const n = normalizeTierLabelForMatch(finalStoreTypeQ2Raw);
+const getMonthlyTargetByLoaiTb = (finalStoreTypeRaw: string): number | null => {
+    const n = normalizeTierLabelForMatch(finalStoreTypeRaw);
     if (!n) return null;
-    if (n.includes('bronze')) return 3_000_000;
-    if (n.includes('silver')) return 6_000_000;
-    if (n.includes('gold')) return 15_000_000;
-    if (n.includes('platinum')) return 15_000_000;
-    if (n.includes('flagship+') || n.includes('flaship+')) return 15_000_000;
-    if (n.includes('flagship') || n.includes('flaship')) return 15_000_000;
+    if (n.includes('bronze')) return 500_000;
+    if (n.includes('silver')) return 1_500_000;
+    if (n.includes('gold')) return 3_000_000;
+    if (n.includes('platinum')) return 3_000_000;
+    if (n.includes('flagship+') || n.includes('flaship+')) return 3_000_000;
+    if (n.includes('flagship') || n.includes('flaship')) return 3_000_000;
     return null;
 };
 
@@ -164,20 +199,23 @@ const resolveQuarterTargetVnd = (finalStoreTypeQ2: string, finalStoreType: strin
     return legacy;
 };
 
-type MonthlyTbTargetMode = 'q2_tier' | 'target_monthly' | 'sheet_fallback';
+export type MonthlyTbTargetMode = 'loai_tb_tier' | 'target_monthly' | 'sheet_fallback';
+
+/** Nhãn dòng mục tiêu tháng (Telegram / UI) */
+export const monthlyTargetLineLabel = (mode: MonthlyTbTargetMode): string => {
+    if (mode === 'loai_tb_tier') return '+ Mục tiêu tháng (theo Loại TB)';
+    if (mode === 'target_monthly') return '+ Mục tiêu tháng (cột TargetMonthly)';
+    return '+ Mục tiêu tháng';
+};
 
 const resolveMonthlyTbTargetVnd = (
-    finalStoreTypeQ2: string,
+    finalStoreType: string,
     targetMonthlyFromSheet: number
 ): { target: number; mode: MonthlyTbTargetMode } => {
-    const q2 = (finalStoreTypeQ2 || '').trim();
-    if (q2) {
-        const q2Target = getQ2MonthlyTargetVnd(q2);
-        if (q2Target != null) return { target: q2Target, mode: 'q2_tier' };
-        if (targetMonthlyFromSheet > 0) {
-            return { target: targetMonthlyFromSheet, mode: 'target_monthly' };
-        }
-        return { target: 0, mode: 'sheet_fallback' };
+    const loaiTb = (finalStoreType || '').trim();
+    if (loaiTb) {
+        const tierTarget = getMonthlyTargetByLoaiTb(loaiTb);
+        if (tierTarget != null) return { target: tierTarget, mode: 'loai_tb_tier' };
     }
     if (targetMonthlyFromSheet > 0) {
         return { target: targetMonthlyFromSheet, mode: 'target_monthly' };
@@ -185,13 +223,13 @@ const resolveMonthlyTbTargetVnd = (
     return { target: 0, mode: 'sheet_fallback' };
 };
 
-/** Điều kiện TB tháng: so sánh doanh số đã đặt với mục tiêu (Q2 tier hoặc TargetMonthly sheet; không có thì theo cột Check + Todo). */
+/** Điều kiện TB tháng: mục tiêu theo Loại TB (Gold/Silver/Bronze) hoặc TargetMonthly sheet; không có thì theo cột Check + Todo. */
 const computeMonthlyTbFields = (r: Record<string, unknown>, doanhSoDaDat: number) => {
     const checkStatus = safeStr(r, 'Check');
     const todoTotal = safeNum(r, 'Todo', 'Todo TB');
-    const finalStoreTypeQ2 = safeStr(r, 'FinalStoreTypeQ2', 'Final Store Type Q2', 'FinalStoreType Q2');
+    const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type');
     const targetMonthlyFromSheet = safeNum(r, 'TargetMonthly', 'TARGET THÁNG', 'Target Monthly');
-    const { target, mode } = resolveMonthlyTbTargetVnd(finalStoreTypeQ2, targetMonthlyFromSheet);
+    const { target, mode } = resolveMonthlyTbTargetVnd(finalStoreType, targetMonthlyFromSheet);
 
     if (target > 0) {
         const passed = doanhSoDaDat >= target;
@@ -217,6 +255,7 @@ const computeMonthlyTbFields = (r: Record<string, unknown>, doanhSoDaDat: number
  * Tạo payload xuất thông tin Doanh số KH (gửi n8n/Telegram).
  * - Code giga = CustomerCode, Code BM = CodeBuyMed
  * - Số tiền thưởng dự kiến = doanh số x % level chiết khấu
+ * - Điều kiện TB tháng: mục tiêu theo Loại TB (Gold/Silver/Bronze), không theo ĐK TB Q2
  * - Điều kiện TB: bổ sung doanh số đã đặt và todo để đạt
  * - Counter top, CDU: để trống nếu không có (không dùng N/A)
  * - Bỏ Forecast T3 và Note
@@ -254,6 +293,7 @@ export const buildCustomerSalesNoticePayload = (
     const showTrungBayTbSections = !!(finalStoreTypeRaw || finalStoreTypeQ2);
     const {
         monthlyTargetVnd,
+        monthlyTbMode,
         signedTodoTotal: signedTodo,
         checkStatusForPayload,
     } = computeMonthlyTbFields(r, doanhSoDaDat);
@@ -295,12 +335,12 @@ export const buildCustomerSalesNoticePayload = (
         message += `\n📑 DOANH SỐ TRƯNG BÀY THÁNG:\n`;
         message += `+ Trạng thái: ${checkStatusForPayload}\n`;
         if (monthlyTargetVnd > 0) {
-            message += `+ Mục tiêu tháng: ${formatCurrency(monthlyTargetVnd)}\n`;
+            message += `${monthlyTargetLineLabel(monthlyTbMode)}: ${formatCurrency(monthlyTargetVnd)}\n`;
         }
         message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
         message += `+ Todo TB: ${signedTodo > 0 ? '+' : ''}${formatCurrency(signedTodo)}\n`;
-        if (counterTopStr) message += `+ Counter Top: ${counterTopStr}\n`;
-        if (cduStr) message += `+ CDU: ${cduStr}\n`;
+        message += `+ TÌNH TRẠNG COUNTER TOP: ${formatCounterCduStatusDisplay(counterTopStr)}\n`;
+        message += `+ TÌNH TRẠNG CDU: ${formatCounterCduStatusDisplay(cduStr)}\n`;
 
         message += `\n🎯 DOANH SỐ TRƯNG BÀY Q2:\n`;
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
@@ -348,8 +388,9 @@ export interface CustomerSalesDisplayData {
     isQuarterPassed: boolean;
     quarterStatusLabel: string;
     checkStatus: string;
-    /** Mục tiêu tháng dùng cho ĐK TB (Q2 tier hoặc TargetMonthly); 0 = theo sheet Check/Todo */
+    /** Mục tiêu tháng: theo Loại TB (tier) hoặc cột TargetMonthly; 0 = theo sheet Check/Todo */
     monthlyTargetVnd: number;
+    monthlyTbMode: MonthlyTbTargetMode;
     doanhSoDaDat: number;
     todoTotal: number;
     signedTodoTotal: number;
@@ -381,6 +422,7 @@ export const getCustomerSalesDisplayData = (
     const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
     const {
         monthlyTargetVnd,
+        monthlyTbMode,
         isCheckPassed,
         signedTodoTotal,
     } = computeMonthlyTbFields(r, doanhSoDaDat);
@@ -425,6 +467,7 @@ export const getCustomerSalesDisplayData = (
         quarterStatusLabel,
         checkStatus,
         monthlyTargetVnd,
+        monthlyTbMode,
         doanhSoDaDat,
         todoTotal,
         signedTodoTotal,

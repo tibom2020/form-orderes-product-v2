@@ -1,7 +1,12 @@
 import React from 'react';
 import type { SalesRecord } from '../types';
 import { formatCurrency } from '../utils/formatters';
-import { getCustomerSalesDisplayData } from '../utils/customerSummarizer';
+import {
+    getCustomerSalesDisplayData,
+    monthlyTargetLineLabel,
+    formatCounterCduStatusDisplay,
+    getCounterCduValueClassName,
+} from '../utils/customerSummarizer';
 
 interface CustomerSalesNoticeContentProps {
     record: SalesRecord;
@@ -75,7 +80,7 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                         </div>
                         {data.monthlyTargetVnd > 0 && (
                             <div>
-                                <span className="text-slate-500 dark:text-slate-400">+ Mục tiêu tháng:</span>{' '}
+                                <span className="text-slate-500 dark:text-slate-400">{monthlyTargetLineLabel(data.monthlyTbMode)}:</span>{' '}
                                 <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.monthlyTargetVnd)}</span>
                             </div>
                         )}
@@ -86,8 +91,18 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                                 {data.signedTodoTotal > 0 ? '+' : ''}{formatCurrency(data.signedTodoTotal)}
                             </span>
                         </div>
-                        {data.counterTopStr && <div><span className="text-slate-500 dark:text-slate-400">+ Counter Top:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{data.counterTopStr}</span></div>}
-                        {data.cduStr && <div><span className="text-slate-500 dark:text-slate-400">+ CDU:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{data.cduStr}</span></div>}
+                        <div>
+                            <span className="text-slate-500 dark:text-slate-400">+ TÌNH TRẠNG COUNTER TOP:</span>{' '}
+                            <span className={getCounterCduValueClassName(data.counterTopStr)}>
+                                {formatCounterCduStatusDisplay(data.counterTopStr)}
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 dark:text-slate-400">+ TÌNH TRẠNG CDU:</span>{' '}
+                            <span className={getCounterCduValueClassName(data.cduStr)}>
+                                {formatCounterCduStatusDisplay(data.cduStr)}
+                            </span>
+                        </div>
                     </div>
                     <div className="h-1.5" />
 

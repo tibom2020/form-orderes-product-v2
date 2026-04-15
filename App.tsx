@@ -29,6 +29,7 @@ import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 import { getInitials } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
+import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
@@ -487,6 +488,34 @@ const App: React.FC = () => {
     return allRebates.filter(r => String(r.code) === codeStr);
   }, [allRebates, customerCode]);
 
+  /** Gộp DummyBoxRecord + DummyBoxRecordBs (cùng logic dedup LandingPage) để kiểm tra KH trong danh sách & gói đã đăng ký */
+  const mergedDummyBoxMarketingByCode = useMemo(() => {
+    const map = new Map<string, MarketingRecord>();
+    [...marketingData, ...marketingDataBs].forEach((record) => {
+      if (!record) return;
+      const code = String(record.CustomerCode ?? '').trim();
+      if (!code) return;
+      map.set(code, record);
+    });
+    return map;
+  }, [marketingData, marketingDataBs]);
+
+  const dummyBoxListGate = useMemo(() => {
+    const code = String(customerCode ?? '').trim();
+    if (!code) {
+      return { inList: false, goiLocalRegistered: false, goiImportRegistered: false };
+    }
+    const rec = mergedDummyBoxMarketingByCode.get(code);
+    if (!rec) {
+      return { inList: false, goiLocalRegistered: false, goiImportRegistered: false };
+    }
+    return {
+      inList: true,
+      goiLocalRegistered: rec.GoiLocal === 'YES',
+      goiImportRegistered: rec.GoiImport === 'YES',
+    };
+  }, [customerCode, mergedDummyBoxMarketingByCode]);
+
   const handleToggleRebate = (rebateId: string) => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
     if (!rebate) return;
@@ -590,7 +619,19 @@ const App: React.FC = () => {
 
     const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
-    const dummyBoxDiscount = (isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
+    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxAmountEligibility(cart);
+    const effectiveDummyBoxLocal =
+      dummyBoxListGate.inList &&
+      eligibleDummyBoxLocal &&
+      !dummyBoxListGate.goiLocalRegistered &&
+      isDummyBoxLocal;
+    const effectiveDummyBoxImport =
+      dummyBoxListGate.inList &&
+      eligibleDummyBoxImport &&
+      !dummyBoxListGate.goiImportRegistered &&
+      isDummyBoxImport;
+    const dummyBoxDiscount =
+      (effectiveDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (effectiveDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
     const calciPlusPack476Discount = isCalciPlusPack476
       ? cart
           .filter((i) => PACK_476_PRODUCT_IDS.includes(i.id))
@@ -626,8 +667,9 @@ const App: React.FC = () => {
 
     return {
       customerCode, customerName, customerAddress, note: finalNote, items: cart, isOnTopLiXi,
-      isDummyBox: isDummyBoxLocal || isDummyBoxImport,
-      isDummyBoxLocal, isDummyBoxImport,
+      isDummyBox: effectiveDummyBoxLocal || effectiveDummyBoxImport,
+      isDummyBoxLocal: effectiveDummyBoxLocal,
+      isDummyBoxImport: effectiveDummyBoxImport,
       isCalciPlusPack476,
       appliedRebates: selectedRebateIds,
       totalAmount, finalAmount, totalSales,
@@ -1200,6 +1242,7 @@ const App: React.FC = () => {
                     currentSalesRecord={allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim()) ?? null}
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
+                    dummyBoxListGate={dummyBoxListGate}
                   />
                 </div>
               </div>

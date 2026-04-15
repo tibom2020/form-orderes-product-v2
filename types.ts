@@ -236,7 +236,7 @@ export interface Order {
   totalAmount: number;
   finalAmount: number;
   totalSales: number;
-  /** Ostelin 60V: đơn đủ điều kiện (≥5 hộp) = 1 gói (ck 21.97%), ghi sheet OSTELIN_60V_GOI */
+  /** Ostelin 60V: đơn đủ điều kiện (≥5 hộp) = 1 gói (ck 21.67%), ghi sheet OSTELIN_60V_GOI */
   ostelin60VPackages?: number;
   ostelin60VAmount?: number;
   ostelin60VQuantity?: number;

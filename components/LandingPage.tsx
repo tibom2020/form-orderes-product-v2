@@ -100,13 +100,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
     // --- REPORT LOGIC (Dựa trên unique data) ---
     const reportData = useMemo(() => {
-        const stats: Record<string, { total: number, upHinh: number, local: number, import: number }> = {};
+        const stats: Record<string, { total: number, upHinh: number, local: number, import: number, dangKyGoi: number }> = {};
 
         uniqueMarketingData.forEach(record => {
             // Chuẩn hóa tên Rep
             const repName = String(record.Rep ?? '').trim() || 'Chưa phân công';
             if (!stats[repName]) {
-                stats[repName] = { total: 0, upHinh: 0, local: 0, import: 0 };
+                stats[repName] = { total: 0, upHinh: 0, local: 0, import: 0, dangKyGoi: 0 };
             }
 
             stats[repName].total += 1;
@@ -122,6 +122,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
             if (record.GoiLocal === 'YES') stats[repName].local += 1;
             if (record.GoiImport === 'YES') stats[repName].import += 1;
+            /** Đã mua 1 hoặc 2 gói đều tính 1 KH */
+            if (record.GoiLocal === 'YES' || record.GoiImport === 'YES') stats[repName].dangKyGoi += 1;
         });
 
         // Chuyển về mảng và sort: ưu tiên ảnh cao→thấp, rồi tổng đơn hàng (local+import) cao→thấp
@@ -142,9 +144,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 total: acc.total + row.total,
                 upHinh: acc.upHinh + row.upHinh,
                 local: acc.local + row.local,
-                import: acc.import + row.import
+                import: acc.import + row.import,
+                dangKyGoi: acc.dangKyGoi + row.dangKyGoi
             }),
-            { total: 0, upHinh: 0, local: 0, import: 0 }
+            { total: 0, upHinh: 0, local: 0, import: 0, dangKyGoi: 0 }
         );
     }, [reportData]);
 
@@ -565,7 +568,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         if (!showReport) return null;
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                <div className="bg-white dark:bg-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700">
+                <div className="bg-white dark:bg-slate-800 w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700">
                     <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
                         <div>
                             <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase flex items-center gap-2">
@@ -587,7 +590,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                     {/* Ô tổng phía trên (tương tự Thống kê Forecast) */}
                     <div className="px-5 pb-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                             <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng KH</p>
                                 <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.total}</p>
@@ -595,6 +598,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             <div className="bg-opella-beige/50 dark:bg-opella-green/20 p-3 rounded-xl border border-opella-green/30 dark:border-opella-green/50">
                                 <p className="text-[10px] font-bold text-opella-green dark:text-opella-green uppercase">Đã có ảnh</p>
                                 <p className="text-2xl font-black text-opella-green dark:text-opella-green">{reportTotalStats.upHinh}</p>
+                            </div>
+                            <div className="bg-violet-50 dark:bg-violet-950/40 p-3 rounded-xl border border-violet-200 dark:border-violet-800">
+                                <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase" title="KH đã mua ít nhất 1 gói (1 hoặc 2 gói đều tính 1 KH)">KH ĐÃ MUA</p>
+                                <p className="text-2xl font-black text-violet-700 dark:text-violet-300">{reportTotalStats.dangKyGoi}</p>
                             </div>
                             <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
                                 <p className="text-[10px] font-bold text-green-500 dark:text-green-400 uppercase">Gói Local</p>
@@ -614,6 +621,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     <th className="px-4 py-3">Rep Phụ Trách</th>
                                     <th className="px-4 py-3 text-center">Tổng KH</th>
                                     <th className="px-4 py-3 text-center text-opella-green dark:text-opella-green">Ảnh</th>
+                                    <th className="px-4 py-3 text-center text-violet-600 dark:text-violet-400" title="Số KH đã mua ít nhất 1 gói (Local và/hoặc Import; 2 gói vẫn tính 1 KH)">
+                                        KH ĐÃ MUA
+                                    </th>
                                     <th className="px-4 py-3 text-center text-green-600 dark:text-green-400">Gói Local</th>
                                     <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">Gói Import</th>
                                 </tr>
@@ -657,6 +667,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.dangKyGoi > 0 ? 'bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400'}`}>
+                                                {row.dangKyGoi} <span className="font-normal text-[10px] opacity-70">({Math.round(row.dangKyGoi / row.total * 100)}%)</span>
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.local > 0 ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'text-slate-400'}`}>
                                                 {row.local} <span className="font-normal text-[10px] opacity-70">({Math.round(row.local / row.total * 100)}%)</span>
                                             </span>
@@ -669,7 +684,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     </tr>
                                 ))}
                                 {reportData.length === 0 && (
-                                    <tr><td colSpan={5} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
+                                    <tr><td colSpan={6} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
                                 )}
                             </tbody>
                         </table>

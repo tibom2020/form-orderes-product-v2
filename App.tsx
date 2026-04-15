@@ -691,7 +691,7 @@ const App: React.FC = () => {
   };
 
   const handleSubmitOrder = async () => {
-    if (!customerCode || cart.length === 0) return;
+    if (!customerCode || cart.length === 0 || isLoading) return;
     setIsLoading(true);
     const orderObj = createOrderObject();
 
@@ -728,6 +728,8 @@ const App: React.FC = () => {
       }
 
       setSubmittedOrder(newSent);
+      setSuccessMessage('Đã gửi đơn thành công!');
+      setTimeout(() => setSuccessMessage(null), 3200);
     } else {
       alert("Có lỗi xảy ra khi gửi đơn!");
     }

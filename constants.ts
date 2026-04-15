@@ -1038,9 +1038,9 @@ export const PACK_476_PRODUCT_IDS: readonly number[] = [1, 30];
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
 export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24, 25];
 
-/** Theo dõi gói Ostelin 60V (5h ck 21.97%) — khớp sheet Google & Apps Script */
+/** Theo dõi gói Ostelin 60V (5h ck 21.67%) — khớp sheet Google & Apps Script */
 export const OSTELIN_60V_PRODUCT_ID = 25;
-/** Tối thiểu 5 hộp để áp CK 21.97% & ghi theo dõi (1 gói/đơn đủ điều kiện) */
+/** Tối thiểu 5 hộp để áp CK 21.67% & ghi theo dõi (1 gói/đơn đủ điều kiện) */
 export const OSTELIN_60V_GOI_MIN_QTY = 5;
 export const OSTELIN_60V_GOI_SHEET = 'OSTELIN_60V_GOI';
 /** Theo dõi gói 4.76% (CalciPlus + Enterogermina 2B/20) */

@@ -10,6 +10,7 @@ export interface DummyBoxListGate {
     goiImportRegistered: boolean;
 }
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
+import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
@@ -449,6 +450,11 @@ const Cart: React.FC<CartProps> = (props) => {
     const rebateWithoutProducts = (selectedLocalRebateTotal > 0 && localProductCount < 1) || (selectedImportRebateTotal > 0 && importProductCount < 1);
     const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts;
 
+    const showSubmitSuccessUi = useMemo(
+        () => /gửi đơn thành công/i.test(successMessage ?? ''),
+        [successMessage]
+    );
+
     const handleSubmitWithValidation = () => {
         if (isSubmitBlocked) return;
         onSubmitOrder();
@@ -870,9 +876,12 @@ const Cart: React.FC<CartProps> = (props) => {
                     )}
                     <div className="flex gap-2">
                         <button onClick={onSaveDraft} disabled={items.length === 0} className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded-lg font-bold text-[10px] transition-all uppercase border border-slate-200 dark:border-slate-600"><SaveIcon /><span className="ml-1">Lưu nháp</span></button>
-                        <button onClick={handleSubmitWithValidation} disabled={items.length === 0 || isLoading || isSubmitBlocked} className="flex-[2] flex items-center justify-center bg-opella-green hover:bg-opella-green/90 text-white py-2 rounded-lg font-black text-[11px] transition-all uppercase shadow-md active:transform active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-600">
-                            {isLoading ? 'Đang gửi...' : 'Gửi đơn ngay'}
-                        </button>
+                        <AnimatedSubmitOrderButton
+                            disabled={items.length === 0 || isSubmitBlocked}
+                            isLoading={isLoading}
+                            showSubmitSuccess={showSubmitSuccessUi}
+                            onClick={handleSubmitWithValidation}
+                        />
                     </div>
                 </div>
                 {successMessage && <div className="mt-1 text-center text-[9px] font-bold text-green-600 dark:text-green-400 animate-bounce">{successMessage}</div>}

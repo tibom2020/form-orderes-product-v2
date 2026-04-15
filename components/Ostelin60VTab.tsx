@@ -15,6 +15,7 @@ interface Ostelin60VGoiRow {
   'SL_hộp'?: number | string;
   SL_goi?: number | string;
   'SL gói 21.97%'?: number | string;
+  'SL gói 21.67%'?: number | string;
   Thanh_tien?: number | string;
   ThanhTien?: number | string;
   [key: string]: unknown;
@@ -60,7 +61,7 @@ const Ostelin60VTab: React.FC = () => {
       const code = String(row.CustomerCode ?? '').trim();
       const name = String(row.CustomerName ?? '').trim();
       const slHop = Number(row['SL_hộp'] ?? row.SL_hop ?? 0) || 0;
-      const slGoi = Number(row.SL_goi ?? row['SL gói 21.97%'] ?? 0) || 0;
+      const slGoi = Number(row.SL_goi ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
       const thanhTien = Number(row.Thanh_tien ?? row.ThanhTien ?? 0) || 0;
       const ts = row.Timestamp ?? row.timestamp;
       return {
@@ -108,7 +109,7 @@ const Ostelin60VTab: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-opella-green/20 flex items-center justify-center">
               <ChartBarIcon />
             </div>
-            THEO DÕI GÓI OSTELIN 60V (5H - 21.97%)
+            THEO DÕI GÓI OSTELIN 60V (5H - 21.67%)
           </h2>
           <button
             type="button"

@@ -1,6 +1,6 @@
 /**
  * Google Apps Script - Smart Orders 2026
- * Refactored doPost — theo dõi gói Ostelin 60V (5h ck 21.97%) → sheet OSTELIN_60V_GOI
+ * Refactored doPost — theo dõi gói Ostelin 60V (5h ck 21.67%) → sheet OSTELIN_60V_GOI
  */
 
 var BOT_TOKEN = "";
@@ -237,7 +237,7 @@ function handleOrder(data, ss, output) {
       updateLiXiOntopStats(ss, data.employeeName, data.customerCode, data.customerName, data.totalSales || 0);
     }
 
-    // --- OSTELIN 60V: Ghi gói 5h ck 21.97% (1 gói/đơn đủ điều kiện) + KH để đối soát 1 gói/KH ---
+    // --- OSTELIN 60V: Ghi gói 5h ck 21.67% (1 gói/đơn đủ điều kiện) + KH để đối soát 1 gói/KH ---
     var ostelin60VPackages = Number(data.ostelin60VPackages) || 0;
     var ostelin60VAmount = Number(data.ostelin60VAmount) || 0;
     if (ostelin60VPackages > 0 && ostelin60VAmount >= 0) {

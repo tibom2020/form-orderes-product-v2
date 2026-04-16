@@ -1,6 +1,55 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Employee } from '../types';
+
+/** Màn hình toàn trang sau đăng nhập — đồng bộ dữ liệu (tối thiểu ~5s) */
+export const PostLoginLoadingScreen: React.FC = () => {
+  return (
+    <div
+      className="flex flex-col items-center justify-center min-h-screen bg-opella-beige dark:bg-slate-900 font-sans transition-colors duration-200 px-6"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="w-full max-w-sm flex flex-col items-center">
+        <img
+          src="https://i.postimg.cc/D0p4bsQD/logo.webp"
+          alt=""
+          className="h-20 sm:h-24 w-auto object-contain mb-6 opacity-95 animate-pulse"
+        />
+        <div className="relative w-full h-2 rounded-full bg-slate-200/90 dark:bg-slate-700 overflow-hidden shadow-inner">
+          <div
+            className="absolute inset-y-0 w-[40%] rounded-full bg-gradient-to-r from-opella-green via-emerald-400 to-opella-green shadow-sm"
+            style={{ animation: 'loginBarSlide 5s ease-in-out infinite' }}
+          />
+        </div>
+        <style>{`
+          @keyframes loginBarSlide {
+            0% { left: -40%; opacity: 0.9; }
+            50% { left: 55%; opacity: 1; }
+            100% { left: 100%; opacity: 0.9; }
+          }
+        `}</style>
+        <p className="mt-6 text-center text-sm font-bold text-[#003629] dark:text-[#8abda9] tracking-tight">
+          Đang tải dữ liệu hệ thống…
+        </p>
+        <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400 max-w-[18rem] leading-relaxed">
+          Đồng bộ danh mục KH, rebate, doanh số vào bộ nhớ. Vui lòng chờ khoảng 5 giây.
+        </p>
+        <div className="mt-8 flex items-center gap-2 text-opella-green dark:text-emerald-400">
+          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span className="text-xs font-semibold uppercase tracking-wider">Đang xử lý</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface LoginProps {
   employees: Employee[];

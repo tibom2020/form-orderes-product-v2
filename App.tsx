@@ -4,7 +4,7 @@ import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DI
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
-import Login from './components/Login';
+import Login, { PostLoginLoadingScreen } from './components/Login';
 import OrderHistory from './components/OrderHistory';
 import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
@@ -44,6 +44,8 @@ type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landi
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
+  /** Sau đăng nhập: tải dữ liệu + tối thiểu 5s hiển thị màn loading */
+  const [postLoginHydrating, setPostLoginHydrating] = useState(false);
   const [isSuperUser, setIsSuperUser] = useState(false);
 
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -276,17 +278,23 @@ const App: React.FC = () => {
     }
   };
 
-  /** Khởi tạo: Phase 1 trước, Phase 2 chạy song song ngay sau */
+  /** Sau khi đăng nhập: Phase 1 + Phase 2, song song với tối thiểu 5s màn loading */
   useEffect(() => {
+    if (!loggedInEmployee || !postLoginHydrating) return;
     let cancelled = false;
+    const minDelayMs = 5000;
     const run = async () => {
-      await loadCriticalData();
-      if (cancelled) return;
-      loadSecondaryData(); // Không await — load nền
+      const minDelay = new Promise<void>((resolve) => {
+        setTimeout(resolve, minDelayMs);
+      });
+      await Promise.all([loadCriticalData(), loadSecondaryData(), minDelay]);
+      if (!cancelled) setPostLoginHydrating(false);
     };
-    run();
-    return () => { cancelled = true; };
-  }, []);
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedInEmployee, postLoginHydrating]);
 
   /** Lazy load khi mở Dashboard hoặc tab Lịch sử mua hàng */
   useEffect(() => {
@@ -347,6 +355,7 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = (employee: Employee) => {
     setLoggedInEmployee(employee);
+    setPostLoginHydrating(true);
     if (employee.code === ADMIN_CODE) {
       setIsSuperUser(true);
     }
@@ -368,6 +377,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setLoggedInEmployee(null);
+    setPostLoginHydrating(false);
     setIsSuperUser(false);
     resetOrderState();
     setViewMode('order');
@@ -875,6 +885,7 @@ const App: React.FC = () => {
   */
 
   if (!loggedInEmployee) return <Login employees={EMPLOYEES} onLoginSuccess={handleLoginSuccess} />;
+  if (postLoginHydrating) return <PostLoginLoadingScreen />;
 
   const isAdminUser = loggedInEmployee.code === ADMIN_CODE;
 

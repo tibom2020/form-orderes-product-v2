@@ -174,6 +174,51 @@ function findTierConfigByFinalStoreTypeQ2(cell: string): StoreTierConfig | null 
   return null;
 }
 
+/** Tiêu đề cột gọn trong bảng thống kê theo Rep */
+const TIER_TABLE_SHORT: Record<StoreTierId, string> = {
+  flagship_plus: 'F+',
+  flagship: 'Flagship',
+  platinum: 'Platinum',
+  gold: 'Gold',
+  silver: 'Silver',
+  bronze: 'Bronze',
+};
+
+interface RepTierStatRow {
+  repLabel: string;
+  byTier: Record<StoreTierId, number>;
+  total: number;
+}
+
+function buildRepTierRegistrationRows(rows: DangKyTbq2RowView[]): RepTierStatRow[] {
+  const acc = new Map<string, Record<StoreTierId, number>>();
+  const emptyTier = (): Record<StoreTierId, number> => {
+    const o = {} as Record<StoreTierId, number>;
+    STORE_TIER_CONFIGS.forEach(t => {
+      o[t.id] = 0;
+    });
+    return o;
+  };
+
+  for (const r of rows) {
+    if (!isRegisteredRow(r)) continue;
+    const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
+    if (!cfg) continue;
+    const repLabel = r.rep.trim() || '— (Chưa gán Rep)';
+    if (!acc.has(repLabel)) acc.set(repLabel, emptyTier());
+    acc.get(repLabel)![cfg.id] += 1;
+  }
+
+  return [...acc.entries()]
+    .map(([repLabel, byTier]) => ({
+      repLabel,
+      byTier,
+      total: STORE_TIER_CONFIGS.reduce((s, t) => s + byTier[t.id], 0),
+    }))
+    .filter(x => x.total > 0)
+    .sort((a, b) => b.total - a.total || a.repLabel.localeCompare(b.repLabel, 'vi'));
+}
+
 /** Trong state `finalStoreTypeQ1Filter`: chỉ hiện KH có cột FinalStoreTypeQ1 khác rỗng */
 const Q1_FILTER_NON_EMPTY = '__Q1_NON_EMPTY__';
 const FRONT_COUNTER_SWAP_NOTE = 'Đổi FRONTCOUNTER -> TOPBOARD';
@@ -365,6 +410,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   } | null>(null);
   const [registrationSuccessModal, setRegistrationSuccessModal] = useState<RegistrationSuccessSummary | null>(null);
   const [repBudgetChartOpen, setRepBudgetChartOpen] = useState(false);
+  const [repTierStatsOpen, setRepTierStatsOpen] = useState(false);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
   /** Lọc theo FinalStoreTypeQ1: null = tất cả; Q1_FILTER_NON_EMPTY = có dữ liệu cột; hoặc chuỗi khớp chính xác */
@@ -440,6 +486,24 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     });
     return m;
   }, [myRows]);
+
+  /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
+  const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
+
+  const repTierColumnTotals = useMemo(() => {
+    const byTier = {} as Record<StoreTierId, number>;
+    STORE_TIER_CONFIGS.forEach(t => {
+      byTier[t.id] = 0;
+    });
+    let grand = 0;
+    for (const row of repTierRegistrationRows) {
+      grand += row.total;
+      for (const t of STORE_TIER_CONFIGS) {
+        byTier[t.id] += row.byTier[t.id];
+      }
+    }
+    return { byTier, grand };
+  }, [repTierRegistrationRows]);
 
   const distinctFinalStoreTypeQ1Values = useMemo(() => {
     const s = new Set<string>();
@@ -574,6 +638,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [repBudgetChartOpen]);
+
+  useEffect(() => {
+    if (!repTierStatsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRepTierStatsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [repTierStatsOpen]);
 
   const posmValidation = useMemo(() => {
     if (!tier) return { ok: false, message: null as string | null };
@@ -804,6 +877,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
             title="Tải lại DANGKYTBQ2 & ngân sách Rep"
           >
             {refreshing ? 'Đang tải…' : 'Làm mới'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setRepTierStatsOpen(true)}
+            disabled={loading}
+            className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-emerald-700/90 text-white dark:bg-emerald-600/90 border border-emerald-800/30 dark:border-emerald-400/30 hover:bg-emerald-800 dark:hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all"
+            title="Số lượng đăng ký theo từng Tier, chia theo Rep (dữ liệu đang xem)"
+          >
+            Bảng theo Rep
           </button>
           {isAdmin && (
             <button
@@ -1703,6 +1785,107 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
               >
                 Quay lại trang đăng ký
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {repTierStatsOpen && (
+        <div
+          className="fixed inset-0 z-[102] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thống kê đăng ký Tier theo Rep"
+          onClick={() => setRepTierStatsOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-[min(100%,72rem)] max-h-[90vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-emerald-200/60 dark:border-emerald-900/50 bg-[#f9f9f8] dark:bg-slate-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-[#c0c9c3]/25 dark:border-slate-600 shrink-0">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#003629] dark:text-[#8abda9]">
+                  Thống kê đăng ký theo Rep — số lượng theo Tier
+                </p>
+                <p className="text-[10px] text-[#404945] dark:text-slate-500 mt-1">
+                  Chỉ tính KH đã đăng ký và có Tier (FinalStoreTypeQ2 khớp bảng).{' '}
+                  {isAdmin ? 'Toàn bộ Rep.' : 'Phạm vi Rep của bạn.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRepTierStatsOpen(false)}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#003629] text-white dark:bg-[#8abda9] dark:text-[#1a3028]"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="overflow-x-auto tbq2-scroll-xy flex-1 p-4 sm:p-5">
+              {repTierRegistrationRows.length === 0 ? (
+                <p className="text-sm text-center text-slate-500 py-10">
+                  Chưa có đăng ký Tier nào trong phạm vi dữ liệu hiện tại.
+                </p>
+              ) : (
+                <table className="w-full min-w-[640px] text-left border-collapse text-[11px] sm:text-xs">
+                  <thead>
+                    <tr className="border-b border-[#c0c9c3]/40 dark:border-slate-600">
+                      <th className="sticky left-0 z-[1] bg-[#f9f9f8] dark:bg-slate-900 py-2 pr-3 font-black text-[#003629] dark:text-[#8abda9] whitespace-nowrap">
+                        Rep
+                      </th>
+                      {STORE_TIER_CONFIGS.map(t => (
+                        <th
+                          key={t.id}
+                          className="py-2 px-1.5 sm:px-2 text-center font-bold text-[#404945] dark:text-slate-400 whitespace-nowrap"
+                          title={t.label}
+                        >
+                          {TIER_TABLE_SHORT[t.id]}
+                        </th>
+                      ))}
+                      <th className="py-2 pl-2 text-center font-black text-[#003629] dark:text-[#8abda9] whitespace-nowrap">
+                        Tổng
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repTierRegistrationRows.map(row => (
+                      <tr
+                        key={row.repLabel}
+                        className="border-b border-[#c0c9c3]/20 dark:border-slate-700/80 hover:bg-[#edeeed]/80 dark:hover:bg-slate-800/60"
+                      >
+                        <td className="sticky left-0 z-[1] bg-[#f9f9f8]/95 dark:bg-slate-900/95 backdrop-blur py-2 pr-3 font-semibold text-[#191c1c] dark:text-slate-100 max-w-[12rem]">
+                          <span className="line-clamp-2 break-words">{row.repLabel}</span>
+                        </td>
+                        {STORE_TIER_CONFIGS.map(t => (
+                          <td key={t.id} className="py-2 px-1.5 sm:px-2 text-center tabular-nums text-[#191c1c] dark:text-slate-200">
+                            {row.byTier[t.id] > 0 ? row.byTier[t.id] : '—'}
+                          </td>
+                        ))}
+                        <td className="py-2 pl-2 text-center font-black tabular-nums text-emerald-700 dark:text-emerald-400">
+                          {row.total}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-[#003629]/25 dark:border-[#8abda9]/30 bg-[#003629]/[0.06] dark:bg-slate-800/80">
+                      <td className="sticky left-0 z-[1] py-2.5 pr-3 font-black text-[#003629] dark:text-[#8abda9]">
+                        Tổng cộng
+                      </td>
+                      {STORE_TIER_CONFIGS.map(t => (
+                        <td
+                          key={t.id}
+                          className="py-2.5 px-1.5 sm:px-2 text-center font-bold tabular-nums text-[#003629] dark:text-[#8abda9]"
+                        >
+                          {repTierColumnTotals.byTier[t.id] > 0 ? repTierColumnTotals.byTier[t.id] : '—'}
+                        </td>
+                      ))}
+                      <td className="py-2.5 pl-2 text-center font-black tabular-nums text-emerald-800 dark:text-emerald-300">
+                        {repTierColumnTotals.grand}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </div>
           </div>
         </div>

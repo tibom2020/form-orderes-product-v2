@@ -57,6 +57,13 @@ const toNum = (...vals: unknown[]): number => {
   return 0;
 };
 
+/** Mục tiêu SL gói 4.76% / Rep — CALCIPLUS vs ENTERO 2B/20 */
+const CALCI_PACK_TARGET = 30;
+const ENTERO_PACK_TARGET = 40;
+/** Tổng mục tiêu gói toàn team (hiển thị SL bán được / mục tiêu) */
+const COMPANY_CALCI_PACKS_TOTAL_TARGET = 210;
+const COMPANY_ENTERO_PACKS_TOTAL_TARGET = 270;
+
 const CalciPlusTab: React.FC = () => {
   const [rawData, setRawData] = useState<OrderSheetRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,12 +255,14 @@ const CalciPlusTab: React.FC = () => {
     return out;
   }, [rows]);
 
-  const totals = useMemo(() => ({
-    reps: byRep.length,
-    calciPacks: byRep.reduce((s, r) => s + r.calciPacks, 0),
-    enteroPacks: byRep.reduce((s, r) => s + r.enteroPacks, 0),
-    totalAmount: byRep.reduce((s, r) => s + r.totalAmount, 0),
-  }), [byRep]);
+  const totals = useMemo(() => {
+    const calciSold = byRep.reduce((s, r) => s + r.calciPacks, 0);
+    const enteroSold = byRep.reduce((s, r) => s + r.enteroPacks, 0);
+    return {
+      calciFraction: `${calciSold}/${COMPANY_CALCI_PACKS_TOTAL_TARGET}`,
+      enteroFraction: `${enteroSold}/${COMPANY_ENTERO_PACKS_TOTAL_TARGET}`,
+    };
+  }, [byRep]);
 
   return (
     <div className="p-4 animate-fade-in">
@@ -276,6 +285,35 @@ const CalciPlusTab: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {!loading && !error && (
+          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-slate-50/80 dark:bg-slate-900/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4">
+              <div className="rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 p-3 sm:p-4">
+                <p className="text-[10px] font-bold text-sky-800 dark:text-sky-200 uppercase tracking-wide">
+                  CalciPlus (SL gói 4.76%)
+                </p>
+                <p className="text-xl sm:text-2xl font-black tabular-nums text-sky-900 dark:text-sky-100 mt-1">
+                  {totals.calciFraction}
+                </p>
+                <p className="text-[9px] text-sky-700/80 dark:text-sky-300/80 mt-0.5">
+                  SL gói bán được / {COMPANY_CALCI_PACKS_TOTAL_TARGET}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/35 p-3 sm:p-4">
+                <p className="text-[10px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+                  Entero 2B/20 (SL gói 4.76%)
+                </p>
+                <p className="text-xl sm:text-2xl font-black tabular-nums text-amber-950 dark:text-amber-50 mt-1">
+                  {totals.enteroFraction}
+                </p>
+                <p className="text-[9px] text-amber-800/90 dark:text-amber-300/80 mt-0.5">
+                  SL gói bán được / {COMPANY_ENTERO_PACKS_TOTAL_TARGET}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="text-center py-8 text-slate-500 dark:text-slate-400">Đang tải...</div>
@@ -302,59 +340,104 @@ const CalciPlusTab: React.FC = () => {
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse min-w-[720px]">
-                <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+              <table className="w-full text-left text-sm border-collapse min-w-[1080px]">
+                <thead className="font-bold">
                   <tr>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">CALCIPLUS (SL gói 4.76%)</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">ENTERO 2B/20 (SL gói 4.76%)</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng doanh số 2 SP</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      STT
+                    </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Rep
+                    </th>
+                    <th className="px-4 py-3 border-b border-sky-200 dark:border-sky-800 text-right border-l-2 border-l-sky-500 bg-sky-100 dark:bg-sky-950/55 text-sky-950 dark:text-sky-100">
+                      CALCIPLUS (SL gói 4.76%)
+                    </th>
+                    <th className="px-4 py-3 border-b border-sky-200 dark:border-sky-800 text-right leading-tight bg-sky-100 dark:bg-sky-950/55 text-sky-950 dark:text-sky-100">
+                      <span className="block">Mục tiêu CalciPlus</span>
+                      <span className="block text-[10px] font-semibold text-sky-800 dark:text-sky-200 normal-case opacity-90">
+                        ({CALCI_PACK_TARGET} gói)
+                      </span>
+                    </th>
+                    <th
+                      className="px-3 py-3 border-b border-sky-200 dark:border-sky-800 text-right min-w-[4.5rem] leading-tight bg-sky-200/80 dark:bg-sky-900/50 text-sky-950 dark:text-sky-50"
+                      title="Số gói CalciPlus còn thiếu so với mục tiêu"
+                    >
+                      <span className="block uppercase tracking-wide text-[10px] opacity-90">To do</span>
+                      <span className="block text-[10px] font-semibold normal-case">CalciPlus</span>
+                    </th>
+                    <th className="px-4 py-3 border-b border-amber-200 dark:border-amber-900 text-right border-l-2 border-l-amber-500 bg-amber-100 dark:bg-amber-950/50 text-amber-950 dark:text-amber-50">
+                      ENTERO 2B/20 (SL gói 4.76%)
+                    </th>
+                    <th className="px-4 py-3 border-b border-amber-200 dark:border-amber-900 text-right leading-tight bg-amber-100 dark:bg-amber-950/50 text-amber-950 dark:text-amber-50">
+                      <span className="block">Mục tiêu Entero 2B/20</span>
+                      <span className="block text-[10px] font-semibold text-amber-900 dark:text-amber-200 normal-case opacity-90">
+                        ({ENTERO_PACK_TARGET} gói)
+                      </span>
+                    </th>
+                    <th
+                      className="px-3 py-3 border-b border-amber-200 dark:border-amber-900 text-right min-w-[4.5rem] leading-tight bg-amber-200/80 dark:bg-amber-900/45 text-amber-950 dark:text-amber-50"
+                      title="Số gói Entero 2B/20 còn thiếu so với mục tiêu"
+                    >
+                      <span className="block uppercase tracking-wide text-[10px] opacity-90">To do</span>
+                      <span className="block text-[10px] font-semibold normal-case">Entero 2B/20</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {byRep.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
                         Chưa có dữ liệu để báo cáo
                       </td>
                     </tr>
                   ) : (
-                    byRep.map((row, idx) => (
-                      <tr key={row.rep} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciPacks}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroPacks}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.totalAmount)}</td>
+                    byRep.map((row, idx) => {
+                      const todoCalci = Math.max(0, CALCI_PACK_TARGET - row.calciPacks);
+                      const todoEntero = Math.max(0, ENTERO_PACK_TARGET - row.enteroPacks);
+                      return (
+                      <tr key={row.rep} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/30">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800/30">
+                          {row.rep}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums border-l-2 border-l-sky-400 dark:border-l-sky-500 bg-sky-50/90 dark:bg-sky-950/35 text-sky-950 dark:text-sky-100">
+                          {row.calciPacks}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-black tabular-nums bg-sky-100/80 dark:bg-sky-900/40 text-sky-900 dark:text-sky-100">
+                          {CALCI_PACK_TARGET}
+                        </td>
+                        <td
+                          className={`px-3 py-2.5 text-right text-sm font-black tabular-nums bg-sky-200/50 dark:bg-sky-900/55 ${
+                            todoCalci === 0
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-sky-950 dark:text-sky-50'
+                          }`}
+                        >
+                          {todoCalci}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums border-l-2 border-l-amber-400 dark:border-l-amber-500 bg-amber-50/90 dark:bg-amber-950/30 text-amber-950 dark:text-amber-50">
+                          {row.enteroPacks}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-black tabular-nums bg-amber-100/80 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100">
+                          {ENTERO_PACK_TARGET}
+                        </td>
+                        <td
+                          className={`px-3 py-2.5 text-right text-sm font-black tabular-nums bg-amber-200/50 dark:bg-amber-900/50 ${
+                            todoEntero === 0
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-amber-950 dark:text-amber-50'
+                          }`}
+                        >
+                          {todoEntero}
+                        </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden mt-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-opella-green/10 dark:bg-opella-green/20 border-b border-slate-200 dark:border-slate-600">
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Số Rep có phát sinh</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.reps}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">CalciPlus (SL gói 4.76%)</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.calciPacks}</p>
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Entero 2B/20 (SL gói 4.76%)</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{totals.enteroPacks}</p>
-              </div>
-              <div className="col-span-2 sm:col-span-3">
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng doanh số 2 sản phẩm</p>
-                <p className="text-xl font-black text-opella-green dark:text-opella-green">{formatCurrency(totals.totalAmount)}</p>
-              </div>
             </div>
           </div>
         )}
@@ -368,15 +451,29 @@ const CalciPlusTab: React.FC = () => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse min-w-[900px]">
-                <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                <thead className="font-bold">
                   <tr>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Mã KH</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">Tên KH</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Calci (SL gói)</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Entero (SL gói)</th>
-                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right">Tổng doanh số</th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      STT
+                    </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Rep
+                    </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Mã KH
+                    </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Tên KH
+                    </th>
+                    <th className="px-4 py-3 border-b border-sky-200 dark:border-sky-800 text-right border-l-2 border-l-sky-500 bg-sky-100 dark:bg-sky-950/55 text-sky-950 dark:text-sky-100">
+                      Calci (SL gói)
+                    </th>
+                    <th className="px-4 py-3 border-b border-amber-200 dark:border-amber-900 text-right border-l-2 border-l-amber-500 bg-amber-100 dark:bg-amber-950/50 text-amber-950 dark:text-amber-50">
+                      Entero (SL gói)
+                    </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Tổng doanh số
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -393,9 +490,13 @@ const CalciPlusTab: React.FC = () => {
                         <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-white">{row.rep}</td>
                         <td className="px-4 py-2.5 font-mono text-slate-700 dark:text-slate-200">{row.customerCode || '—'}</td>
                         <td className="px-4 py-2.5 text-slate-700 dark:text-slate-200">{row.customerName || '—'}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.calciPacks}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">{row.enteroPacks}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-opella-green">{formatCurrency(row.totalAmount)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums border-l-2 border-l-sky-400 dark:border-l-sky-500 bg-sky-50/90 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100">
+                          {row.calciPacks}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold tabular-nums border-l-2 border-l-amber-400 dark:border-l-amber-500 bg-amber-50/90 dark:bg-amber-950/30 text-amber-950 dark:text-amber-50">
+                          {row.enteroPacks}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-emerald-400">{formatCurrency(row.totalAmount)}</td>
                       </tr>
                     ))
                   )}

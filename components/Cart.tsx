@@ -388,6 +388,16 @@ const Cart: React.FC<CartProps> = (props) => {
             ? pack476Rows.reduce((s, r) => s + r.discountAmount, 0)
             : 0;
 
+    /** Đủ bội 21 hộp (CORBIERE / ENTERO 2B/20) → bật Gói 4.76% + dòng ghi chú qua App; hết điều kiện → tắt */
+    useEffect(() => {
+        if (!onIsCalciPlusPack476Change) return;
+        if (eligibleCalciPlusPack476) {
+            if (!isCalciPlusPack476) onIsCalciPlusPack476Change(true);
+        } else if (isCalciPlusPack476) {
+            onIsCalciPlusPack476Change(false);
+        }
+    }, [eligibleCalciPlusPack476, isCalciPlusPack476, onIsCalciPlusPack476Change]);
+
     const dummyBoxDiscount =
         (canToggleDummyBoxLocal && isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
         (canToggleDummyBoxImport && isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
@@ -723,8 +733,8 @@ const Cart: React.FC<CartProps> = (props) => {
                                     className={`text-[11px] font-bold cursor-pointer ${eligibleCalciPlusPack476 ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}
                                     title={
                                         eligibleCalciPlusPack476
-                                            ? 'Đủ điều kiện: áp dụng thêm 4.76% theo bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
-                                            : 'Chưa đủ điều kiện bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
+                                            ? 'Tự bật khi đủ bội số 21 hộp (21, 42, 63…) — áp thêm 4.76% cho CORBIERE CALCIUM PLUS / ENTEROGERMINA 2B/20'
+                                            : 'Chưa đủ bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
                                     }
                                 >
                                     Gói 4.76%

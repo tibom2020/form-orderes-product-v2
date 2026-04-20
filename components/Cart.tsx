@@ -210,6 +210,8 @@ interface CartProps {
     onViewCustomerDetail?: (code: string) => void;
     /** Tra từ DummyBoxRecord (+ BsT3): trong danh sách & trạng thái GoiLocal/GoiImport */
     dummyBoxListGate?: DummyBoxListGate;
+    /** Sheet OSTELIN_60V_GOI: KH đã có đơn gói (SL gói > 0) — khóa tick “Gói Ostelin tặng cân” */
+    ostelin60VTangCanLocked?: boolean;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
@@ -226,6 +228,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onExportSales,
         onViewCustomerDetail,
         dummyBoxListGate,
+        ostelin60VTangCanLocked = false,
     } = props;
 
     const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
@@ -250,12 +253,19 @@ const Cart: React.FC<CartProps> = (props) => {
     const hasOstelinTangCanNote = noteLinesTrimmed.includes(OSTELIN_TANG_CAN_NOTE);
 
     const toggleOstelinTangCanNote = () => {
+        if (ostelin60VTangCanLocked) return;
         if (hasOstelinTangCanNote) {
             onNoteChange(noteLinesTrimmed.filter(l => l !== OSTELIN_TANG_CAN_NOTE).join('\n'));
         } else {
             onNoteChange(note.trim() ? `${note.trim()}\n${OSTELIN_TANG_CAN_NOTE}` : OSTELIN_TANG_CAN_NOTE);
         }
     };
+
+    useEffect(() => {
+        if (!ostelin60VTangCanLocked) return;
+        if (!noteLinesTrimmed.includes(OSTELIN_TANG_CAN_NOTE)) return;
+        onNoteChange(noteLinesTrimmed.filter(l => l !== OSTELIN_TANG_CAN_NOTE).join('\n'));
+    }, [ostelin60VTangCanLocked, noteLinesTrimmed, onNoteChange]);
 
     const filteredCustomers = useMemo(() => {
         if (!customerName || customerName.trim() === '') return [];
@@ -727,9 +737,23 @@ const Cart: React.FC<CartProps> = (props) => {
                                 id="ostelin-tang-can"
                                 checked={hasOstelinTangCanNote}
                                 onChange={toggleOstelinTangCanNote}
-                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
+                                disabled={ostelin60VTangCanLocked}
+                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                    ostelin60VTangCanLocked
+                                        ? 'KH đã có gói Ostelin 60V trên sheet OSTELIN_60V_GOI — không chọn lại'
+                                        : undefined
+                                }
                             />
-                            <label htmlFor="ostelin-tang-can" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                            <label
+                                htmlFor="ostelin-tang-can"
+                                className={`text-[11px] font-bold ${ostelin60VTangCanLocked ? 'cursor-not-allowed text-slate-400 dark:text-slate-500' : 'cursor-pointer text-slate-600 dark:text-slate-300'}`}
+                                title={
+                                    ostelin60VTangCanLocked
+                                        ? 'KH đã có gói Ostelin 60V trên sheet OSTELIN_60V_GOI — không chọn lại'
+                                        : undefined
+                                }
+                            >
                                 Gói Ostelin tặng cân
                             </label>
                         </div>

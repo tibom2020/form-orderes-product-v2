@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -83,6 +83,8 @@ const App: React.FC = () => {
   const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
   const [gppComments, setGppComments] = useState<Record<string, string>>({});
   const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
+  /** Sheet OSTELIN_60V_GOI — khóa tick “Gói Ostelin tặng cân” nếu KH đã có SL gói > 0 */
+  const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -195,6 +197,13 @@ const App: React.FC = () => {
       } catch (e) {
         console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
         setMarketingDataBs([]);
+      }
+      try {
+        const ostelinGoi = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET);
+        setOstelin60VGoiRows(ostelinGoi || []);
+      } catch (e) {
+        console.warn("OSTELIN_60V_GOI sheet load failed (optional sheet)", e);
+        setOstelin60VGoiRows([]);
       }
     } catch (e) {
       console.error("Critical data load failed", e);
@@ -525,6 +534,25 @@ const App: React.FC = () => {
       goiImportRegistered: rec.GoiImport === 'YES',
     };
   }, [customerCode, mergedDummyBoxMarketingByCode]);
+
+  const ostelin60VGoiPurchasedCodeSet = useMemo(() => {
+    const purchased = new Set<string>();
+    ostelin60VGoiRows.forEach((row) => {
+      const code = String(row['CustomerCode'] ?? '').trim();
+      if (!code) return;
+      const slGoi =
+        Number(row['SL_goi'] ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
+      if (slGoi > 0) purchased.add(code);
+    });
+    return purchased;
+  }, [ostelin60VGoiRows]);
+
+  /** KH đã mua gói Ostelin 60V (theo sheet tab Theo dõi Ostelin 60V) — không tick thêm “Gói Ostelin tặng cân” */
+  const ostelin60VTangCanLocked = useMemo(() => {
+    const code = String(customerCode ?? '').trim();
+    if (!code) return false;
+    return ostelin60VGoiPurchasedCodeSet.has(code);
+  }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
 
   const handleToggleRebate = (rebateId: string) => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
@@ -1256,6 +1284,7 @@ const App: React.FC = () => {
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
+                    ostelin60VTangCanLocked={ostelin60VTangCanLocked}
                   />
                 </div>
               </div>

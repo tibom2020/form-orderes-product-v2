@@ -879,16 +879,35 @@ function posmLabelHeaderCandidatesTBQ2_(label) {
   var s = String(label).trim();
   if (!s) return [];
   var noSlash = s.replace(/\//g, " ");
-  return [
+  var out = [
     s,
     noSlash,
     s.replace(/\//g, ""),
     "POSM " + s,
     "POSM_" + s.replace(/[^a-zA-Z0-9À-ỹ]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "")
   ];
+  // Một số mẫu Excel dùng "Counter Top" thay vì "Countertop"
+  var low = s.toLowerCase().replace(/\s+/g, " ");
+  if (low === "countertop" || low.indexOf("countertop") === 0) {
+    out.push("Counter Top");
+    out.push("POSM Counter Top");
+  }
+  return out;
 }
 
 var TBQ2_POSM_KNOWN_LABELS = ["Frame OTC", "Frame FS", "Topboard", "Front Counter", "Countertop", "Countertop/CDU"];
+
+/** Bronze/Silver chọn "Countertop/CDU" nhưng sheet chỉ có một cột "Countertop" — cần fallback khi ghi 1 */
+function tbq2IsCountertopCduLabel_(label) {
+  var L = String(label || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!L) return false;
+  if (L === "countertop/cdu") return true;
+  if (L.replace(/\s/g, "").indexOf("countertop") >= 0 && L.indexOf("cdu") >= 0) return true;
+  return false;
+}
 
 function clearTbq2PosmFlagCells_(sheet, headers, rowIndex) {
   for (var li = 0; li < TBQ2_POSM_KNOWN_LABELS.length; li++) {
@@ -1160,7 +1179,13 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   }
 
   function setPosmOneFromLabel_(label) {
-    var cands = posmLabelHeaderCandidatesTBQ2_(label);
+    var cands = posmLabelHeaderCandidatesTBQ2_(label).slice();
+    if (tbq2IsCountertopCduLabel_(label)) {
+      var fb = posmLabelHeaderCandidatesTBQ2_("Countertop");
+      for (var fi = 0; fi < fb.length; fi++) {
+        if (cands.indexOf(fb[fi]) < 0) cands.push(fb[fi]);
+      }
+    }
     for (var pi = 0; pi < cands.length; pi++) {
       var ci = colIndexTBQ2_(headers, [cands[pi]]);
       if (ci >= 0) {

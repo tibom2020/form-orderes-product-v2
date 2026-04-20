@@ -2,7 +2,7 @@
 import type { Product, Employee, Customer } from './types';
 
 // NGÀY CẬP NHẬT CTKM - Bạn có thể sửa ngày này thủ công tại đây
-export const PROMO_UPDATE_DATE = '06/04/2026';
+export const PROMO_UPDATE_DATE = '20/04/2026';
 
 // Đường dẫn Google Apps Script (Cập nhật mới nhất)
 export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD5n_kNXKaJhIpfVHW014ZZ4AE8PEz-29d3i6ym-fhNIf2T10Gntq7F13N4CHmb9DTnA/exec';
@@ -42,7 +42,7 @@ export const PRODUCTS: Product[] = [
   { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 29.04.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
   { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 29.04.2026)', image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
   { id: 9, name: 'NO-SPA 40mg', minOrder: '1', minOrderQuantity: 1, price: 45700, type: 'Local', basePrice: 43524, requireApproval: true, image: 'https://i.postimg.cc/QMmGZFm3/nospa-40.webp' },
-  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, promotion: 'ck 1.5% (đến 29.04.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
+  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, promotion: 'Mua 1h ck 9.85% (đến 29.04.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
   { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, promotion: 'Mua 3h ck 2.96%, gói 21h ck 4.76% (đến 25.04.2026)', requireApproval: true, image: 'https://i.postimg.cc/htwjVtX6/ENTERO-2B-(1).webp' },
   { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 305130, type: 'Import', basePrice: 290600, promotion: 'Mua 3h ck 4.93% (đến 29.04.2026)', nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
   { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 15.8% (đến 29.04.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },

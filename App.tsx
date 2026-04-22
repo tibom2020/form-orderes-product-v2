@@ -40,11 +40,14 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 
+/** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
+const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
+
 type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
-  /** Sau đăng nhập: tải dữ liệu + tối thiểu 5s hiển thị màn loading */
+  /** Sau đăng nhập: tải DANH_MUC_KH (màn loading); phần còn lại tải nền */
   const [postLoginHydrating, setPostLoginHydrating] = useState(false);
   const [isSuperUser, setIsSuperUser] = useState(false);
 
@@ -141,16 +144,30 @@ const App: React.FC = () => {
   const hasLoadedGppComments = useRef(false);
   const hasLoadedForecast = useRef(false);
 
-  /** Phase 1: Dữ liệu cốt lõi cho Order/Rebate/Landing (4 API) */
-  const loadCriticalData = async () => {
+  /** Phase 1: Dữ liệu cốt lõi cho Order/Rebate/Landing. `skipDangMucKh`: đã tải DANH_MUC_KH ở bước trước (post-login). */
+  const loadCriticalData = async (options?: { skipDangMucKh?: boolean }) => {
     try {
-      const [customers, rebates, sales, marketing] = await Promise.all([
-        fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
-        fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
-        fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
-        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
-      ]);
-      setAllCustomers(customers);
+      let rebates: Rebate[];
+      let sales: SalesRecord[];
+      let marketing: MarketingRecord[];
+      if (options?.skipDangMucKh) {
+        [rebates, sales, marketing] = await Promise.all([
+          fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
+          fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
+          fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+        ]);
+      } else {
+        const [customers, r, s, m] = await Promise.all([
+          fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
+          fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
+          fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
+          fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+        ]);
+        setAllCustomers(customers);
+        rebates = r;
+        sales = s;
+        marketing = m;
+      }
       setAllRebates(rebates);
       try {
         const bm = await fetchDataFromSheet<RebateBm>(GOOGLE_SCRIPT_URL, "REBATE_BM");
@@ -287,17 +304,31 @@ const App: React.FC = () => {
     }
   };
 
-  /** Sau khi đăng nhập: Phase 1 + Phase 2, song song với tối thiểu 5s màn loading */
+  /** Sau đăng nhập: chỉ chặn UI để tải DANH_MUC_KH; rebate/doanh số/… tải nền (không kẹt màn hình). */
   useEffect(() => {
     if (!loggedInEmployee || !postLoginHydrating) return;
     let cancelled = false;
-    const minDelayMs = 5000;
     const run = async () => {
-      const minDelay = new Promise<void>((resolve) => {
-        setTimeout(resolve, minDelayMs);
-      });
-      await Promise.all([loadCriticalData(), loadSecondaryData(), minDelay]);
-      if (!cancelled) setPostLoginHydrating(false);
+      try {
+        const customers = await fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH", {
+          timeoutMs: POST_LOGIN_CATALOG_TIMEOUT_MS,
+        });
+        if (!cancelled) setAllCustomers(customers);
+      } catch (e) {
+        console.error("Danh mục KH (post-login) load failed", e);
+      } finally {
+        if (!cancelled) {
+          setPostLoginHydrating(false);
+          void (async () => {
+            try {
+              await loadCriticalData({ skipDangMucKh: true });
+              await loadSecondaryData();
+            } catch (e) {
+              console.error("Background sheet sync after login failed", e);
+            }
+          })();
+        }
+      }
     };
     void run();
     return () => {

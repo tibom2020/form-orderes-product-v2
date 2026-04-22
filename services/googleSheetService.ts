@@ -59,24 +59,95 @@ export const postOrderToGoogleSheet = async (
   }
 };
 
+export type FetchSheetOptions = {
+  /**
+   * Hủy request sau N ms. Tránh treo mãi khi Web App chậm / không phản hồi
+   * (mặc định: không giới hạn).
+   */
+  timeoutMs?: number;
+};
+
 /**
  * Tải dữ liệu từ Google Sheet dựa trên tham số sheetName
  */
-export const fetchDataFromSheet = async <T>(url: string, sheetName: string): Promise<T[]> => {
+export const fetchDataFromSheet = async <T>(
+  url: string,
+  sheetName: string,
+  options?: FetchSheetOptions
+): Promise<T[]> => {
+  const { timeoutMs } = options || {};
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  if (timeoutMs != null && timeoutMs > 0) {
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  }
   try {
     const base = webAppScriptUrlBase(url);
     const timestamp = new Date().getTime();
     const enc = encodeURIComponent(sheetName);
     const fetchUrl = `${base}?sheet=${enc}&_t=${timestamp}`;
 
-    const response = await fetch(fetchUrl);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    if (!Array.isArray(data)) return [];
-    return data as T[];
-  } catch (error) {
-    console.error(`Error fetching from ${sheetName}:`, error);
+    const response = await fetch(fetchUrl, { signal: controller.signal });
+    if (!response.ok) {
+      const snippet = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status} — ${response.statusText}. ${snippet.slice(0, 200)}`);
+    }
+    const rawText = await response.text();
+    const start = rawText.trimStart();
+    if (
+      start.toLowerCase().startsWith('<!doctype') ||
+      start.toLowerCase().startsWith('<html') ||
+      start.startsWith('<')
+    ) {
+      const titleMatch = /<\s*title[^>]*>([^<]+)/i.exec(rawText);
+      const errHint =
+        titleMatch
+          ? `Trang lỗi (title: "${titleMatch[1].trim()}")`
+          : 'Trang HTML từ Google (không phải doGet trả JSON)';
+      console.error(
+        `[${sheetName}] ${errHint}. Trên Apps Script: Triển khai → bản mới, truy cập = bất kỳ ai, cập nhật GOOGLE_SCRIPT_URL trong constants.ts.`
+      );
+      return [];
+    }
+    let data: unknown;
+    try {
+      data = rawText ? JSON.parse(rawText) : [];
+    } catch {
+      console.error(
+        `[${sheetName}] Phản hồi không phải JSON. Kiểm tra URL Web App (triển khai mới) và mở thử bằng trình duyệt. Đoạn đầu:`,
+        rawText.slice(0, 200)
+      );
+      return [];
+    }
+    if (Array.isArray(data)) return data as T[];
+    if (data && typeof data === 'object') {
+      const o = data as Record<string, unknown>;
+      if (o.ok === false) {
+        console.error(
+          `[${sheetName}] Apps Script (doGet) lỗi:`,
+          o.message ?? o.error ?? o
+        );
+        return [];
+      }
+      console.warn(
+        `[${sheetName}] Kỳ vọng mảng JSON từ doGet, nhận object. Có thể thiếu tham số ?sheet= hoặc tên sheet sai:`,
+        o
+      );
+    }
     return [];
+  } catch (error) {
+    const isAbort = error instanceof Error && error.name === 'AbortError';
+    if (isAbort) {
+      console.error(`[${sheetName}] Hết thời gian chờ sau ${timeoutMs}ms (timeout).`);
+    } else {
+      const label = 'Failed to fetch' === (error as Error)?.message
+        ? 'Không tới được script.google.com (mạng, tường lửa, hoặc URL Web App sai).'
+        : `Error fetching from ${sheetName}`;
+      console.error(label, error);
+    }
+    return [];
+  } finally {
+    if (timeoutId != null) clearTimeout(timeoutId);
   }
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Employee } from '../types';
 
-/** Màn hình toàn trang sau đăng nhập — đồng bộ dữ liệu (tối thiểu ~5s) */
+/** Màn hình toàn trang sau đăng nhập — đồng bộ danh mục KH; dữ liệu khác tải nền */
 export const PostLoginLoadingScreen: React.FC = () => {
   return (
     <div
@@ -33,7 +33,7 @@ export const PostLoginLoadingScreen: React.FC = () => {
           Đang tải dữ liệu hệ thống…
         </p>
         <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400 max-w-[18rem] leading-relaxed">
-          Đồng bộ danh mục KH, rebate, doanh số vào bộ nhớ. Vui lòng chờ khoảng 5 giây.
+          Đồng bộ danh mục khách hàng vào bộ nhớ. Các bảng khác sẽ tải dần sau khi vào ứng dụng.
         </p>
         <div className="mt-8 flex items-center gap-2 text-opella-green dark:text-emerald-400">
           <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

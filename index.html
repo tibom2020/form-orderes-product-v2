@@ -5,40 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Đơn Hàng Nhanh</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            'opella-green': '#1C4D35',
-            'opella-beige': '#F4EDE3',
-          },
-          animation: {
-            'bounce-slow': 'bounce-slow 3s infinite',
-            'slide-up': 'slide-up 0.3s ease-out',
-            'fade-in': 'fade-in 0.5s ease-out',
-          },
-          keyframes: {
-            'bounce-slow': {
-              '0%, 100%': { transform: 'translateY(-5%)', 'animation-timing-function': 'cubic-bezier(0.8, 0, 1, 1)' },
-              '50%': { transform: 'translateY(0)', 'animation-timing-function': 'cubic-bezier(0, 0, 0.2, 1)' },
-            },
-            'slide-up': {
-              '0%': { transform: 'translateY(20px)', opacity: '0' },
-              '100%': { transform: 'translateY(0)', opacity: '1' },
-            },
-            'fade-in': {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' },
-            },
-          }
-        }
-      }
-    }
-  </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
   <div id="root"></div>

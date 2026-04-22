@@ -1,4 +1,6 @@
-/* App styles - Tailwind loaded via CDN in index.html */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Cuộn ngang/dọc mượt trên iOS/iPad; thanh cuộn mỏng khi nội dung rộng hơn màn hình */
 .tbq2-scroll-x {

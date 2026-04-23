@@ -36,9 +36,9 @@ export const PRODUCTS: Product[] = [
   { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.95%, gói 21h ck 4.76% (đến 25.04.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
   { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/43ZXpknR/calci-10-(1).webp' },
   { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167425, type: 'Local', basePrice: 159453, image: 'https://i.postimg.cc/43JTm62S/calci-5.webp' },
-  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
-  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
-  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
+  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, promotion: 'Mua 450k ck 2.96%, 300k ck 2.46% (đến 29.04.2026)', image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
+  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, promotion: 'Mua 450k ck 2.96%, 300k ck 2.46% (đến 29.04.2026)', image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
+  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, promotion: 'Mua 450k ck 2.96%, 300k ck 2.46% (đến 29.04.2026)', image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
   { id: 5, name: 'MAGNE-B6 Tab B/50 (bao film)', minOrder: '1', minOrderQuantity: 1, price: 101706, type: 'Local', basePrice: 96863, image: 'https://i.postimg.cc/0NnR1znv/magie-B6.webp' },
   { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, promotion: 'Mua 2h ck 4.43%, 3h ck 4.93% (đến 29.04.2026)', image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
   { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 29.04.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
@@ -1010,6 +1010,9 @@ export const BM_NO_CVM_COMBO_CTKM_BY_PRODUCT_ID: Readonly<Record<number, readonl
 // Nhóm Telfast: KM theo doanh số đơn hàng (dùng cho getDiscountPercent)
 // readonly number[] (không as const) để .includes(cartItem.id: number) hợp lệ với TypeScript
 export const TELFAST_GROUP_IDS: readonly number[] = [7, 8];
+
+// Nhóm ACEMUC: mốc 300k / 450k theo tổng (basePrice × SL) cả 3 mã
+export const ACEMUC_GROUP_IDS: readonly number[] = [2, 3, 4];
 
 // CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
 export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml

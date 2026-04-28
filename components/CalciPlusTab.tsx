@@ -340,7 +340,7 @@ const CalciPlusTab: React.FC = () => {
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse min-w-[1080px]">
+              <table className="w-full text-left text-sm border-collapse min-w-[1220px]">
                 <thead className="font-bold">
                   <tr>
                     <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 w-12 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -381,12 +381,15 @@ const CalciPlusTab: React.FC = () => {
                       <span className="block uppercase tracking-wide text-[10px] opacity-90">To do</span>
                       <span className="block text-[10px] font-semibold normal-case">Entero 2B/20</span>
                     </th>
+                    <th className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 text-right bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      Tổng doanh số
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {byRep.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 italic">
                         Chưa có dữ liệu để báo cáo
                       </td>
                     </tr>
@@ -431,6 +434,9 @@ const CalciPlusTab: React.FC = () => {
                           }`}
                         >
                           {todoEntero}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold text-opella-green dark:text-emerald-400">
+                          {formatCurrency(row.totalAmount)}
                         </td>
                       </tr>
                       );

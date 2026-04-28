@@ -4,7 +4,7 @@ import { submitMarketingData } from '../services/googleSheetService';
 import { GOOGLE_SCRIPT_URL } from '../constants';
 import { removeVietnameseTones, formatCurrency } from '../utils/formatters';
 import { generateCustomerSummary } from '../utils/customerSummarizer';
-import type { MarketingRecord, Employee, SalesRecord, ForecastItem } from '../types';
+import type { MarketingRecord, Employee, SalesRecord, ForecastItem, Rebate } from '../types';
 import {
     CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
@@ -18,6 +18,7 @@ interface LandingPageProps {
     marketingData: MarketingRecord[];
     salesRecords: SalesRecord[];
     forecastData: ForecastItem[];
+    rebates?: Rebate[];
     onReloadData: () => void;
     onCustomerSelect: (code: string) => void;
     onUpdateRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
@@ -41,6 +42,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     marketingData,
     salesRecords,
     forecastData,
+    rebates = [],
     onCustomerSelect,
     onUpdateRecord,
     showReportOnMount = false,
@@ -178,6 +180,30 @@ const LandingPage: React.FC<LandingPageProps> = ({
         });
         return map;
     }, [salesRecords]);
+
+    // Map CustomerCode -> Tổng phí REBATE (Giga) theo LOCAL / IMPORT
+    const rebateFeeByCode = useMemo(() => {
+        const map = new Map<string, { local: number; import: number }>();
+        rebates.forEach((item) => {
+            const code = String(item.code ?? '').trim();
+            if (!code) return;
+
+            if (!map.has(code)) {
+                map.set(code, { local: 0, import: 0 });
+            }
+
+            const group = String(item.Group ?? '').toUpperCase().trim();
+            const amount = Number(item.RemainAmount) || 0;
+            const cur = map.get(code)!;
+
+            if (group === 'LOCAL') {
+                cur.local += amount;
+            } else if (group === 'IMPORT') {
+                cur.import += amount;
+            }
+        });
+        return map;
+    }, [rebates]);
     // --------------------
 
     // Sync selectedCustomer with marketingData updates
@@ -895,6 +921,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                     const hasImage = (c.UpHinh && c.UpHinh !== 'NO' && c.UpHinh !== '') || (c.UpHinh2 && c.UpHinh2 !== 'NO' && c.UpHinh2 !== '');
                                                     const hasLocal = c.GoiLocal === 'YES';
                                                     const hasImport = c.GoiImport === 'YES';
+                                                    const rebateFee = rebateFeeByCode.get(String(c.CustomerCode ?? '').trim());
+                                                    const localFee = rebateFee?.local ?? 0;
+                                                    const importFee = rebateFee?.import ?? 0;
+                                                    const hasAnyRebateFee = localFee > 0 || importFee > 0;
 
                                                     return (
                                                         <div
@@ -911,6 +941,20 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                                                                 {c.District || 'Chưa có quận/huyện'}
                                                             </p>
+                                                            {hasAnyRebateFee && (
+                                                                <div className="mt-2 space-y-1 text-[11px]">
+                                                                    {localFee > 0 && (
+                                                                        <p className="font-bold text-green-700 dark:text-green-300 leading-tight">
+                                                                            Tổng phí LOCAL (Giga): {formatCurrency(localFee)}
+                                                                        </p>
+                                                                    )}
+                                                                    {importFee > 0 && (
+                                                                        <p className="font-bold text-blue-700 dark:text-blue-300 leading-tight">
+                                                                            Tổng phí IMPORT (Giga): {formatCurrency(importFee)}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
                                                                 <span className="text-xs font-black text-red-600 dark:text-red-400">
                                                                     {formatCurrency(salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0)}

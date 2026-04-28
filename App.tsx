@@ -1390,6 +1390,7 @@ const App: React.FC = () => {
             marketingData={marketingData}
             salesRecords={allSalesRecords}
             forecastData={forecastData}
+            rebates={allRebates}
             onReloadData={handleMarketingDataReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}
             onUpdateRecord={handleUpdateMarketingRecord}
@@ -1409,6 +1410,7 @@ const App: React.FC = () => {
             marketingData={marketingDataBs}
             salesRecords={allSalesRecords}
             forecastData={forecastData}
+            rebates={allRebates}
             onReloadData={handleMarketingDataBsReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}
             onUpdateRecord={handleUpdateMarketingRecordBs}

@@ -17,17 +17,12 @@ import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import { getDummyBoxAmountEligibility } from '../utils/dummyBoxEligibility';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
-    CALCIPLUS_PROMO_DISCOUNT_PERCENT,
-    CALCIPLUS_PROMO_PACK_SIZE,
     DUMMY_BOX_DISCOUNT,
-    PACK_476_PRODUCT_IDS,
     TELFAST_GROUP_IDS,
     OSTELIN_GROUP_IDS,
     ACEMUC_GROUP_IDS,
 } from '../constants';
 
-/** Dòng ghi chú khi tick “gói Ostelin tặng cân” */
-const OSTELIN_TANG_CAN_NOTE = 'Gói Ostelin tặng cân';
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
     if (dateValue === undefined || dateValue === null || dateValue === '') return 'N/A';
@@ -211,8 +206,6 @@ interface CartProps {
     onViewCustomerDetail?: (code: string) => void;
     /** Tra từ DummyBoxRecord (+ BsT3): trong danh sách & trạng thái GoiLocal/GoiImport */
     dummyBoxListGate?: DummyBoxListGate;
-    /** Sheet OSTELIN_60V_GOI: KH đã có đơn gói (SL gói > 0) — khóa tick “Gói Ostelin tặng cân” */
-    ostelin60VTangCanLocked?: boolean;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
@@ -229,7 +222,6 @@ const Cart: React.FC<CartProps> = (props) => {
         onExportSales,
         onViewCustomerDetail,
         dummyBoxListGate,
-        ostelin60VTangCanLocked = false,
     } = props;
 
     const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
@@ -246,27 +238,6 @@ const Cart: React.FC<CartProps> = (props) => {
             onNoteChange(note ? `${note} ${preset}` : preset);
         }
     };
-
-    const noteLinesTrimmed = useMemo(
-        () => note.split('\n').map(l => l.trim()).filter(Boolean),
-        [note]
-    );
-    const hasOstelinTangCanNote = noteLinesTrimmed.includes(OSTELIN_TANG_CAN_NOTE);
-
-    const toggleOstelinTangCanNote = () => {
-        if (ostelin60VTangCanLocked) return;
-        if (hasOstelinTangCanNote) {
-            onNoteChange(noteLinesTrimmed.filter(l => l !== OSTELIN_TANG_CAN_NOTE).join('\n'));
-        } else {
-            onNoteChange(note.trim() ? `${note.trim()}\n${OSTELIN_TANG_CAN_NOTE}` : OSTELIN_TANG_CAN_NOTE);
-        }
-    };
-
-    useEffect(() => {
-        if (!ostelin60VTangCanLocked) return;
-        if (!noteLinesTrimmed.includes(OSTELIN_TANG_CAN_NOTE)) return;
-        onNoteChange(noteLinesTrimmed.filter(l => l !== OSTELIN_TANG_CAN_NOTE).join('\n'));
-    }, [ostelin60VTangCanLocked, noteLinesTrimmed, onNoteChange]);
 
     const filteredCustomers = useMemo(() => {
         if (!customerName || customerName.trim() === '') return [];
@@ -380,33 +351,13 @@ const Cart: React.FC<CartProps> = (props) => {
                 ? 'Đủ điều kiện gói Import: tổng đơn sau CK ≥ 1.000.000'
                 : 'Chưa đủ điều kiện gói Import (xem calculator để kiểm tra)';
 
-    const pack476Rows = useMemo(() => {
-        return items
-            .filter((item) => PACK_476_PRODUCT_IDS.includes(item.id))
-            .map((item) => {
-                const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
-                const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity);
-                const discountAmount = eligibleQty > 0
-                    ? eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT
-                    : 0;
-                return { id: item.id, name: item.name, eligibleQty, discountAmount };
-            });
-    }, [items]);
-    const eligibleCalciPlusPack476 = pack476Rows.some((r) => r.eligibleQty >= CALCIPLUS_PROMO_PACK_SIZE);
-    const calciPlusPack476Discount =
-        !!isCalciPlusPack476
-            ? pack476Rows.reduce((s, r) => s + r.discountAmount, 0)
-            : 0;
-
-    /** Đủ bội 21 hộp (CORBIERE / ENTERO 2B/20) → bật Gói 4.76% + dòng ghi chú qua App; hết điều kiện → tắt */
+    // CTKM gói 4.76% đã kết thúc: luôn tắt cờ để tránh đơn nháp cũ còn áp dụng.
     useEffect(() => {
-        if (!onIsCalciPlusPack476Change) return;
-        if (eligibleCalciPlusPack476) {
-            if (!isCalciPlusPack476) onIsCalciPlusPack476Change(true);
-        } else if (isCalciPlusPack476) {
-            onIsCalciPlusPack476Change(false);
-        }
-    }, [eligibleCalciPlusPack476, isCalciPlusPack476, onIsCalciPlusPack476Change]);
+        if (!onIsCalciPlusPack476Change || !isCalciPlusPack476) return;
+        onIsCalciPlusPack476Change(false);
+    }, [isCalciPlusPack476, onIsCalciPlusPack476Change]);
+
+    const calciPlusPack476Discount = 0;
 
     const dummyBoxDiscount =
         (canToggleDummyBoxLocal && isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
@@ -738,55 +689,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="dummy-box-import" className={`text-[11px] font-bold ${canToggleDummyBoxImport ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImportTitle}>DummyBox Import (-150k)</label>
                             </div>
                         )}
-                        {onIsCalciPlusPack476Change && (
-                            <div className="flex items-center space-x-1.5">
-                                <input
-                                    type="checkbox"
-                                    id="calci-plus-pack-476"
-                                    checked={!!isCalciPlusPack476}
-                                    onChange={(e) => onIsCalciPlusPack476Change(e.target.checked)}
-                                    disabled={!eligibleCalciPlusPack476}
-                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                                <label
-                                    htmlFor="calci-plus-pack-476"
-                                    className={`text-[11px] font-bold cursor-pointer ${eligibleCalciPlusPack476 ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}
-                                    title={
-                                        eligibleCalciPlusPack476
-                                            ? 'Tự bật khi đủ bội số 21 hộp (21, 42, 63…) — áp thêm 4.76% cho CORBIERE CALCIUM PLUS / ENTEROGERMINA 2B/20'
-                                            : 'Chưa đủ bội số 21 hộp cho CORBIERE / ENTEROGERMINA 2B/20'
-                                    }
-                                >
-                                    Gói 4.76%
-                                </label>
-                            </div>
-                        )}
-                        <div className="flex items-center space-x-1.5">
-                            <input
-                                type="checkbox"
-                                id="ostelin-tang-can"
-                                checked={hasOstelinTangCanNote}
-                                onChange={toggleOstelinTangCanNote}
-                                disabled={ostelin60VTangCanLocked}
-                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                    ostelin60VTangCanLocked
-                                        ? 'KH đã có gói Ostelin 60V trên sheet OSTELIN_60V_GOI — không chọn lại'
-                                        : undefined
-                                }
-                            />
-                            <label
-                                htmlFor="ostelin-tang-can"
-                                className={`text-[11px] font-bold ${ostelin60VTangCanLocked ? 'cursor-not-allowed text-slate-400 dark:text-slate-500' : 'cursor-pointer text-slate-600 dark:text-slate-300'}`}
-                                title={
-                                    ostelin60VTangCanLocked
-                                        ? 'KH đã có gói Ostelin 60V trên sheet OSTELIN_60V_GOI — không chọn lại'
-                                        : undefined
-                                }
-                            >
-                                Gói Ostelin tặng cân
-                            </label>
-                        </div>
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}

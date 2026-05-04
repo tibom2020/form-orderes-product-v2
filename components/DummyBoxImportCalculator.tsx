@@ -4,14 +4,13 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent } from '../utils/calculations';
 import {
     PRODUCTS,
-    DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID,
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_DISCOUNT,
 } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
 
 // Thứ tự hiển thị gói Import (bao gồm các sản phẩm bổ sung)
-const IMPORT_ORDER: number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20, 17];
+const IMPORT_ORDER: number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20];
 const CALC_PRODUCTS = IMPORT_ORDER
     .map(id => PRODUCTS.find(p => p.id === id))
     .filter((p): p is Product => Boolean(p));
@@ -26,7 +25,6 @@ const VAT_BY_PRODUCT_ID: Record<number, number> = {
     23: 0.08,  // OSTELIN VIT D & CALCI CHAI 275V - 8%
     24: 0.08,  // OSTELIN VIT D & CALCI CHAI 30V - 8%
     25: 0.08,  // OSTELIN VIT D & CALCI CHAI 60V - 8%
-    17: 0.08,  // PHARMATON ENERGY - 8%
     18: 0.08,  // PHARMATON ESSENT - 8%
     19: 0.08,  // PHARMATON KIDDI - 8%
     20: 0.08,  // PHARMATON ENERGY FIZZI - 8%
@@ -61,12 +59,8 @@ const DummyBoxImportCalculator: React.FC<DummyBoxImportCalculatorProps> = () => 
     const rows = useMemo(() => {
         return visibleProducts.map((p, idx) => {
             const qty = quantities[p.id] ?? 0;
-            // Pharmaton Energy: dùng originalPrice, ko áp CK 29.5%
-            const isPharmatonEnergy = p.id === DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID;
-            const basePrice = isPharmatonEnergy
-                ? (p.originalPrice ?? p.price)
-                : (p.basePrice ?? p.price);
-            const ckPercent = isPharmatonEnergy ? 0 : getDiscountPercent(p.promotion, qty, undefined);
+            const basePrice = p.basePrice ?? p.price;
+            const ckPercent = getDiscountPercent(p.promotion, qty, undefined);
             const giaSau = basePrice * (1 - ckPercent);
             const vatPercent = getVatPercent(p);
             return {
@@ -155,7 +149,7 @@ const DummyBoxImportCalculator: React.FC<DummyBoxImportCalculatorProps> = () => 
                                 </td>
                                 <td className="px-2 py-2 text-right">{formatCurrency(r.basePrice)}</td>
                                 <td className="px-2 py-2 text-center">
-                                    {r.qty > 0 && r.ckPercent > 0 ? `${r.ckPercent.toFixed(2)}%` : r.id === DUMMY_BOX_IMPORT_PHARMATON_ENERGY_ID ? '0% (ko CK)' : '-'}
+                                    {r.qty > 0 && r.ckPercent > 0 ? `${r.ckPercent.toFixed(2)}%` : '-'}
                                 </td>
                                 <td className="px-2 py-2 text-right">{formatCurrency(r.giaSau)}</td>
                                 <td className="px-2 py-2 text-center">{(r.vatPercent * 100).toFixed(1)}%</td>

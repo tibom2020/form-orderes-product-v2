@@ -35,6 +35,19 @@ interface LandingPageProps {
     ) => void;
 }
 
+/** Giai đoạn Kanban DummyBox — khớp cột TODO / PROCESSING_1 / PROCESSING_2 / COMPLETE */
+type DummyBoxKanbanStage = 'TODO' | 'PROCESSING_1' | 'PROCESSING_2' | 'COMPLETE';
+
+function getDummyBoxKanbanStage(customer: MarketingRecord): DummyBoxKanbanStage {
+    const hasImage =
+        !!(customer.UpHinh && customer.UpHinh !== 'NO' && customer.UpHinh !== '') ||
+        !!(customer.UpHinh2 && customer.UpHinh2 !== 'NO' && customer.UpHinh2 !== '');
+    const hasPackage = customer.GoiLocal === 'YES' || customer.GoiImport === 'YES';
+    if (hasImage && hasPackage) return 'COMPLETE';
+    if (hasImage) return 'PROCESSING_1';
+    if (hasPackage) return 'PROCESSING_2';
+    return 'TODO';
+}
 
 
 const LandingPage: React.FC<LandingPageProps> = ({
@@ -58,6 +71,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [showReport, setShowReport] = useState(false);
     const [showConditionsModal, setShowConditionsModal] = useState(false);
     const [showCalculatorModal, setShowCalculatorModal] = useState(false);
+    const [showRepTodoProcessingModal, setShowRepTodoProcessingModal] = useState(false);
     const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE' | 'PACKAGE_NO_IMAGE'>('ALL');
     // State lọc theo Rep
     const [selectedRepFilter, setSelectedRepFilter] = useState<string | null>(null);
@@ -285,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return saleB - saleA; // Sale Q1 giảm dần
     });
 
-    type CustomerStage = 'TODO' | 'PROCESSING_1' | 'PROCESSING_2' | 'COMPLETE';
+    type CustomerStage = DummyBoxKanbanStage;
 
     const customerBoard = useMemo(() => {
         const columns: Record<CustomerStage, MarketingRecord[]> = {
@@ -295,22 +309,46 @@ const LandingPage: React.FC<LandingPageProps> = ({
             COMPLETE: [],
         };
 
-        const getStage = (customer: MarketingRecord): CustomerStage => {
-            const hasImage = (customer.UpHinh && customer.UpHinh !== 'NO' && customer.UpHinh !== '') ||
-                (customer.UpHinh2 && customer.UpHinh2 !== 'NO' && customer.UpHinh2 !== '');
-            const hasPackage = customer.GoiLocal === 'YES' || customer.GoiImport === 'YES';
-            if (hasImage && hasPackage) return 'COMPLETE';
-            if (hasImage) return 'PROCESSING_1';
-            if (hasPackage) return 'PROCESSING_2';
-            return 'TODO';
-        };
-
         filteredCustomers.forEach((customer) => {
-            columns[getStage(customer)].push(customer);
+            columns[getDummyBoxKanbanStage(customer)].push(customer);
         });
 
         return columns;
     }, [filteredCustomers]);
+
+    /** Thống kê SL KH (Todo + PROCESSING_1) theo Rep — tab Bs T3+T4 */
+    const repTodoProcessingStats = useMemo(() => {
+        const bucket = new Map<string, { todo: number; processing1: number }>();
+        uniqueMarketingData.forEach((record) => {
+            const stage = getDummyBoxKanbanStage(record);
+            if (stage !== 'TODO' && stage !== 'PROCESSING_1') return;
+            const rep = String(record.Rep ?? '').trim() || 'Chưa phân công';
+            if (!bucket.has(rep)) bucket.set(rep, { todo: 0, processing1: 0 });
+            const row = bucket.get(rep)!;
+            if (stage === 'TODO') row.todo += 1;
+            else row.processing1 += 1;
+        });
+        return Array.from(bucket.entries())
+            .map(([rep, v]) => ({
+                rep,
+                todo: v.todo,
+                processing1: v.processing1,
+                sum: v.todo + v.processing1,
+            }))
+            .sort((a, b) => b.sum - a.sum || a.rep.localeCompare(b.rep, 'vi'));
+    }, [uniqueMarketingData]);
+
+    const repTodoProcessingTotals = useMemo(
+        () =>
+            repTodoProcessingStats.reduce(
+                (acc, r) => ({
+                    todo: acc.todo + r.todo,
+                    processing1: acc.processing1 + r.processing1,
+                }),
+                { todo: 0, processing1: 0 }
+            ),
+        [repTodoProcessingStats]
+    );
 
     const handleBoxClick = (slot: 1 | 2) => {
         resetUploadState();
@@ -767,6 +805,104 @@ const LandingPage: React.FC<LandingPageProps> = ({
         );
     };
 
+    /** Modal thống kê Todo / PROCESSING_1 theo Rep — chỉ dùng tab DummyBoxRecordBs */
+    const renderRepTodoProcessingModal = () => {
+        if (!showRepTodoProcessingModal) return null;
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white dark:bg-slate-800 w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
+                        <div>
+                            <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase flex items-center gap-2">
+                                <ChartBarIcon />
+                                <span>SL KH Todo &amp; PROCESSING_1 — theo Rep</span>
+                            </h2>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 leading-snug">
+                                Đếm số khách (toàn sheet) đang ở cột <span className="text-red-600 dark:text-red-400">TODO</span> hoặc{' '}
+                                <span className="text-blue-600 dark:text-blue-400">PROCESSING_1</span> trên Kanban (logic giống bảng chính).
+                            </p>
+                            <p className="text-[10px] text-slate-400 italic mt-1">Click vào Rep để lọc danh sách.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowRepTodoProcessingModal(false)}
+                            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div className="px-5 pb-4 pt-4">
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-xl border border-red-100 dark:border-red-900/50">
+                                <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase">TODO</p>
+                                <p className="text-2xl font-black text-red-700 dark:text-red-300">{repTodoProcessingTotals.todo}</p>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                                <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">PROCESSING_1</p>
+                                <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{repTodoProcessingTotals.processing1}</p>
+                            </div>
+                            <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng (Todo + P1)</p>
+                                <p className="text-2xl font-black text-slate-700 dark:text-slate-200">
+                                    {repTodoProcessingTotals.todo + repTodoProcessingTotals.processing1}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-auto px-0 pb-0 flex-1 min-h-0">
+                        <table className="w-full text-sm text-left border-collapse">
+                            <thead className="bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-bold uppercase text-xs sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th className="px-4 py-3">Rep phụ trách</th>
+                                    <th className="px-4 py-3 text-center text-red-600 dark:text-red-400">SL KH Todo</th>
+                                    <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">SL KH PROCESSING_1</th>
+                                    <th className="px-4 py-3 text-center">Tổng</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
+                                {repTodoProcessingStats.map((row) => (
+                                    <tr
+                                        key={row.rep}
+                                        onClick={() => {
+                                            setSelectedRepFilter(row.rep);
+                                            setShowRepTodoProcessingModal(false);
+                                        }}
+                                        className="hover:bg-opella-beige/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                                        title="Lọc danh sách theo Rep"
+                                    >
+                                        <td className="px-4 py-3 font-bold">{row.rep}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-red-700 dark:text-red-300">{row.todo}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-blue-700 dark:text-blue-300">{row.processing1}</td>
+                                        <td className="px-4 py-3 text-center font-black bg-slate-50 dark:bg-slate-800/50">{row.sum}</td>
+                                    </tr>
+                                ))}
+                                {repTodoProcessingStats.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="text-center py-8 text-slate-400 italic">
+                                            Không có KH nào đang Todo hoặc PROCESSING_1
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 rounded-b-2xl flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowRepTodoProcessingModal(false)}
+                            className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg shadow transition-colors"
+                        >
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="pb-20">
             <input
@@ -778,6 +914,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             />
 
             {enableReportTools && renderReportModal()}
+            {sheetName === 'DummyBoxRecordBs' && renderRepTodoProcessingModal()}
             {enableReportTools && renderConditionsModal()}
             {enableReportTools && showCalculatorModal && <DummyBoxCalculator onClose={() => setShowCalculatorModal(false)} />}
 
@@ -816,6 +953,20 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <option value="PACKAGE_NO_IMAGE">Có gói chưa ảnh</option>
                             </select>
                         </div>
+
+                        {/* Nút thống kê Todo/P1 — luôn hiện tab Bs (DummyBoxRecordBs), không phụ thuộc enableReportTools */}
+                        {sheetName === 'DummyBoxRecordBs' && (
+                            <button
+                                type="button"
+                                onClick={() => setShowRepTodoProcessingModal(true)}
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 rounded-lg text-xs font-bold transition-all border border-indigo-200 dark:border-indigo-800 shrink-0"
+                                title="Thống kê số khách Todo và PROCESSING_1 theo Rep"
+                            >
+                                <ChartBarIcon />
+                                <span className="hidden sm:inline">Todo / P1 theo Rep</span>
+                                <span className="sm:hidden">Todo·P1</span>
+                            </button>
+                        )}
 
                         {/* Nút chức năng: grid 2 cột mobile, hàng ngang desktop */}
                         {enableReportTools && (

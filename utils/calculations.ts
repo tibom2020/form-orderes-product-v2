@@ -12,6 +12,9 @@ export const getMaxDiscountPercent = (promotion: string | undefined): number | n
     return max > 0 ? max : null;
 };
 
+const PACK_476_ENDED_PERCENT = 0.0476;
+const PACK_476_ENDED_QTY_THRESHOLD = 21;
+
 export const getDiscountPercent = (
     promotion: string | undefined,
     quantity: number,
@@ -34,7 +37,15 @@ export const getDiscountPercent = (
                 const thresholdRaw = parseFloat(m[1]);
                 const unit = m[2].toLowerCase();
                 const threshold = unit === 'k' ? thresholdRaw * 1000 : thresholdRaw;
-                return { threshold, percent: parseFloat(m[3]) / 100, unit };
+                return { threshold, thresholdRaw, percent: parseFloat(m[3]) / 100, unit };
+            })
+            // CTKM 4.76% theo mốc 21h đã kết thúc: loại bỏ khỏi mọi phép tính CK dòng sản phẩm.
+            .filter((tier) => {
+                const isEndedPack476Tier =
+                    tier.unit === 'h' &&
+                    tier.thresholdRaw >= PACK_476_ENDED_QTY_THRESHOLD &&
+                    Math.abs(tier.percent - PACK_476_ENDED_PERCENT) < 0.000001;
+                return !isEndedPack476Tier;
             })
             .sort((a, b) => b.threshold - a.threshold);
 

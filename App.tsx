@@ -34,11 +34,12 @@ import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
 
-/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH */
+/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76% */
 const SHOW_PRICE_LIST_TAB = false;
 const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
+const SHOW_CALCI_PLUS_TAB = false;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
@@ -86,7 +87,7 @@ const App: React.FC = () => {
   const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
   const [gppComments, setGppComments] = useState<Record<string, string>>({});
   const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
-  /** Sheet OSTELIN_60V_GOI — khóa tick “Gói Ostelin tặng cân” nếu KH đã có SL gói > 0 */
+  /** Sheet OSTELIN_60V_GOI — dữ liệu ghi đơn gói Ostelin 60V khi gửi đơn */
   const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
@@ -384,6 +385,7 @@ const App: React.FC = () => {
     if (!SHOW_AO_TRACKING_TAB && viewMode === 'aoTracking') setViewMode('order');
     if (!SHOW_SALE_KH_PS_TAB && viewMode === 'saleKhPs') setViewMode('order');
     if (!SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking') setViewMode('order');
+    if (!SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus') setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -565,25 +567,6 @@ const App: React.FC = () => {
       goiImportRegistered: rec.GoiImport === 'YES',
     };
   }, [customerCode, mergedDummyBoxMarketingByCode]);
-
-  const ostelin60VGoiPurchasedCodeSet = useMemo(() => {
-    const purchased = new Set<string>();
-    ostelin60VGoiRows.forEach((row) => {
-      const code = String(row['CustomerCode'] ?? '').trim();
-      if (!code) return;
-      const slGoi =
-        Number(row['SL_goi'] ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
-      if (slGoi > 0) purchased.add(code);
-    });
-    return purchased;
-  }, [ostelin60VGoiRows]);
-
-  /** KH đã mua gói Ostelin 60V (theo sheet tab Theo dõi Ostelin 60V) — không tick thêm “Gói Ostelin tặng cân” */
-  const ostelin60VTangCanLocked = useMemo(() => {
-    const code = String(customerCode ?? '').trim();
-    if (!code) return false;
-    return ostelin60VGoiPurchasedCodeSet.has(code);
-  }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
 
   const handleToggleRebate = (rebateId: string) => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
@@ -1137,8 +1120,8 @@ const App: React.FC = () => {
             }`}
           >
             <StarIcon />
-            <span className="hidden sm:inline">DummyBox-BsT3</span>
-            <span className="sm:hidden">BsT3</span>
+            <span className="hidden sm:inline">DummyBox - Bs T3+T4</span>
+            <span className="sm:hidden">T3+T4</span>
           </button>
           {SHOW_AO_TRACKING_TAB && (
             <button
@@ -1182,18 +1165,20 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Gói Ostelin 60V</span>
             <span className="sm:hidden">Ostelin</span>
           </button>
-          <button
-            onClick={() => setViewMode('calciPlus')}
-            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
-              viewMode === 'calciPlus'
-                ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
-                : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
-            }`}
-          >
-            <CubeIcon />
-            <span className="hidden sm:inline">Gói 4.76%</span>
-            <span className="sm:hidden">4.76%</span>
-          </button>
+          {SHOW_CALCI_PLUS_TAB && (
+            <button
+              onClick={() => setViewMode('calciPlus')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+                viewMode === 'calciPlus'
+                  ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
+                  : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
+              }`}
+            >
+              <CubeIcon />
+              <span className="hidden sm:inline">Gói 4.76%</span>
+              <span className="sm:hidden">4.76%</span>
+            </button>
+          )}
           <button
             onClick={() => setViewMode('giaThamKhao')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
@@ -1315,7 +1300,6 @@ const App: React.FC = () => {
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
-                    ostelin60VTangCanLocked={ostelin60VTangCanLocked}
                   />
                 </div>
               </div>
@@ -1468,7 +1452,7 @@ const App: React.FC = () => {
         {viewMode === 'ostelin60v' && (
           <Ostelin60VTab />
         )}
-        {viewMode === 'calciPlus' && (
+        {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
           <CalciPlusTab />
         )}
         {viewMode === 'giaThamKhao' && (

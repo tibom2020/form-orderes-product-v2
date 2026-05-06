@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { BellIcon, MegaphoneIcon, PaperAirplaneIcon } from './icons';
 import { AdminNewsItem, Employee } from '../types';
 import { submitAdminNews } from '../services/googleSheetService';
@@ -14,7 +14,7 @@ interface AdminNewsWidgetProps {
     onNewMessage?: (item: AdminNewsItem) => void;
 }
 
-const AdminNewsWidget: React.FC<AdminNewsWidgetProps> = ({ currentEmployee, isAdmin, newsItems, onNewMessage }) => {
+const AdminNewsWidget = ({ currentEmployee, isAdmin, newsItems, onNewMessage }: AdminNewsWidgetProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,7 +114,7 @@ const AdminNewsWidget: React.FC<AdminNewsWidgetProps> = ({ currentEmployee, isAd
                             <div className="flex items-end gap-2">
                                 <textarea
                                     value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
+                                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
                                     placeholder="Nhập nội dung thông báo..."
                                     className="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-sky-500 dark:text-white resize-none h-20 transition-all"
                                     disabled={isSubmitting}

@@ -195,6 +195,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return map;
     }, [salesRecords]);
 
+    /** Cột FinalStoreType sheet DOANH_SO — hiện PS Q2 trên thẻ khi có giá trị */
+    const psQ2FinalStoreTypeByCode = useMemo(() => {
+        const map = new Map<string, string>();
+        salesRecords.forEach((r) => {
+            const code = String(r.CustomerCode ?? '').trim();
+            const raw = String(r.FinalStoreType ?? '').trim();
+            if (!code || !raw) return;
+            map.set(code, raw);
+        });
+        return map;
+    }, [salesRecords]);
+
     // Map CustomerCode -> Tổng phí REBATE (Giga) theo LOCAL / IMPORT
     const rebateFeeByCode = useMemo(() => {
         const map = new Map<string, { local: number; import: number }>();
@@ -1076,6 +1088,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                     const localFee = rebateFee?.local ?? 0;
                                                     const importFee = rebateFee?.import ?? 0;
                                                     const hasAnyRebateFee = localFee > 0 || importFee > 0;
+                                                    const psQ2FinalStoreType = psQ2FinalStoreTypeByCode.get(String(c.CustomerCode ?? '').trim());
 
                                                     return (
                                                         <div
@@ -1118,6 +1131,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                                     <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black border transition-all ${hasImport ? 'bg-opella-beige/50 text-opella-green border-opella-green/30 dark:bg-opella-green/20 dark:text-opella-green dark:border-opella-green/50' : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'}`}>I</div>
                                                                 </div>
                                                             </div>
+                                                            {psQ2FinalStoreType && (
+                                                                <div className="mt-2">
+                                                                    <span className="text-[9px] bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 font-bold">
+                                                                        PS Q2: {psQ2FinalStoreType}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                             {currentEmployee.code === '20043741' && c.Rep && (
                                                                 <div className="mt-2">
                                                                     <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">

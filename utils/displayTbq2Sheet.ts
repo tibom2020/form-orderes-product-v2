@@ -2,6 +2,8 @@
 
 export interface DangKyTbq2RowView {
   customerCode: string;
+  /** Cột sheet Code BM / BuyMed */
+  codeBm: string;
   customerName: string;
   /** Cột sheet FinalStoreTypeQ1 */
   finalStoreTypeQ1: string;
@@ -14,6 +16,17 @@ export interface DangKyTbq2RowView {
   nvDangKy: string;
   /** Cột sheet FinalStoreTypeQ2 */
   finalStoreTypeQ2: string;
+  /** POSM / cam kết trưng bày — giá trị ô sheet (0/1, tick, v.v.) */
+  frameOtc: string;
+  frameFs: string;
+  topboard: string;
+  frontCounter: string;
+  countertop: string;
+  /** Doanh số theo sheet DANGKYTBQ2 */
+  saleT4: string;
+  saleT5: string;
+  saleT6: string;
+  saleQ2: string;
   note: string;
   trangThai: string;
   pheDuyet: string;
@@ -36,6 +49,14 @@ function pickCell(row: Record<string, unknown>, keys: string[]): string {
 export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2RowView {
   return {
     customerCode: pickCell(row, ['CustomerCode', 'MaKH', 'Mã KH', 'Code', 'customerCode']),
+    codeBm: pickCell(row, [
+      'Code BM',
+      'CodeBM',
+      'Code BuyMed',
+      'CodeBuyMed',
+      'Code Buymed',
+      'Mã BM',
+    ]),
     customerName: pickCell(row, ['CustomerName', 'TenKH', 'Tên KH', 'Khách hàng', 'Ten CH']),
     finalStoreTypeQ1: pickCell(row, [
       'FinalStoreTypeQ1',
@@ -59,8 +80,22 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
       'Q2_STATS',
       'Q2 STATS',
       'Q2 Stats',
-      'Q2STATS',
     ]),
+    frameOtc: pickCell(row, ['Frame OTC', 'FrameOTC', 'FRAME OTC', 'Frame_Otc']),
+    frameFs: pickCell(row, ['Frame FS', 'FrameFS', 'FRAME FS', 'Frame_Fs']),
+    topboard: pickCell(row, ['Topboard', 'Top board', 'TOPBOARD']),
+    frontCounter: pickCell(row, ['Front Counter', 'FrontCounter', 'FRONT COUNTER', 'Front counter']),
+    countertop: pickCell(row, [
+      'Countertop',
+      'Counter top',
+      'Countertop/CDU',
+      'Countertop / CDU',
+      'COUNTERTOP',
+    ]),
+    saleT4: pickCell(row, ['Sale T4', 'SaleT4', 'T4 Sale']),
+    saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
+    saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
+    saleQ2: pickCell(row, ['Sale Q2', 'SaleQ2', 'Q2 Sale', 'Q2Sale', 'Q2_Sale']),
     note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
     trangThai: pickCell(row, ['TrangThai', 'Trạng thái', 'Status']),
     pheDuyet: pickCell(row, ['PheDuyet', 'Phê duyệt', 'Phe duyet']),

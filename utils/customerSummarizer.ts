@@ -61,13 +61,9 @@ export const generateCustomerSummary = (
     summary += `🔴 DOANH SỐ BM: ${formatCurrency(dsBmQuarter)}\n\n`;
  
     const hasCheck = record.Check != null && String(record.Check).trim() !== '';
-    const hasCounterTop = record.CounterTop != null && String(record.CounterTop).trim() !== '';
-    const hasCDU = record.CDU != null && String(record.CDU).trim() !== '';
-    if (hasCheck || hasCounterTop || hasCDU) {
+    if (hasCheck) {
         summary += `📑 TRẠNG THÁI:\n`;
-        if (hasCheck) summary += `+ Điều kiện TB: ${record.Check}\n`;
-        if (hasCounterTop) summary += `+ Counter Top: ${record.CounterTop}\n`;
-        if (hasCDU) summary += `+ CDU: ${record.CDU}\n`;
+        summary += `+ Điều kiện TB: ${record.Check}\n`;
     }
 // Dự báo T3 - chỉ hiện khi có dữ liệu
     const hasImportLevel = forecast && forecast.ImportLevel != null && String(forecast.ImportLevel).trim() !== '';
@@ -154,12 +150,12 @@ const normalizeTierLabelForMatch = (s: string): string =>
 const getMonthlyTargetByLoaiTb = (finalStoreTypeRaw: string): number | null => {
     const n = normalizeTierLabelForMatch(finalStoreTypeRaw);
     if (!n) return null;
-    if (n.includes('bronze')) return 500_000;
-    if (n.includes('silver')) return 1_500_000;
-    if (n.includes('gold')) return 3_000_000;
-    if (n.includes('platinum')) return 3_000_000;
-    if (n.includes('flagship+') || n.includes('flaship+')) return 3_000_000;
-    if (n.includes('flagship') || n.includes('flaship')) return 3_000_000;
+    if (n.includes('bronze')) return 3_000_000;
+    if (n.includes('silver')) return 6_000_000;
+    if (n.includes('gold')) return 15_000_000;
+    if (n.includes('platinum')) return 15_000_000;
+    if (n.includes('flagship+') || n.includes('flaship+')) return 15_000_000;
+    if (n.includes('flagship') || n.includes('flaship')) return 15_000_000;
     return null;
 };
 
@@ -297,8 +293,6 @@ export const buildCustomerSalesNoticePayload = (
         signedTodoTotal: signedTodo,
         checkStatusForPayload,
     } = computeMonthlyTbFields(r, doanhSoDaDat);
-    const counterTopStr = safeStr(r, 'CounterTop', 'Counter Top');
-    const cduStr = safeStr(r, 'CDU');
 
     const mustWin = safeNum(r, 'MustWin', 'Must Win');
     const other = safeNum(r, 'Other');
@@ -339,8 +333,6 @@ export const buildCustomerSalesNoticePayload = (
         }
         message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
         message += `+ Todo TB: ${signedTodo > 0 ? '+' : ''}${formatCurrency(signedTodo)}\n`;
-        message += `+ TÌNH TRẠNG COUNTER TOP: ${formatCounterCduStatusDisplay(counterTopStr)}\n`;
-        message += `+ TÌNH TRẠNG CDU: ${formatCounterCduStatusDisplay(cduStr)}\n`;
 
         message += `\n🎯 DOANH SỐ TRƯNG BÀY Q2:\n`;
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
@@ -395,8 +387,6 @@ export interface CustomerSalesDisplayData {
     todoTotal: number;
     signedTodoTotal: number;
     isCheckPassed: boolean;
-    counterTopStr: string;
-    cduStr: string;
     /** false khi không có Loại TB và không có ĐK TB Q2 — ẩn block trưng bày tháng & quý */
     showTrungBayTbSections: boolean;
 }
@@ -472,8 +462,6 @@ export const getCustomerSalesDisplayData = (
         todoTotal,
         signedTodoTotal,
         isCheckPassed,
-        counterTopStr: safeStr(r, 'CounterTop', 'Counter Top'),
-        cduStr: safeStr(r, 'CDU'),
         showTrungBayTbSections,
     };
 };

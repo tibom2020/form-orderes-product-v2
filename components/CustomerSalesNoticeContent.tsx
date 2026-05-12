@@ -4,8 +4,6 @@ import { formatCurrency } from '../utils/formatters';
 import {
     getCustomerSalesDisplayData,
     monthlyTargetLineLabel,
-    formatCounterCduStatusDisplay,
-    getCounterCduValueClassName,
 } from '../utils/customerSummarizer';
 
 interface CustomerSalesNoticeContentProps {
@@ -91,18 +89,6 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                                 {data.signedTodoTotal > 0 ? '+' : ''}{formatCurrency(data.signedTodoTotal)}
                             </span>
                         </div>
-                        <div>
-                            <span className="text-slate-500 dark:text-slate-400">+ TÌNH TRẠNG COUNTER TOP:</span>{' '}
-                            <span className={getCounterCduValueClassName(data.counterTopStr)}>
-                                {formatCounterCduStatusDisplay(data.counterTopStr)}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-slate-500 dark:text-slate-400">+ TÌNH TRẠNG CDU:</span>{' '}
-                            <span className={getCounterCduValueClassName(data.cduStr)}>
-                                {formatCounterCduStatusDisplay(data.cduStr)}
-                            </span>
-                        </div>
                     </div>
                     <div className="h-1.5" />
 
@@ -134,3 +120,4 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
         </div>
     );
 };
+export default CustomerSalesNoticeContent;

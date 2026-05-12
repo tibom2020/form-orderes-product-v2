@@ -11,6 +11,8 @@ import {
 } from '../utils/displayTbq2Sheet';
 import { fetchDataFromSheet } from '../services/googleSheetService';
 import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2, SHEET_DOANH_SO } from '../constants';
+import CustomerSalesNoticeContent from './CustomerSalesNoticeContent';
+import type { SalesRecord } from '../types';
 
 /** Tải DOANH_SO — lỗi sheet/mạng thì trả [] để không chặn tab */
 async function fetchDoanhSoRowsSafe(scriptUrl: string): Promise<Record<string, unknown>[]> {
@@ -435,6 +437,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [repTierStatsOpen, setRepTierStatsOpen] = useState(false);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
+  /** KH được chọn để xem Thông tin doanh số */
+  const [selectedSalesRecord, setSelectedSalesRecord] = useState<SalesRecord | null>(null);
 
   const normalizedRows = useMemo(
     () => sheetRows.map(r => normalizeDangKyTbq2Row(r as Record<string, unknown>)),
@@ -619,6 +623,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [repTierStatsOpen]);
+
+  useEffect(() => {
+    if (!selectedSalesRecord) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedSalesRecord(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q2 (không hiển thị Q1 / trạng thái / thao tác sheet); có thể ẩn Rep */
   const tableColSpan = hideRepColumn ? 15 : 16;
@@ -901,7 +914,29 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           return (
                             <tr
                               key={row.customerCode || `row-${idx}`}
-                              className={`group/row transition-colors ${tc.tr}`}
+                              onClick={() => {
+                                const dsRow = doanhSoRows.find(
+                                  r => String(r.CustomerCode || r.Code || '').trim() === row.customerCode.trim()
+                                );
+                                if (dsRow) {
+                                  setSelectedSalesRecord(dsRow as unknown as SalesRecord);
+                                } else {
+                                  // Fallback: nếu không tìm thấy trong DOANH_SO, tạo record giả từ row hiện tại
+                                  setSelectedSalesRecord({
+                                    CustomerCode: row.customerCode,
+                                    CustomerName: row.customerName,
+                                    FinalStoreTypeQ2: row.finalStoreTypeQ2,
+                                    District: row.district,
+                                    Rep: row.rep,
+                                    // Thêm các fields cần thiết để avoid crash
+                                    TargetImport: 0,
+                                    ActualImport: 0,
+                                    TargetLocal: 0,
+                                    ActualLocal: 0,
+                                  } as SalesRecord);
+                                }
+                              }}
+                              className={`group/row transition-colors ${tc.tr} cursor-pointer hover:brightness-95 dark:hover:brightness-110`}
                             >
                               <td
                                 className={`sticky left-0 z-[1] ${base} font-mono font-semibold text-[10px] ${tc.sticky} ${tc.stickyHover} backdrop-blur shadow-[2px_0_0_rgba(0,0,0,0.03)] min-w-[7rem] max-w-[7rem] truncate whitespace-nowrap`}
@@ -1191,6 +1226,49 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                 className="max-w-full max-h-[min(75vh,720px)] w-auto h-auto object-contain rounded-lg"
                 loading="lazy"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedSalesRecord && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[3px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thông tin doanh số khách hàng"
+          onClick={() => setSelectedSalesRecord(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-white/20 bg-white dark:bg-slate-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
+              <h3 className="font-bold text-[#003629] dark:text-[#8abda9]">Thông tin doanh số khách hàng</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedSalesRecord(null)}
+                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <CustomerSalesNoticeContent
+                record={selectedSalesRecord}
+                employeeName={currentEmployee.name}
+              />
+            </div>
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSalesRecord(null)}
+                className="px-6 py-2 rounded-xl text-sm font-bold bg-[#003629] text-white dark:bg-[#8abda9] dark:text-[#1a3028] hover:opacity-90 active:scale-95 transition-all shadow-md"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

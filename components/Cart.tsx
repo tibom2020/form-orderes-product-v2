@@ -270,7 +270,7 @@ const Cart: React.FC<CartProps> = (props) => {
             .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     }, [items]);
 
-    // 1c. Tổng basePrice nhóm ACEMUC (200 viên / 200 gói / Kids) — mốc 300k / 400k theo tổng base
+    // 1c. Tổng basePrice nhóm ACEMUC (200 viên / 200 gói / Kids) — mốc 300k / 450k theo tổng base
     const acemucGroupBaseTotal = useMemo(() => {
         return items
             .filter(item => ACEMUC_GROUP_IDS.includes(item.id))

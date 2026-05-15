@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, ACEMUC_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -88,7 +88,7 @@ const App: React.FC = () => {
   const [gppComments, setGppComments] = useState<Record<string, string>>({});
   const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
   /** Sheet OSTELIN_60V_GOI — dữ liệu ghi đơn gói Ostelin 60V khi gửi đơn */
-  const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
+  // const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -218,10 +218,10 @@ const App: React.FC = () => {
       }
       try {
         const ostelinGoi = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET);
-        setOstelin60VGoiRows(ostelinGoi || []);
+        // setOstelin60VGoiRows(ostelinGoi || []);
       } catch (e) {
         console.warn("OSTELIN_60V_GOI sheet load failed (optional sheet)", e);
-        setOstelin60VGoiRows([]);
+        // setOstelin60VGoiRows([]);
       }
     } catch (e) {
       console.error("Critical data load failed", e);
@@ -615,6 +615,10 @@ const App: React.FC = () => {
       .filter(item => OSTELIN_GROUP_IDS.includes(item.id))
       .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
 
+    const acemucGroupBaseTotal = cart
+      .filter(item => ACEMUC_GROUP_IDS.includes(item.id))
+      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+
     let totalMaxPayableFeeLocal = 0;
     let totalMaxPayableFeeImport = 0;
 
@@ -625,8 +629,10 @@ const App: React.FC = () => {
 
         const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
         const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
+        const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
         let compareValue = isTelfastGroup ? telfastGroupTotal
           : isOstelinGroup ? ostelinGroupBaseTotal
+          : isAcemucGroup ? acemucGroupBaseTotal
           : item.price * item.quantity;
 
         const monthlyDiscountPercent = getDiscountPercent(
@@ -656,8 +662,10 @@ const App: React.FC = () => {
     const totalAmount = cart.reduce((sum, item) => {
       const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
       const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
+      const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
       let compareValue = isTelfastGroup ? telfastGroupTotal
         : isOstelinGroup ? ostelinGroupBaseTotal
+        : isAcemucGroup ? acemucGroupBaseTotal
         : item.price * item.quantity;
 
       return sum + calculateLineTotal(

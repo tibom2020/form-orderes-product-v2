@@ -178,8 +178,11 @@ const getQ2QuarterlyTargetVnd = (finalStoreTypeQ2Raw: string): number | null => 
 /** Mục tiêu quý theo Loại TB (sheet DOANH_SO) khi không áp dụng tier ĐK Q2 */
 const getQuarterTargetByStoreType = (storeType: string): number => {
     const s = (storeType || '').toLowerCase();
-    if (s.includes('gold')) return 40_000_000;
-    if (s.includes('silver')) return 20_000_000;
+    if (s.includes('flagship') || s.includes('flaship')) return 45_000_000;
+    if (s.includes('platinum')) return 45_000_000;
+    if (s.includes('gold')) return 45_000_000;
+    if (s.includes('silver')) return 18_000_000;
+    if (s.includes('bronze')) return 9_000_000;
     return 0;
 };
 

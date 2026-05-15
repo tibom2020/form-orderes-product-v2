@@ -1,15 +1,15 @@
 import type { SalesRecord } from '../types';
 
 /** Ngưỡng doanh số quý (MustWin + Other) theo loại trưng bày — đồng bộ với Sale KH PS. */
-export const GOLD_MIN = 40_000_000;
-export const SILVER_MIN = 20_000_000;
-export const BRONZE_MIN = 7_000_000;
+export const GOLD_MIN = 45_000_000;
+export const SILVER_MIN = 18_000_000;
+export const BRONZE_MIN = 9_000_000;
 
 export const getSaleQ1 = (r: SalesRecord): number => (Number(r.MustWin) || 0) + (Number(r.Other) || 0);
 
 export const getStoreType = (r: SalesRecord): 'gold' | 'silver' | 'bronze' | null => {
     const ft = (r.FinalStoreType || '').toLowerCase();
-    if (ft.includes('gold')) return 'gold';
+    if (ft.includes('flagship') || ft.includes('flaship') || ft.includes('platinum') || ft.includes('gold')) return 'gold';
     if (ft.includes('silver')) return 'silver';
     if (ft.includes('bronze')) return 'bronze';
     return null;

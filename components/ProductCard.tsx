@@ -58,7 +58,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                 const percent = m[3];
 
                 // Tính toán giá sau giảm cho mỗi mức để hiển thị trực quan cho nhân viên
-                const discountedPricePerUnit = product.price * (1 - parseFloat(percent) / 100);
+                const discountedPricePerUnit = (product.basePrice ?? product.price) * (1 - parseFloat(percent) / 100);
 
                 return {
                     thresholdRaw,
@@ -78,7 +78,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                 unit: 'h',
                 threshold: 1,
                 percent: singleMatch[1],
-                discountedPricePerUnit: product.price * (1 - parseFloat(singleMatch[1]) / 100)
+                discountedPricePerUnit: (product.basePrice ?? product.price) * (1 - parseFloat(singleMatch[1]) / 100)
             }];
         }
 
@@ -91,9 +91,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     const LEVEL_5_INDEX = 4;
     const giaCuoiThang = useMemo(() => {
         const maxCk = getMaxDiscountPercent(product.promotion);
-        const giaHD = Math.round(product.price * (1 - (maxCk ?? 0) / 100));
+        const giaHD = Math.round((product.basePrice ?? product.price) * (1 - (maxCk ?? 0) / 100));
         return Math.round(giaHD * (1 - REBATE_TIERS[LEVEL_5_INDEX].percent / 100));
-    }, [product.price, product.promotion]);
+    }, [product.price, product.basePrice, product.promotion]);
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
@@ -150,7 +150,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
                     )}
 
                     <p className="text-base font-bold text-opella-green dark:text-opella-green mb-2">
-                        {formatCurrency(product.price)}
+                        {formatCurrency(product.basePrice ?? product.price)}
                         <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1 uppercase">(VAT)</span>
                     </p>
 

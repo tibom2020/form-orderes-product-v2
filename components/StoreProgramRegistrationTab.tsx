@@ -437,6 +437,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [repTierStatsOpen, setRepTierStatsOpen] = useState(false);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
+  /** Lọc KH theo trạng thái đạt/rớt chi tiêu tối thiểu tháng hiện tại */
+  const [monthAchievementFilter, setMonthAchievementFilter] = useState<'achieved' | 'missed' | null>(null);
   /** KH được chọn để xem Thông tin doanh số */
   const [selectedSalesRecord, setSelectedSalesRecord] = useState<SalesRecord | null>(null);
 
@@ -475,10 +477,23 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     };
   }, [myRows, isAdmin]);
 
+  /** Tháng hiện tại trong Q2 (T4/T5/T6); ngoài Q2 → fallback T6 (tháng cuối Q2) */
+  const currentMonthKey = useMemo<'saleT4' | 'saleT5' | 'saleT6'>(() => {
+    const m = new Date().getMonth() + 1;
+    if (m <= 4) return 'saleT4';
+    if (m === 5) return 'saleT5';
+    return 'saleT6';
+  }, []);
+  const currentMonthLabel = useMemo(() => {
+    if (currentMonthKey === 'saleT4') return 'T4';
+    if (currentMonthKey === 'saleT5') return 'T5';
+    return 'T6';
+  }, [currentMonthKey]);
+
   const statsByTier = useMemo(() => {
-    const m: Record<string, { count: number; saleQ2Sum: number }> = {};
+    const m: Record<string, { count: number; saleQ2Sum: number; achievedMonth: number }> = {};
     STORE_TIER_CONFIGS.forEach(t => {
-      m[t.label] = { count: 0, saleQ2Sum: 0 };
+      m[t.label] = { count: 0, saleQ2Sum: 0, achievedMonth: 0 };
     });
     myRows.forEach(r => {
       if (!isRegisteredRow(r)) return;
@@ -487,9 +502,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       m[cfg.label].count += 1;
       const n = parseSheetSalesAmount(r.saleQ2);
       if (n != null && Number.isFinite(n)) m[cfg.label].saleQ2Sum += n;
+      const monthVal = parseSheetSalesAmount(r[currentMonthKey]);
+      if (monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
+        m[cfg.label].achievedMonth += 1;
+      }
     });
     return m;
-  }, [myRows]);
+  }, [myRows, currentMonthKey]);
 
   /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
   const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
@@ -516,6 +535,16 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         if (!isRegisteredRow(r)) return false;
         const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
         return cfg?.id === tierRegisteredFilter;
+      });
+    }
+    if (monthAchievementFilter) {
+      rows = rows.filter(r => {
+        if (!isRegisteredRow(r)) return false;
+        const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
+        if (!cfg) return false;
+        const monthVal = parseSheetSalesAmount(r[currentMonthKey]);
+        const achieved = monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
+        return monthAchievementFilter === 'achieved' ? achieved : !achieved;
       });
     }
     const q = searchQuery.trim().toLowerCase();
@@ -553,7 +582,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         saleT4Search.includes(q)
       );
     });
-  }, [myRows, searchQuery, tierRegisteredFilter, saleT4ByCustomerCode]);
+  }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, currentMonthKey, saleT4ByCustomerCode]);
 
   /** Một Rep duy nhất trong kết quả lọc → cột Rep thừa, ẩn đi */
   const hideRepColumn = useMemo(() => {
@@ -749,7 +778,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="flex gap-3">
                 {STORE_TIER_CONFIGS.map(t => {
-                  const s = statsByTier[t.label] || { count: 0, saleQ2Sum: 0 };
+                  const s = statsByTier[t.label] || { count: 0, saleQ2Sum: 0, achievedMonth: 0 };
                   const selected = tierRegisteredFilter === t.id;
                   return (
                     <div
@@ -786,9 +815,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           Mẫu
                         </button>
                       </div>
+                      <span
+                        className="text-[13px] font-bold tabular-nums leading-tight block mt-1"
+                        title={`Số KH đạt chi tiêu tối thiểu ${formatVndDong(t.minMonthlySales)} trong ${currentMonthLabel}`}
+                      >
+                        Đạt {currentMonthLabel}: {s.achievedMonth}/{s.count}
+                      </span>
                       <div className="mt-2">
                         <span className="font-extrabold text-2xl block">{String(s.count).padStart(2, '0')}</span>
-                        <span className="text-[10px] opacity-70 font-medium tabular-nums leading-tight">
+                        <span className="text-[10px] opacity-70 font-medium tabular-nums leading-tight block">
                           Tổng Sale Q2: {formatVndDong(s.saleQ2Sum)}
                         </span>
                       </div>
@@ -796,6 +831,46 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   );
                 })}
               </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="text-[10px] font-bold uppercase tracking-tight text-[#404945] dark:text-slate-400">
+                  Lọc {currentMonthLabel}:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMonthAchievementFilter(prev => (prev === 'achieved' ? null : 'achieved'))}
+                  aria-pressed={monthAchievementFilter === 'achieved'}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    monthAchievementFilter === 'achieved'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900'
+                  }`}
+                  title={`KH đạt chi tiêu tối thiểu theo tier trong ${currentMonthLabel}`}
+                >
+                  ĐẠT {currentMonthLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonthAchievementFilter(prev => (prev === 'missed' ? null : 'missed'))}
+                  aria-pressed={monthAchievementFilter === 'missed'}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    monthAchievementFilter === 'missed'
+                      ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
+                      : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900'
+                  }`}
+                  title={`KH chưa đạt chi tiêu tối thiểu theo tier trong ${currentMonthLabel}`}
+                >
+                  RỚT {currentMonthLabel}
+                </button>
+                {monthAchievementFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setMonthAchievementFilter(null)}
+                    className="text-[11px] font-bold underline text-slate-600 dark:text-slate-400"
+                  >
+                    Xóa lọc {currentMonthLabel}
+                  </button>
+                )}
               </div>
               <p className="text-[10px] text-[#404945] dark:text-slate-500 mt-2">
                 Bấm thẻ tier để lọc KH đã đăng ký theo cột FinalStoreTypeQ2; bấm lại thẻ đang chọn để bỏ lọc.

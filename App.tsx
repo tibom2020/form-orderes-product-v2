@@ -19,6 +19,7 @@ import AdminNewsWidget from './components/AdminNewsWidget';
 import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import Ostelin60VTab from './components/Ostelin60VTab';
+import RepActiveAcemucOstelinTab from './components/RepActiveAcemucOstelinTab';
 import GiaThamKhaoTab from './components/GiaThamKhaoTab';
 import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
@@ -40,11 +41,12 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 const SHOW_CALCI_PLUS_TAB = false;
+const SHOW_OSTELIN_60V_TAB = false;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -386,6 +388,7 @@ const App: React.FC = () => {
     if (!SHOW_SALE_KH_PS_TAB && viewMode === 'saleKhPs') setViewMode('order');
     if (!SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking') setViewMode('order');
     if (!SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus') setViewMode('order');
+    if (!SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v') setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -1162,17 +1165,31 @@ const App: React.FC = () => {
             </button>
           )}
           <button
-            onClick={() => setViewMode('ostelin60v')}
+            onClick={() => setViewMode('repActiveAcemucOstelin')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
-              viewMode === 'ostelin60v'
-                ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
-                : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
+              viewMode === 'repActiveAcemucOstelin'
+                ? 'text-amber-900 border-amber-600 bg-amber-100 dark:bg-amber-950/55 dark:text-amber-50 dark:border-amber-400'
+                : 'text-amber-800/90 border-transparent bg-amber-50/70 dark:bg-amber-950/30 dark:text-amber-200/90 hover:bg-amber-100/90 dark:hover:bg-amber-900/45'
             }`}
           >
-            <CubeIcon />
-            <span className="hidden sm:inline">Gói Ostelin 60V</span>
-            <span className="sm:hidden">Ostelin</span>
+            <ChartBarIcon />
+            <span className="hidden sm:inline">Active Acemuc / Ostelin</span>
+            <span className="sm:hidden">Active</span>
           </button>
+          {SHOW_OSTELIN_60V_TAB && (
+            <button
+              onClick={() => setViewMode('ostelin60v')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+                viewMode === 'ostelin60v'
+                  ? 'text-teal-900 border-teal-600 bg-teal-100 dark:bg-teal-950/55 dark:text-teal-50 dark:border-teal-400'
+                  : 'text-teal-800/90 border-transparent bg-teal-50/70 dark:bg-teal-950/30 dark:text-teal-200/90 hover:bg-teal-100/90 dark:hover:bg-teal-900/45'
+              }`}
+            >
+              <CubeIcon />
+              <span className="hidden sm:inline">Gói Ostelin 60V</span>
+              <span className="sm:hidden">Ostelin</span>
+            </button>
+          )}
           {SHOW_CALCI_PLUS_TAB && (
             <button
               onClick={() => setViewMode('calciPlus')}
@@ -1274,7 +1291,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'giaThamKhao', 'aiTuVan'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -1457,8 +1474,14 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'ostelin60v' && (
+        {SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v' && (
           <Ostelin60VTab />
+        )}
+        {viewMode === 'repActiveAcemucOstelin' && (
+          <RepActiveAcemucOstelinTab
+            salesRecords={allSalesRecords}
+            currentEmployee={loggedInEmployee!}
+          />
         )}
         {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
           <CalciPlusTab />

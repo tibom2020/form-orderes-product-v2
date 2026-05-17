@@ -1048,3 +1048,7 @@ export const CALCIPLUS_GOI_SHEET = 'CALCIPLUS_GOI';
 
 export const CALCIPLUS_PRODUCT_ID = 1;
 
+/** Theo dõi Rep Active Acemuc/Ostelin Q2 */
+export const ACEMUC_ACTIVE_MIN_QTY = 5;        // ACEMUC_QTY ≥ 5 → KH active
+export const ACEMUC_Q2_TARGET_PER_REP = 35;    // Target số KH active Acemuc Q2 / Rep
+

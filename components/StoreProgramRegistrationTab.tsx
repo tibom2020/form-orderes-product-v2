@@ -12,7 +12,7 @@ import {
 import { fetchDataFromSheet } from '../services/googleSheetService';
 import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2, SHEET_DOANH_SO } from '../constants';
 import CustomerSalesNoticeContent from './CustomerSalesNoticeContent';
-import type { SalesRecord } from '../types';
+import type { SalesRecord, Rebate } from '../types';
 
 /** Tải DOANH_SO — lỗi sheet/mạng thì trả [] để không chặn tab */
 async function fetchDoanhSoRowsSafe(scriptUrl: string): Promise<Record<string, unknown>[]> {
@@ -412,12 +412,15 @@ interface StoreProgramRegistrationTabProps {
   scriptUrl: string;
   /** Admin xem toàn bộ KH + phê duyệt */
   isAdmin?: boolean;
+  /** Sheet REBATE — phí Import/Local còn lại theo KH */
+  rebates?: Rebate[];
 }
 
 const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = ({
   currentEmployee,
   scriptUrl,
   isAdmin = false,
+  rebates = [],
 }) => {
   const [sheetRows, setSheetRows] = useState<Record<string, unknown>[]>([]);
   const [budgetRows, setBudgetRows] = useState<Record<string, unknown>[]>([]);
@@ -460,6 +463,21 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   );
 
   const saleT4ByCustomerCode = useMemo(() => buildSaleT4ByCustomerCodeMap(doanhSoRows), [doanhSoRows]);
+
+  /** Phí Rebate Import/Local còn lại theo mã KH (cộng RemainAmount theo Group). */
+  const rebateByCustomerCode = useMemo(() => {
+    const m = new Map<string, { import: number; local: number }>();
+    rebates.forEach(r => {
+      const code = String(r.code ?? '').trim();
+      if (!code) return;
+      const amt = Number(r.RemainAmount) || 0;
+      if (!m.has(code)) m.set(code, { import: 0, local: 0 });
+      const cur = m.get(code)!;
+      if (r.Group === 'IMPORT') cur.import += amt;
+      else if (r.Group === 'LOCAL') cur.local += amt;
+    });
+    return m;
+  }, [rebates]);
 
   const saleQ2SummaryCard = useMemo(() => {
     const total = sumSaleQ2VndFromRows(myRows);
@@ -663,7 +681,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q2 (không hiển thị Q1 / trạng thái / thao tác sheet); có thể ẩn Rep */
-  const tableColSpan = hideRepColumn ? 15 : 16;
+  const tableColSpan = hideRepColumn ? 19 : 20;
 
   const tierBtnMuted = (t: StoreTierConfig) =>
     t.statCardClass.includes('text-white')
@@ -954,6 +972,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           Countertop
                         </th>
                         <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-50/90 dark:bg-blue-950/35 border-r border-blue-200/50 dark:border-blue-900/35 leading-tight"
+                          title="Phí Rebate Import còn lại (sheet REBATE)"
+                        >
+                          Rebate Import
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-50/90 dark:bg-blue-950/35 border-r border-blue-200/50 dark:border-blue-900/35 leading-tight"
+                          title="Phí Rebate Local còn lại (sheet REBATE)"
+                        >
+                          Rebate Local
+                        </th>
+                        <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-red-100/90 dark:bg-red-950/45 border-r border-red-200/60 dark:border-red-900/45 text-red-950 dark:text-red-100"
                           title="Ưu tiên cột Sale T4 trên DANGKYTBQ2; ô trống thì MustWin+Other (DOANH_SO)"
                         >
@@ -961,6 +991,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-orange-50/90 dark:bg-orange-950/35 border-r border-orange-200/50 dark:border-orange-900/35">
                           Sale T5
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Target T5 theo FinalStoreTypeQ2 (Flagship/Platinum/Gold: 15tr · Silver: 6tr · Bronze: 3tr)"
+                        >
+                          Target T5
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Số tiền còn thiếu trong T5 để đạt Target (theo tier)"
+                        >
+                          Todo T5
                         </th>
                         <th className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-orange-50/90 dark:bg-orange-950/35 border-r border-orange-200/50 dark:border-orange-900/35">
                           Sale T6
@@ -1059,6 +1101,19 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
                                 {posm(row.countertop)}
                               </td>
+                              {(() => {
+                                const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0 };
+                                return (
+                                  <>
+                                    <td className={`${base} text-right tabular-nums bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-100`}>
+                                      {reb.import > 0 ? formatCurrency(Math.round(reb.import)) : '—'}
+                                    </td>
+                                    <td className={`${base} text-right tabular-nums bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-100`}>
+                                      {reb.local > 0 ? formatCurrency(Math.round(reb.local)) : '—'}
+                                    </td>
+                                  </>
+                                );
+                              })()}
                               <td
                                 className={`${base} text-right font-semibold tabular-nums ${tc.saleT4} ${tc.saleT4Hover} text-red-900 dark:text-red-100`}
                                 title={
@@ -1074,6 +1129,30 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               >
                                 {formatSheetSaleQ1Display(row.saleT5)}
                               </td>
+                              {(() => {
+                                const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+                                const target = cfg?.minMonthlySales ?? 0;
+                                const actual = parseSheetSalesAmount(row.saleT5) ?? 0;
+                                const todo = Math.max(target - actual, 0);
+                                const reached = target > 0 && actual >= target;
+                                return (
+                                  <>
+                                    <td className="py-2.5 px-2 text-[10px] text-right tabular-nums bg-violet-50/40 dark:bg-violet-950/20 text-violet-900 dark:text-violet-100 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
+                                      {target > 0 ? formatCurrency(target) : '—'}
+                                    </td>
+                                    <td
+                                      className={`py-2.5 px-2 text-[10px] text-right tabular-nums border-r border-[#c0c9c3]/15 dark:border-slate-600/35 ${
+                                        reached
+                                          ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 font-bold'
+                                          : 'bg-violet-50/40 dark:bg-violet-950/20 text-violet-900 dark:text-violet-100'
+                                      }`}
+                                      title={reached ? 'Đã đạt Target T5' : 'Số tiền còn thiếu để đạt Target T5'}
+                                    >
+                                      {target === 0 ? '—' : reached ? 'ĐẠT' : formatCurrency(todo)}
+                                    </td>
+                                  </>
+                                );
+                              })()}
                               <td
                                 className={`${base} text-right tabular-nums ${tc.saleTn} ${tc.saleTnHover}`}
                               >

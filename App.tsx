@@ -137,6 +137,23 @@ const App: React.FC = () => {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
+  /** Zoom UI (CSS zoom) — toàn app, lưu localStorage. Phạm vi 0.7–1.5 */
+  const UI_ZOOM_MIN = 0.7;
+  const UI_ZOOM_MAX = 1.5;
+  const UI_ZOOM_STEP = 0.1;
+  const [uiZoom, setUiZoom] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    const v = parseFloat(localStorage.getItem('ui-zoom') ?? '1');
+    return Number.isFinite(v) && v >= UI_ZOOM_MIN && v <= UI_ZOOM_MAX ? v : 1;
+  });
+  useEffect(() => {
+    localStorage.setItem('ui-zoom', String(uiZoom));
+  }, [uiZoom]);
+  const clampZoom = (v: number) => Math.max(UI_ZOOM_MIN, Math.min(UI_ZOOM_MAX, Math.round(v * 10) / 10));
+  const zoomIn = () => setUiZoom(z => clampZoom(z + UI_ZOOM_STEP));
+  const zoomOut = () => setUiZoom(z => clampZoom(z - UI_ZOOM_STEP));
+  const zoomReset = () => setUiZoom(1);
+
   useEffect(() => {
     setDrafts(getOrders('draftOrders'));
     setSentOrders(getOrders('sentOrders'));
@@ -947,6 +964,7 @@ const App: React.FC = () => {
       className={`min-h-screen font-sans text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200 ${
         adminIpadPreviewOn ? 'bg-slate-600 dark:bg-slate-950' : 'bg-slate-50 dark:bg-slate-900'
       }`}
+      style={uiZoom !== 1 ? ({ zoom: uiZoom } as React.CSSProperties) : undefined}
     >
       {/* Hiển thị Modal khi có submittedOrder */}
       {submittedOrder && (
@@ -1053,6 +1071,34 @@ const App: React.FC = () => {
               </button>
             )}
 
+            <div
+              className="hidden sm:inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white/70 dark:bg-slate-800/60 overflow-hidden text-slate-700 dark:text-slate-200"
+              role="group"
+              aria-label="Phóng to / thu nhỏ giao diện"
+            >
+              <button
+                type="button"
+                onClick={zoomOut}
+                disabled={uiZoom <= UI_ZOOM_MIN + 0.001}
+                className="px-2 py-1 text-sm font-black hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Thu nhỏ giao diện"
+              >−</button>
+              <button
+                type="button"
+                onClick={zoomReset}
+                className="px-2 py-1 text-[11px] font-bold tabular-nums border-l border-r border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 min-w-[3rem]"
+                title="Đặt lại 100%"
+              >
+                {Math.round(uiZoom * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={zoomIn}
+                disabled={uiZoom >= UI_ZOOM_MAX - 0.001}
+                className="px-2 py-1 text-sm font-black hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Phóng to giao diện"
+              >+</button>
+            </div>
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
@@ -1365,6 +1411,7 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee!}
             scriptUrl={GOOGLE_SCRIPT_URL}
             isAdmin={loggedInEmployee?.code === ADMIN_CODE}
+            rebates={allRebates}
           />
         )}
 

@@ -181,6 +181,8 @@ export interface SalesRecord {
   "BISOLVON"?: number;
   "OSTELIN"?: number;
   "ACEMUC"?: number;
+  ACEMUC_QTY?: number;
+  PMT_QTY?: number;
   "PHOSPHALUGEL (B.I)"?: number;
   "MAGNE B6"?: number;
 }

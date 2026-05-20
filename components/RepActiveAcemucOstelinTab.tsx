@@ -26,6 +26,12 @@ interface OstelinRepRow {
   sale: number;
 }
 
+interface PharmatonRepRow {
+  rep: string;
+  active: number;
+  sale: number;
+}
+
 interface CustomerRow {
   rep: string;
   code: string;
@@ -43,9 +49,34 @@ function asRec(r: SalesRecord): Record<string, unknown> {
   return r as unknown as Record<string, unknown>;
 }
 
+function filterCustomers(customers: CustomerRow[], repFilter: string, search: string): CustomerRow[] {
+  let result = customers;
+  if (repFilter) {
+    result = result.filter(c => c.rep === repFilter);
+  }
+  const q = search.trim().toLowerCase();
+  if (q) {
+    result = result.filter(c =>
+      c.rep.toLowerCase().includes(q) ||
+      c.code.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q)
+    );
+  }
+  return result;
+}
+
+function repOptionsFrom(customers: CustomerRow[]): string[] {
+  const s = new Set(customers.map(c => c.rep).filter(Boolean));
+  return Array.from(s).sort((a, b) => a.localeCompare(b, 'vi'));
+}
+
 const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmployee }) => {
   const [acemucSearch, setAcemucSearch] = useState('');
   const [ostelinSearch, setOstelinSearch] = useState('');
+  const [pharmatonSearch, setPharmatonSearch] = useState('');
+  const [acemucRepFilter, setAcemucRepFilter] = useState('');
+  const [pharmatonRepFilter, setPharmatonRepFilter] = useState('');
+  const [ostelinRepFilter, setOstelinRepFilter] = useState('');
 
   /** Hiển thị toàn bộ nhân viên cho mọi user. */
   const scopedRecords = salesRecords;
@@ -70,6 +101,23 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         const todo = Math.max(target - v.active, 0);
         return { rep, target, active: v.active, pct, todo, sale: v.sale };
       })
+      .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
+  }, [scopedRecords]);
+
+  const pharmatonByRep = useMemo<PharmatonRepRow[]>(() => {
+    const m = new Map<string, { active: number; sale: number }>();
+    scopedRecords.forEach(r => {
+      const rep = String(r.Rep ?? '').trim();
+      if (!rep) return;
+      const qty = num(asRec(r)['PMT_QTY']);
+      const sale = num(asRec(r)['PHARMATON']);
+      if (!m.has(rep)) m.set(rep, { active: 0, sale: 0 });
+      const cur = m.get(rep)!;
+      if (qty > 0) cur.active += 1;
+      cur.sale += sale;
+    });
+    return Array.from(m.entries())
+      .map(([rep, v]) => ({ rep, active: v.active, sale: v.sale }))
       .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
   }, [scopedRecords]);
 
@@ -98,6 +146,13 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
     return { target, active, todo, sale, pct };
   }, [acemucByRep]);
 
+  const pharmatonTotals = useMemo(() => {
+    return {
+      active: pharmatonByRep.reduce((s, r) => s + r.active, 0),
+      sale: pharmatonByRep.reduce((s, r) => s + r.sale, 0),
+    };
+  }, [pharmatonByRep]);
+
   const ostelinTotals = useMemo(() => {
     return {
       active: ostelinByRep.reduce((s, r) => s + r.active, 0),
@@ -115,6 +170,16 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
       return best;
     }, acemucByRep[0]);
   }, [acemucByRep]);
+
+  const pharmatonTopRep = useMemo(() => {
+    if (pharmatonByRep.length === 0) return null;
+    return pharmatonByRep.reduce((best, r) => {
+      if (!best) return r;
+      if (r.active > best.active) return r;
+      if (r.active === best.active && r.sale > best.sale) return r;
+      return best;
+    }, pharmatonByRep[0]);
+  }, [pharmatonByRep]);
 
   const ostelinTopRep = useMemo(() => {
     if (ostelinByRep.length === 0) return null;
@@ -139,6 +204,19 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
       .sort((a, b) => b.qty - a.qty || b.sale - a.sale);
   }, [scopedRecords]);
 
+  const pharmatonCustomers = useMemo<CustomerRow[]>(() => {
+    return scopedRecords
+      .map(r => ({
+        rep: String(r.Rep ?? '').trim(),
+        code: String(r.CustomerCode ?? '').trim(),
+        name: String(r.CustomerName ?? '').trim(),
+        qty: num(asRec(r)['PMT_QTY']),
+        sale: num(asRec(r)['PHARMATON']),
+      }))
+      .filter(c => c.qty > 0 || c.sale > 0)
+      .sort((a, b) => b.qty - a.qty || b.sale - a.sale);
+  }, [scopedRecords]);
+
   const ostelinCustomers = useMemo<CustomerRow[]>(() => {
     return scopedRecords
       .map(r => ({
@@ -152,31 +230,33 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
       .sort((a, b) => b.sale - a.sale);
   }, [scopedRecords]);
 
-  const filteredAcemucCustomers = useMemo(() => {
-    const q = acemucSearch.trim().toLowerCase();
-    if (!q) return acemucCustomers;
-    return acemucCustomers.filter(c =>
-      c.rep.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q) ||
-      c.name.toLowerCase().includes(q)
-    );
-  }, [acemucCustomers, acemucSearch]);
+  const acemucRepOptions = useMemo(() => repOptionsFrom(acemucCustomers), [acemucCustomers]);
+  const pharmatonRepOptions = useMemo(() => repOptionsFrom(pharmatonCustomers), [pharmatonCustomers]);
+  const ostelinRepOptions = useMemo(() => repOptionsFrom(ostelinCustomers), [ostelinCustomers]);
 
-  const filteredOstelinCustomers = useMemo(() => {
-    const q = ostelinSearch.trim().toLowerCase();
-    if (!q) return ostelinCustomers;
-    return ostelinCustomers.filter(c =>
-      c.rep.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q) ||
-      c.name.toLowerCase().includes(q)
-    );
-  }, [ostelinCustomers, ostelinSearch]);
+  const filteredAcemucCustomers = useMemo(
+    () => filterCustomers(acemucCustomers, acemucRepFilter, acemucSearch),
+    [acemucCustomers, acemucRepFilter, acemucSearch]
+  );
+
+  const filteredPharmatonCustomers = useMemo(
+    () => filterCustomers(pharmatonCustomers, pharmatonRepFilter, pharmatonSearch),
+    [pharmatonCustomers, pharmatonRepFilter, pharmatonSearch]
+  );
+
+  const filteredOstelinCustomers = useMemo(
+    () => filterCustomers(ostelinCustomers, ostelinRepFilter, ostelinSearch),
+    [ostelinCustomers, ostelinRepFilter, ostelinSearch]
+  );
 
   const pctClass = (pct: number) => {
     if (pct >= 100) return 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40';
     if (pct >= 60) return 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40';
     return 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40';
   };
+
+  const repSelectClass =
+    'px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-44';
 
   return (
     <div className="p-4 animate-fade-in space-y-6">
@@ -185,11 +265,11 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
           <ChartBarIcon />
         </div>
         <h2 className="text-lg font-black text-opella-green uppercase">
-          THEO DÕI REP ACTIVE — ACEMUC & OSTELIN (Q2)
+          THEO DÕI REP ACTIVE — ACEMUC, PHARMATON & OSTELIN (Q2)
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* ACEMUC by Rep */}
         <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 flex items-center justify-between">
@@ -257,6 +337,68 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
                     <td className={`px-3 py-2 text-right tabular-nums ${pctClass(acemucTotals.pct)}`}>{acemucTotals.pct.toFixed(2)}%</td>
                     <td className="px-3 py-2 text-right tabular-nums">{acemucTotals.todo}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Math.round(acemucTotals.sale))}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* PHARMATON by Rep */}
+        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-violet-50 dark:bg-violet-950/30">
+            <h3 className="text-sm font-black text-violet-800 dark:text-violet-200 uppercase tracking-wide">
+              PHARMATON — Active Q2 (PMT_QTY &gt; 0)
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse min-w-[420px]">
+              <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
+                <tr>
+                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Rep</th>
+                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-violet-100/70 dark:bg-violet-900/40">Active PMT Q2</th>
+                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Sale Pharmaton</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {pharmatonByRep.length === 0 ? (
+                  <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400 italic">Chưa có dữ liệu</td></tr>
+                ) : pharmatonByRep.map(r => {
+                  const isTop = pharmatonTopRep?.rep === r.rep && r.active > 0;
+                  const isMe = r.rep.trim().toLowerCase() === myRepKey;
+                  return (
+                  <tr
+                    key={r.rep}
+                    className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${
+                      isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
+                    } ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
+                  >
+                    <td className="px-3 py-2 font-bold text-slate-800 dark:text-white whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5">
+                        {r.rep}
+                        {isTop && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm"
+                            title="Top 1 Active Pharmaton"
+                          >
+                            ★ TOP 1
+                          </span>
+                        )}
+                        {isMe && (
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white">BẠN</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300">{r.active}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-white">{formatCurrency(Math.round(r.sale))}</td>
+                  </tr>
+                  );
+                })}
+                {pharmatonByRep.length > 0 && (
+                  <tr className="bg-slate-100 dark:bg-slate-700 font-black">
+                    <td className="px-3 py-2 uppercase">Grand Total</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-rose-700 dark:text-rose-300">{pharmatonTotals.active}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Math.round(pharmatonTotals.sale))}</td>
                   </tr>
                 )}
               </tbody>
@@ -333,13 +475,26 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
           <h3 className="text-sm font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide">
             Danh sách KH có mua ACEMUC ({filteredAcemucCustomers.length})
           </h3>
-          <input
-            type="search"
-            value={acemucSearch}
-            onChange={e => setAcemucSearch(e.target.value)}
-            placeholder="Tìm theo Rep / Mã KH / Tên KH..."
-            className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-64"
-          />
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+            <select
+              value={acemucRepFilter}
+              onChange={e => setAcemucRepFilter(e.target.value)}
+              className={repSelectClass}
+              aria-label="Lọc theo Rep Acemuc"
+            >
+              <option value="">Tất cả Rep</option>
+              {acemucRepOptions.map(rep => (
+                <option key={rep} value={rep}>{rep}</option>
+              ))}
+            </select>
+            <input
+              type="search"
+              value={acemucSearch}
+              onChange={e => setAcemucSearch(e.target.value)}
+              placeholder="Tìm theo Mã KH / Tên KH..."
+              className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-64"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto max-h-[420px]">
           <table className="w-full text-left text-sm border-collapse min-w-[640px]">
@@ -382,19 +537,100 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         </div>
       </div>
 
+      {/* Customer list — PHARMATON */}
+      <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-violet-50 dark:bg-violet-950/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h3 className="text-sm font-black text-violet-800 dark:text-violet-200 uppercase tracking-wide">
+            Danh sách KH có mua PHARMATON ({filteredPharmatonCustomers.length})
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+            <select
+              value={pharmatonRepFilter}
+              onChange={e => setPharmatonRepFilter(e.target.value)}
+              className={repSelectClass}
+              aria-label="Lọc theo Rep Pharmaton"
+            >
+              <option value="">Tất cả Rep</option>
+              {pharmatonRepOptions.map(rep => (
+                <option key={rep} value={rep}>{rep}</option>
+              ))}
+            </select>
+            <input
+              type="search"
+              value={pharmatonSearch}
+              onChange={e => setPharmatonSearch(e.target.value)}
+              placeholder="Tìm theo Mã KH / Tên KH..."
+              className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-64"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-[420px]">
+          <table className="w-full text-left text-sm border-collapse min-w-[640px]">
+            <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs sticky top-0">
+              <tr>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 w-12">STT</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Rep</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Mã KH</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Tên KH</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">PMT_QTY</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Active</th>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Sale Pharmaton</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {filteredPharmatonCustomers.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400 italic">Không có KH</td></tr>
+              ) : filteredPharmatonCustomers.map((c, idx) => {
+                const active = c.qty > 0;
+                return (
+                  <tr key={`${c.code}-${idx}`} className={active ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : undefined}>
+                    <td className="px-3 py-2 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
+                    <td className="px-3 py-2 font-bold text-slate-800 dark:text-white whitespace-nowrap">{c.rep || '—'}</td>
+                    <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{c.code || '—'}</td>
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{c.name || '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-700 dark:text-slate-200">{c.qty}</td>
+                    <td className="px-3 py-2 text-right">
+                      {active ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white">ACTIVE</span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-white">{formatCurrency(Math.round(c.sale))}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Customer list — OSTELIN */}
       <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-emerald-50 dark:bg-emerald-950/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-200 uppercase tracking-wide">
             Danh sách KH có mua OSTELIN ({filteredOstelinCustomers.length})
           </h3>
-          <input
-            type="search"
-            value={ostelinSearch}
-            onChange={e => setOstelinSearch(e.target.value)}
-            placeholder="Tìm theo Rep / Mã KH / Tên KH..."
-            className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-64"
-          />
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+            <select
+              value={ostelinRepFilter}
+              onChange={e => setOstelinRepFilter(e.target.value)}
+              className={repSelectClass}
+              aria-label="Lọc theo Rep Ostelin"
+            >
+              <option value="">Tất cả Rep</option>
+              {ostelinRepOptions.map(rep => (
+                <option key={rep} value={rep}>{rep}</option>
+              ))}
+            </select>
+            <input
+              type="search"
+              value={ostelinSearch}
+              onChange={e => setOstelinSearch(e.target.value)}
+              placeholder="Tìm theo Mã KH / Tên KH..."
+              className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-full sm:w-64"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto max-h-[420px]">
           <table className="w-full text-left text-sm border-collapse min-w-[560px]">

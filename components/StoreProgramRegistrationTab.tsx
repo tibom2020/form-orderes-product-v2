@@ -681,7 +681,10 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q2 (không hiển thị Q1 / trạng thái / thao tác sheet); có thể ẩn Rep */
-  const tableColSpan = hideRepColumn ? 19 : 20;
+  const tableColSpan = hideRepColumn ? 21 : 22;
+
+  const tierIncentiveRedCell =
+    'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
 
   const tierBtnMuted = (t: StoreTierConfig) =>
     t.statCardClass.includes('text-white')
@@ -930,7 +933,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-[#c0c9c3]/20 min-w-0">
                 <div className="tbq2-scroll-xy max-h-[min(52vh,22rem)] sm:max-h-[280px] md:max-h-[320px]">
-                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1700px] sm:min-w-[1800px]">
+                  <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1850px] sm:min-w-[1960px]">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-wider text-[#2d3b36] dark:text-slate-200 border-b border-[#c0c9c3]/40 dark:border-slate-600">
                         <th className="sticky left-0 z-[2] py-3 px-2 min-w-[7rem] bg-sky-100/95 dark:bg-sky-950/95 backdrop-blur border-r border-sky-200/60 dark:border-sky-800/50 shadow-[2px_0_0_rgba(0,0,0,0.03)] dark:shadow-[2px_0_0_rgba(0,0,0,0.2)]">
@@ -970,6 +973,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th className="py-3 px-1.5 text-center min-w-[4.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight">
                           Countertop
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
+                          title="Mua từ = Incentives × 4 theo tier"
+                        >
+                          Mua từ
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
+                          title="Incentives theo FinalStoreTypeQ2 (sheet tiêu chí CT trưng bày)"
+                        >
+                          Incentives
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-50/90 dark:bg-blue-950/35 border-r border-blue-200/50 dark:border-blue-900/35 leading-tight"
@@ -1101,6 +1116,21 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
                                 {posm(row.countertop)}
                               </td>
+                              {(() => {
+                                const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+                                const incentive = cfg?.reward ?? 0;
+                                const muaTu = incentive > 0 ? incentive * 4 : 0;
+                                return (
+                                  <>
+                                    <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
+                                      {muaTu > 0 ? formatCurrency(muaTu) : '—'}
+                                    </td>
+                                    <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
+                                      {incentive > 0 ? formatCurrency(incentive) : '—'}
+                                    </td>
+                                  </>
+                                );
+                              })()}
                               {(() => {
                                 const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0 };
                                 return (

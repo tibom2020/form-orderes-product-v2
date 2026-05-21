@@ -58,8 +58,19 @@ export function isGoiPs25Yes(raw: string): boolean {
   return !isGoiPs25No(raw) && raw.trim() !== '';
 }
 
+/** Đơn giá khi CK PS 25% — chỉ basePrice, không CK tháng/combo */
+export function getPsCartUnitPrice(item: { basePrice?: number; price: number }): number {
+  return item.basePrice ?? item.price;
+}
+
+/** Ghi đè price = basePrice để gửi đơn / hiển thị không lẫn CK tháng */
+export function cartItemForPsPricing(item: CartItem): CartItem {
+  const unit = getPsCartUnitPrice(item);
+  return { ...item, price: unit };
+}
+
 export function calcCartBaseSubtotal(items: CartItem[]): number {
-  return items.reduce((s, item) => s + (item.basePrice ?? item.price) * item.quantity, 0);
+  return items.reduce((s, item) => s + getPsCartUnitPrice(item) * item.quantity, 0);
 }
 
 export interface PsOrderTotals {

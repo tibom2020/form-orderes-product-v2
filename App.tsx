@@ -38,6 +38,7 @@ import {
   mergePsOnInvoiceNote,
   stripPsOnInvoiceNoteLines,
   buildPsOnInvoiceNoteLine,
+  cartItemForPsPricing,
 } from './utils/psOnInvoicePromo';
 import {
   computeCartGroupTotals,
@@ -524,10 +525,17 @@ const App: React.FC = () => {
     if (!psGate?.tierConfig) return;
     setIsPsOnInvoice25(checked);
     if (checked) {
+      setCart(prev => prev.map(cartItemForPsPricing));
       setNote(prev => mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine()));
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
     } else {
+      setCart(prev =>
+        prev.map(item => {
+          const catalog = PRODUCTS.find(p => p.id === item.id);
+          return catalog ? { ...item, price: catalog.price, basePrice: catalog.basePrice } : item;
+        })
+      );
       setNote(prev => stripPsOnInvoiceNoteLines(prev));
     }
   };
@@ -674,10 +682,19 @@ const App: React.FC = () => {
   };
 
   const handleAddToCart = (product: Product, quantity: number) => {
+    const line = isPsOnInvoice25 ? cartItemForPsPricing({ ...product, quantity: 0 }) : product;
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
-      if (existingItem) return prevCart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
-      return [...prevCart, { ...product, quantity }];
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id
+            ? isPsOnInvoice25
+              ? cartItemForPsPricing({ ...item, quantity: item.quantity + quantity })
+              : { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+      return [...prevCart, { ...line, quantity }];
     });
   };
 
@@ -892,13 +909,14 @@ const App: React.FC = () => {
     setCustomerCode(d.customerCode);
     setCustomerName(d.customerName);
     setCustomerAddress(d.customerAddress);
-    setCart(d.items);
+    const psDraft = !!d.isPsOnInvoice25;
+    setCart(psDraft ? d.items.map(cartItemForPsPricing) : d.items);
     setNote(d.note);
     setIsOnTopLiXi(d.isOnTopLiXi);
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
-    setIsPsOnInvoice25(!!d.isPsOnInvoice25);
+    setIsPsOnInvoice25(psDraft);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
       setIsDummyBoxLocal(true);
     }

@@ -134,9 +134,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                             {product.type}
                         </span>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {!hideMonthlyPromo && (
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase ${product.type === 'Import' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'}`}>
                                 Giá cuối Tháng: {formatCurrency(giaCuoiThang)}
                             </span>
+                            )}
                             {product.originalPrice && (
                                 <span className="text-[10px] text-slate-400 line-through">
                                     {formatCurrency(product.originalPrice)}

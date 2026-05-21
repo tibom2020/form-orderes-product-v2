@@ -14,7 +14,7 @@ import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
-import { calcPsOrderTotals } from '../utils/psOnInvoicePromo';
+import { calcPsOrderTotals, getPsCartUnitPrice } from '../utils/psOnInvoicePromo';
 import type { PsCustomerGate } from '../utils/psCustomerRegistry';
 import { getDummyBoxAmountEligibility } from '../utils/dummyBoxEligibility';
 import {
@@ -47,6 +47,10 @@ interface CartItemRowProps {
     maxPayableFeeLine: number;
     monthlyDiscountPercent: number;
     isGrouped: boolean;
+    /** CK PS 25% — không hiện % CK tháng/combo trên dòng */
+    hideLineDiscount?: boolean;
+    /** Đơn giá hiển thị (basePrice khi CK PS) */
+    unitPrice?: number;
     onUpdateQuantity: (id: number, q: number) => void;
     onRemoveItem: (id: number) => void;
 }
@@ -58,9 +62,12 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
     maxPayableFeeLine,
     monthlyDiscountPercent,
     isGrouped,
+    hideLineDiscount = false,
+    unitPrice,
     onUpdateQuantity,
     onRemoveItem
 }) => {
+    const displayUnitPrice = unitPrice ?? item.price;
     const [inputValue, setInputValue] = useState(item.quantity.toString());
     const [showBmModal, setShowBmModal] = useState(false);
     const bmTiers = useMemo(() => getBmTiers(item), [item]);
@@ -101,7 +108,12 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
                     <p className="text-[9px] text-red-600 dark:text-red-400 font-bold italic mt-0.5 leading-tight">{item.note}</p>
                 )}
                 <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[9px] text-slate-400">{formatCurrency(item.price)} (VAT)</p>
+                    <p className="text-[9px] text-slate-400">
+                        {formatCurrency(displayUnitPrice)} (VAT)
+                        {hideLineDiscount && (
+                            <span className="block text-[8px] text-violet-600 dark:text-violet-300 font-bold">basePrice</span>
+                        )}
+                    </p>
                     {showBmButton && (
                         <button
                             type="button"
@@ -138,7 +150,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
             </td>
             <td className="px-2 py-2.5 text-right">
                 <p className="font-bold text-opella-green dark:text-sky-400 text-[11px]">{formatCurrency(lineTotal)}</p>
-                {monthlyDiscountPercent > 0 && (
+                {!hideLineDiscount && monthlyDiscountPercent > 0 && (
                     <p className="text-[9px] text-red-500 dark:text-red-400 font-bold italic">
                         {`CK -${(monthlyDiscountPercent * 100).toFixed(2)}%`}
                         {isGrouped && <span className="block text-[8px]">(Gộp nhóm)</span>}
@@ -606,7 +618,8 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <tr><td colSpan={5} className="text-center py-16 text-slate-400 text-sm italic">Chưa có sản phẩm nào</td></tr>
                             ) : (
                                 items.map(item => {
-                                    const basePriceLine = (item.basePrice ?? item.price) * item.quantity;
+                                    const unitPs = getPsCartUnitPrice(item);
+                                    const basePriceLine = unitPs * item.quantity;
                                     const lineCap = feeCapByItemId.get(item.id);
 
                                     if (isPsOnInvoice25) {
@@ -616,7 +629,9 @@ const Cart: React.FC<CartProps> = (props) => {
                                                 item={item}
                                                 lineTotal={basePriceLine}
                                                 maxPayableFeeLine={lineCap?.maxPayableFeeLine ?? 0}
-                                                monthlyDiscountPercent={lineCap?.monthlyDiscountPercent ?? 0}
+                                                monthlyDiscountPercent={0}
+                                                hideLineDiscount
+                                                unitPrice={unitPs}
                                                 isGrouped={false}
                                                 onUpdateQuantity={onUpdateQuantity}
                                                 onRemoveItem={onRemoveItem}

@@ -5,6 +5,7 @@ import type {
   RegisterDisplayTBQ2Payload,
   ApproveDisplayTBQ2Payload,
   CancelDisplayTBQ2Payload,
+  UpdateGoiPs25TBQ2Payload,
 } from '../types';
 import type { AiChatRequestPayload, AiChatResponse } from '../types';
 
@@ -212,6 +213,46 @@ export const submitDisplayTBQ2Approval = async (
     }
   } catch (error) {
     console.error('submitDisplayTBQ2Approval:', error);
+    return { status: 'error', message: String(error) };
+  }
+};
+
+/** Admin cập nhật cột Gói PS 25% (YES/NO) trên DANGKYTBQ2 */
+export const submitUpdateGoiPs25TBQ2 = async (
+  url: string,
+  payload: Omit<UpdateGoiPs25TBQ2Payload, 'action'>
+): Promise<{ status: string; message?: string; goiPs25?: string }> => {
+  try {
+    const body: UpdateGoiPs25TBQ2Payload = { action: 'updateGoiPs25TBQ2', ...payload };
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as {
+        status?: string;
+        ok?: boolean;
+        message?: string;
+        goiPs25?: string;
+      };
+      if (parsed.status === 'success') {
+        return { status: 'success', goiPs25: parsed.goiPs25 };
+      }
+      if (parsed.ok === true) return { status: 'success', goiPs25: parsed.goiPs25 };
+      return {
+        status: 'error',
+        message: String(parsed.message || '') || 'Cập nhật thất bại.',
+      };
+    } catch {
+      return { status: 'error', message: text?.slice(0, 200) || 'Phản hồi không hợp lệ' };
+    }
+  } catch (error) {
+    console.error('submitUpdateGoiPs25TBQ2:', error);
     return { status: 'error', message: String(error) };
   }
 };

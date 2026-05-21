@@ -10,9 +10,11 @@ import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 interface ProductCardProps {
     product: Product;
     onAddToCart: (product: Product, quantity: number) => void;
+    /** CK PS On Invoice 25% — ẩn % CK tháng, dùng basePrice */
+    hideMonthlyPromo?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMonthlyPromo = false }) => {
     const [quantity, setQuantity] = useState<number | string>(product.minOrderQuantity);
     const [error, setError] = useState('');
     const [showBmModal, setShowBmModal] = useState(false);
@@ -151,10 +153,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
 
                     <p className="text-base font-bold text-opella-green dark:text-opella-green mb-2">
                         {formatCurrency(product.basePrice ?? product.price)}
-                        <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1 uppercase">(VAT)</span>
+                        <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1 uppercase">
+                            {hideMonthlyPromo ? '(basePrice · ko CK tháng)' : '(VAT)'}
+                        </span>
                     </p>
 
-                    {product.promotion && (
+                    {product.promotion && !hideMonthlyPromo && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900 p-2 rounded mb-3">
                             <p className="text-[10px] font-bold text-red-500 dark:text-red-400 uppercase leading-tight mb-1.5">{product.promotion}</p>
 

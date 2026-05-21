@@ -65,6 +65,9 @@ function doPost(e) {
     if (data.action === "cancelDisplayTBQ2") {
       return handleCancelDisplayTBQ2(data, ss, output);
     }
+    if (data.action === "updateGoiPs25TBQ2") {
+      return handleUpdateGoiPs25TBQ2(data, ss, output);
+    }
 
     // --- ACTION: MARKETING (Upload Ảnh, Ghi URL ảnh có sẵn & Đăng Ký Gói) ---
     if (data.action === "uploadImage" || data.action === "setImageUrl" || data.action === "registerPackage") {
@@ -1272,6 +1275,61 @@ function handleRegisterDisplayTBQ2(data, ss, output) {
   });
 
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+/** Admin cập nhật cột Gói PS 25% (YES/NO) trên DANGKYTBQ2 */
+function handleUpdateGoiPs25TBQ2(data, ss, output) {
+  var empCode = String(data.employeeCode || "").trim();
+  if (empCode !== TBQ2_ADMIN_EMPLOYEE_CODE) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Chỉ admin được cập nhật Gói PS 25%." }));
+  }
+  var customerCode = String(data.customerCode || "").trim();
+  if (!customerCode) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu mã khách hàng." }));
+  }
+  var goiPs25 = String(data.goiPs25 || "").trim().toUpperCase();
+  if (goiPs25 !== "YES" && goiPs25 !== "NO") {
+    return output.setContent(JSON.stringify({ status: "error", message: "Giá trị phải là YES hoặc NO." }));
+  }
+
+  var sheet = ss.getSheetByName("DANGKYTBQ2");
+  if (!sheet) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy sheet DANGKYTBQ2." }));
+  }
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet DANGKYTBQ2 chưa có dữ liệu." }));
+  }
+  var headers = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = colIndexTBQ2_(headers, ["CustomerCode", "MaKH", "Mã KH", "Code", "customerCode"]);
+  if (codeCol < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu cột mã KH." }));
+  }
+  var goiCol = colIndexTBQ2_(headers, [
+    "Gói PS 25%",
+    "Goi PS 25%",
+    "GOI PS 25%",
+    "Gói PS25",
+    "DaDatGoiPS",
+    "On invoice PS"
+  ]);
+  if (goiCol < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet thiếu cột Gói PS 25%. Thêm cột trên DANGKYTBQ2." }));
+  }
+
+  var rowIndex = -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() === customerCode) {
+      rowIndex = r + 1;
+      break;
+    }
+  }
+  if (rowIndex < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy mã KH." }));
+  }
+
+  sheet.getRange(rowIndex, goiCol + 1).setValue(goiPs25);
+  return output.setContent(JSON.stringify({ status: "success", goiPs25: goiPs25 }));
 }
 
 function handleApproveDisplayTBQ2(data, ss, output) {

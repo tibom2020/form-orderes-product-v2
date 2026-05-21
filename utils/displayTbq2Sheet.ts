@@ -27,6 +27,8 @@ export interface DangKyTbq2RowView {
   saleT5: string;
   saleT6: string;
   saleQ2: string;
+  /** Cột sheet Gói PS 25% — YES/NO (gạt tay trên DANGKYTBQ2) */
+  goiPs25: string;
   note: string;
   trangThai: string;
   pheDuyet: string;
@@ -34,7 +36,40 @@ export interface DangKyTbq2RowView {
   raw: Record<string, unknown>;
 }
 
-function pickCell(row: Record<string, unknown>, keys: string[]): string {
+/** Header cột Gói PS 25% trên DANGKYTBQ2 */
+export const GOI_PS25_HEADER_ALIASES = [
+  'Gói PS 25%',
+  'Goi PS 25%',
+  'GOI PS 25%',
+  'Gói PS25',
+  'DaDatGoiPS',
+  'On invoice PS',
+] as const;
+
+/** Ghi YES/NO vào object dòng sheet (sau khi Apps Script cập nhật) */
+export function setGoiPs25CellInRow(
+  row: Record<string, unknown>,
+  value: 'YES' | 'NO'
+): Record<string, unknown> {
+  const next = { ...row };
+  const rowKeys = Object.keys(next);
+  let set = false;
+  for (const alias of GOI_PS25_HEADER_ALIASES) {
+    if (alias in next) {
+      next[alias] = value;
+      set = true;
+    }
+    const found = rowKeys.find(rk => rk.trim().toLowerCase() === alias.trim().toLowerCase());
+    if (found) {
+      next[found] = value;
+      set = true;
+    }
+  }
+  if (!set) next['Gói PS 25%'] = value;
+  return next;
+}
+
+function pickCell(row: Record<string, unknown>, keys: readonly string[]): string {
   const rowKeys = Object.keys(row);
   for (const k of keys) {
     if (row[k] != null && String(row[k]).trim() !== '') return String(row[k]).trim();
@@ -96,6 +131,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
     saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
     saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
     saleQ2: pickCell(row, ['Sale Q2', 'SaleQ2', 'Q2 Sale', 'Q2Sale', 'Q2_Sale']),
+    goiPs25: pickCell(row, GOI_PS25_HEADER_ALIASES),
     note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
     trangThai: pickCell(row, ['TrangThai', 'Trạng thái', 'Status']),
     pheDuyet: pickCell(row, ['PheDuyet', 'Phê duyệt', 'Phe duyet']),

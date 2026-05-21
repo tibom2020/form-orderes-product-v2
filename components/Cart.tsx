@@ -14,7 +14,16 @@ import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+import { calcPsOrderTotals } from '../utils/psOnInvoicePromo';
+import type { PsCustomerGate } from '../utils/psCustomerRegistry';
 import { getDummyBoxAmountEligibility } from '../utils/dummyBoxEligibility';
+import {
+    computeCartGroupTotals,
+    computeMaxPayableFees,
+    computeAppliedRebates,
+    MAX_PRODUCT_DISCOUNT_RATIO,
+    MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
+} from '../utils/orderDiscountCaps';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
     DUMMY_BOX_DISCOUNT,
@@ -206,6 +215,10 @@ interface CartProps {
     onViewCustomerDetail?: (code: string) => void;
     /** Tra từ DummyBoxRecord (+ BsT3): trong danh sách & trạng thái GoiLocal/GoiImport */
     dummyBoxListGate?: DummyBoxListGate;
+    /** Perfect Store — CK On Invoice 25% */
+    psGate?: PsCustomerGate | null;
+    isPsOnInvoice25?: boolean;
+    onIsPsOnInvoice25Change?: (checked: boolean) => void;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
@@ -222,7 +235,20 @@ const Cart: React.FC<CartProps> = (props) => {
         onExportSales,
         onViewCustomerDetail,
         dummyBoxListGate,
+        psGate = null,
+        isPsOnInvoice25 = false,
+        onIsPsOnInvoice25Change,
     } = props;
+
+    const psTierLabel =
+        psGate?.tierLabel ||
+        (currentSalesRecord?.FinalStoreTypeQ2?.trim() || '') ||
+        '—';
+
+    const psTotals = useMemo(() => {
+        if (!isPsOnInvoice25 || !psGate?.tierConfig) return null;
+        return calcPsOrderTotals(items, psGate.tierConfig);
+    }, [isPsOnInvoice25, psGate, items]);
 
     const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -256,29 +282,14 @@ const Cart: React.FC<CartProps> = (props) => {
     };
     // --------------------
 
-    // 1. Tính tổng doanh số (chưa VAT) của nhóm Telfast đặc biệt
-    const telfastGroupTotal = useMemo(() => {
-        return items
-            .filter(item => TELFAST_GROUP_IDS.includes(item.id))
-            .reduce((sum, item) => sum + item.price * item.quantity, 0);
-    }, [items]);
+    const { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal } = useMemo(
+        () => computeCartGroupTotals(items),
+        [items]
+    );
 
-    // 1b. Tổng basePrice nhóm Ostelin (130V, 275V, 30V) — KM theo basePrice
-    const ostelinGroupBaseTotal = useMemo(() => {
-        return items
-            .filter(item => OSTELIN_GROUP_IDS.includes(item.id))
-            .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
-    }, [items]);
-
-    // 1c. Tổng basePrice nhóm ACEMUC (200 viên / 200 gói / Kids) — mốc 300k / 450k theo tổng base
-    const acemucGroupBaseTotal = useMemo(() => {
-        return items
-            .filter(item => ACEMUC_GROUP_IDS.includes(item.id))
-            .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
-    }, [items]);
-
-    // 2. Tính Tạm tính tổng (đã trừ chiết khấu bậc/nhóm của từng dòng)
+    // 2. Tính Tạm tính tổng (đã trừ chiết khấu bậc/nhóm của từng dòng) — hoặc basePrice khi CK PS 25%
     const totalAmount = useMemo(() => {
+        if (psTotals) return psTotals.baseSubtotal;
         return items.reduce((sum, item) => {
             const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
             const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
@@ -298,10 +309,10 @@ const Cart: React.FC<CartProps> = (props) => {
             );
             return sum + lineTotal;
         }, 0);
-    }, [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal]);
+    }, [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal, psTotals]);
 
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
-    const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
+    const onTopLiXiDiscount = isPsOnInvoice25 ? 0 : isOnTopLiXi ? 250000 : 0;
 
     const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = useMemo(
         () => getDummyBoxAmountEligibility(items),
@@ -363,62 +374,35 @@ const Cart: React.FC<CartProps> = (props) => {
         (canToggleDummyBoxLocal && isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
         (canToggleDummyBoxImport && isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
+    const psDiscountGross = psTotals?.discountGross ?? 0;
+
     const localRebates = rebates.filter(r => r.Group === 'LOCAL');
     const importRebates = rebates.filter(r => r.Group === 'IMPORT');
 
-    const { totalMaxPayableFeeLocal, totalMaxPayableFeeImport } = useMemo(() => {
-        let localFee = 0;
-        let importFee = 0;
-        items.forEach(item => {
-            const basePriceLine = (item.basePrice ?? 0) * item.quantity;
-            if (basePriceLine > 0) {
-                const maxTotalDiscountLine = basePriceLine * 0.5;
+    const maxPayableFees = useMemo(
+        () =>
+            computeMaxPayableFees(items, { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal }, {
+                psDiscountGross: isPsOnInvoice25 ? psDiscountGross : 0,
+                maxDiscountRatio: isPsOnInvoice25
+                    ? MAX_PRODUCT_DISCOUNT_RATIO
+                    : MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
+                excludeMonthlyFromCap: isPsOnInvoice25,
+            }),
+        [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal, isPsOnInvoice25, psDiscountGross]
+    );
 
-                const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-                const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
-                const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
+    const feeCapByItemId = useMemo(() => {
+        const m = new Map<number, (typeof maxPayableFees.lines)[0]>();
+        maxPayableFees.lines.forEach(l => m.set(l.itemId, l));
+        return m;
+    }, [maxPayableFees.lines]);
 
-                let compareValue = isTelfastGroup ? telfastGroupTotal
-                    : isOstelinGroup ? ostelinGroupBaseTotal
-                    : isAcemucGroup ? acemucGroupBaseTotal
-                    : item.price * item.quantity;
+    const { totalMaxPayableFeeLocal, totalMaxPayableFeeImport } = maxPayableFees;
 
-                const monthlyDiscountPercent = getDiscountPercent(
-                    item.promotion,
-                    item.quantity,
-                    compareValue
-                );
-                const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
-                const maxPayableFeeLine = maxTotalDiscountLine - monthlyDiscountAmount;
-
-                // Đảm bảo không âm
-                const finalFee = Math.max(0, maxPayableFeeLine);
-
-                if (item.type === 'Local') localFee += finalFee;
-                else importFee += finalFee;
-            }
-        });
-        return { totalMaxPayableFeeLocal: localFee, totalMaxPayableFeeImport: importFee };
-    }, [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal]);
-
-    const { rebateDiscount, selectedLocalRebateTotal, selectedImportRebateTotal } = useMemo(() => {
-        const selectedLocalRebateAmount = localRebates
-            .filter(r => selectedRebateIds.includes(r["PromotionID#program"]))
-            .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
-
-        const selectedImportRebateAmount = importRebates
-            .filter(r => selectedRebateIds.includes(r["PromotionID#program"]))
-            .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
-
-        const actualLocalRebate = Math.min(selectedLocalRebateAmount, totalMaxPayableFeeLocal);
-        const actualImportRebate = Math.min(selectedImportRebateAmount, totalMaxPayableFeeImport);
-
-        return {
-            rebateDiscount: actualLocalRebate + actualImportRebate,
-            selectedLocalRebateTotal: selectedLocalRebateAmount,
-            selectedImportRebateTotal: selectedImportRebateAmount,
-        };
-    }, [localRebates, importRebates, selectedRebateIds, totalMaxPayableFeeLocal, totalMaxPayableFeeImport]);
+    const { rebateDiscount, selectedLocalRebateTotal, selectedImportRebateTotal } = useMemo(
+        () => computeAppliedRebates(rebates, selectedRebateIds, maxPayableFees),
+        [rebates, selectedRebateIds, maxPayableFees]
+    );
 
     // --- Submit Validation ---
     const localProductCount = items.filter(i => i.type === 'Local').length;
@@ -431,7 +415,9 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const feeOverNeedsNote = (localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote);
     const rebateWithoutProducts = (selectedLocalRebateTotal > 0 && localProductCount < 1) || (selectedImportRebateTotal > 0 && importProductCount < 1);
-    const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts;
+    const psSubmitBlocked =
+        isPsOnInvoice25 && psTotals != null && !psTotals.eligible;
+    const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts || psSubmitBlocked;
 
     const showSubmitSuccessUi = useMemo(
         () => /gửi đơn thành công/i.test(successMessage ?? ''),
@@ -443,7 +429,9 @@ const Cart: React.FC<CartProps> = (props) => {
         onSubmitOrder();
     };
 
-    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
+    const finalAmount = psTotals
+        ? Math.max(0, psTotals.finalAmount - rebateDiscount - dummyBoxDiscount)
+        : Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col overflow-hidden h-[calc(100vh-190px)] transition-colors duration-200">
@@ -529,6 +517,34 @@ const Cart: React.FC<CartProps> = (props) => {
                         <textarea value={customerAddress} onChange={(e) => onCustomerAddressChange(e.target.value)} className="w-full mt-0.5 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-[11px] outline-none italic text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 resize-none" rows={1} placeholder="Địa chỉ..."></textarea>
                     </div>
 
+                    {customerCode.trim() && (
+                        <div className="rounded-lg border border-violet-200/80 dark:border-violet-800/60 bg-violet-50/80 dark:bg-violet-950/30 px-2.5 py-2 space-y-1.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-[10px] font-bold text-violet-900 dark:text-violet-200 uppercase">Loại PS</span>
+                                <span className="text-sm font-black text-violet-800 dark:text-violet-100">{psTierLabel}</span>
+                            </div>
+                            {psGate?.canShowCk25 && onIsPsOnInvoice25Change && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isPsOnInvoice25}
+                                        onChange={e => onIsPsOnInvoice25Change(e.target.checked)}
+                                        className="h-4 w-4 rounded border-red-400 text-red-600 focus:ring-red-500"
+                                    />
+                                    <span className="text-[11px] font-black text-red-600 dark:text-red-400">
+                                        CK giảm 25% (On Invoice PS)
+                                    </span>
+                                </label>
+                            )}
+                            {isPsOnInvoice25 && psTotals && (
+                                <p className={`text-[10px] font-bold ${psTotals.eligible ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                                    Đơn tối thiểu {formatCurrency(psTotals.minOrder)} · Hiện {formatCurrency(psTotals.baseSubtotal)}
+                                    {psTotals.eligible ? ` · Giảm ${formatCurrency(psTotals.discountGross)}` : ' · Chưa đủ điều kiện'}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {rebates.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {localRebates.length > 0 && (
@@ -590,25 +606,39 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <tr><td colSpan={5} className="text-center py-16 text-slate-400 text-sm italic">Chưa có sản phẩm nào</td></tr>
                             ) : (
                                 items.map(item => {
-                                    const basePriceLine = (item.basePrice ?? 0) * item.quantity;
-                                    const maxTotalDiscountLine = basePriceLine * 0.5;
+                                    const basePriceLine = (item.basePrice ?? item.price) * item.quantity;
+                                    const lineCap = feeCapByItemId.get(item.id);
+
+                                    if (isPsOnInvoice25) {
+                                        return (
+                                            <CartItemRow
+                                                key={item.id}
+                                                item={item}
+                                                lineTotal={basePriceLine}
+                                                maxPayableFeeLine={lineCap?.maxPayableFeeLine ?? 0}
+                                                monthlyDiscountPercent={lineCap?.monthlyDiscountPercent ?? 0}
+                                                isGrouped={false}
+                                                onUpdateQuantity={onUpdateQuantity}
+                                                onRemoveItem={onRemoveItem}
+                                            />
+                                        );
+                                    }
 
                                     const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
                                     const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
                                     const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
 
-                                    let compareValue = isTelfastGroup ? telfastGroupTotal
+                                    const compareValue = isTelfastGroup ? telfastGroupTotal
                                         : isOstelinGroup ? ostelinGroupBaseTotal
                                         : isAcemucGroup ? acemucGroupBaseTotal
                                         : item.price * item.quantity;
 
-                                    const monthlyDiscountPercent = getDiscountPercent(
+                                    const monthlyDiscountPercent = lineCap?.monthlyDiscountPercent ?? getDiscountPercent(
                                         item.promotion,
                                         item.quantity,
                                         compareValue
                                     );
-                                    const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
-                                    const maxPayableFeeLine = Math.max(0, maxTotalDiscountLine - monthlyDiscountAmount);
+                                    const maxPayableFeeLine = lineCap?.maxPayableFeeLine ?? 0;
 
                                     const lineTotal = calculateLineTotal(
                                         item.price,
@@ -692,8 +722,14 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isOnTopLiXi || (isDummyBoxLocal && canToggleDummyBoxLocal) || (isDummyBoxImport && canToggleDummyBoxImport) || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
+                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || (isDummyBoxLocal && canToggleDummyBoxLocal) || (isDummyBoxImport && canToggleDummyBoxImport) || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
+                            {isPsOnInvoice25 && psDiscountGross > 0 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
+                                    <span>- CK PS On Invoice 25% ({psGate?.tierLabel}):</span>
+                                    <span>-{formatCurrency(psDiscountGross)}</span>
+                                </div>
+                            )}
                             {isOnTopLiXi && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- Trừ Ontop lì xì:</span>
@@ -725,6 +761,18 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {psSubmitBlocked && (
+                        <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 py-1">
+                            Chưa đạt đơn tối thiểu theo loại PS — không thể gửi đơn với CK 25%.
+                        </p>
+                    )}
+
+                    {isPsOnInvoice25 && (
+                        <p className="text-[9px] text-violet-700 dark:text-violet-300 font-bold py-0.5">
+                            CK PS + trả phí: tối đa 49% CK/sản phẩm (basePrice); phí trả theo cột Phí Trả Max.
+                        </p>
                     )}
 
                     {/* Phí Max + Tổng Phí Cần Trả - 2 dòng (Local & Import) */}

@@ -232,6 +232,8 @@ export interface Order {
   isDummyBoxLocal?: boolean;  // CTKM OPELLA: DummyBox Local -150k (đủ điều kiện mới chọn)
   isDummyBoxImport?: boolean; // CTKM OPELLA: DummyBox Import -150k (đủ điều kiện mới chọn)
   isCalciPlusPack476?: boolean; // CORBIERE CALCIUM PLUS: mỗi gói 21 hộp giảm 4.76%
+  /** CTKM Perfect Store On Invoice 25% — basePrice, giảm cố định theo tier */
+  isPsOnInvoice25?: boolean;
   appliedRebates?: string[];
   createdAt: number;
   status: 'draft' | 'sent';
@@ -401,4 +403,13 @@ export interface CancelDisplayTBQ2Payload {
   employeeCode: string;
   employeeName: string;
   customerCode: string;
+}
+
+/** POST action updateGoiPs25TBQ2 — admin gạt YES/NO cột Gói PS 25% */
+export interface UpdateGoiPs25TBQ2Payload {
+  action: 'updateGoiPs25TBQ2';
+  employeeCode: string;
+  employeeName: string;
+  customerCode: string;
+  goiPs25: 'YES' | 'NO';
 }

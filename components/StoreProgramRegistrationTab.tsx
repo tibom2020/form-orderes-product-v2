@@ -7,9 +7,12 @@ import {
   repMatchesEmployee,
   buildSaleT4ByCustomerCodeMap,
   lookupSaleT4Vnd,
+  setGoiPs25CellInRow,
   type DangKyTbq2RowView,
 } from '../utils/displayTbq2Sheet';
-import { fetchDataFromSheet } from '../services/googleSheetService';
+import { isGoiPs25No, isGoiPs25Yes } from '../utils/psOnInvoicePromo';
+import { fetchDataFromSheet, submitUpdateGoiPs25TBQ2 } from '../services/googleSheetService';
+import GoiPs25Toggle from './GoiPs25Toggle';
 import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2, SHEET_DOANH_SO } from '../constants';
 import CustomerSalesNoticeContent from './CustomerSalesNoticeContent';
 import type { SalesRecord, Rebate } from '../types';
@@ -414,6 +417,8 @@ interface StoreProgramRegistrationTabProps {
   isAdmin?: boolean;
   /** Sheet REBATE — phí Import/Local còn lại theo KH */
   rebates?: Rebate[];
+  /** Chuyển sang tab Đặt hàng và chọn mã KH (Code Giga) */
+  onStartOrder?: (customerCode: string) => void;
 }
 
 const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = ({
@@ -421,6 +426,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   scriptUrl,
   isAdmin = false,
   rebates = [],
+  onStartOrder,
 }) => {
   const [sheetRows, setSheetRows] = useState<Record<string, unknown>[]>([]);
   const [budgetRows, setBudgetRows] = useState<Record<string, unknown>[]>([]);
@@ -442,8 +448,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
   /** Lọc KH theo trạng thái đạt/rớt chi tiêu tối thiểu tháng hiện tại */
   const [monthAchievementFilter, setMonthAchievementFilter] = useState<'achieved' | 'missed' | null>(null);
+  /** Lọc theo cột sheet Gói PS 25% */
+  const [goiPs25Filter, setGoiPs25Filter] = useState<'all' | 'no' | 'yes'>('all');
   /** KH được chọn để xem Thông tin doanh số */
   const [selectedSalesRecord, setSelectedSalesRecord] = useState<SalesRecord | null>(null);
+  /** Mã KH đang ghi Gói PS 25% lên sheet */
+  const [goiPs25UpdatingCode, setGoiPs25UpdatingCode] = useState<string | null>(null);
 
   const normalizedRows = useMemo(
     () => sheetRows.map(r => normalizeDangKyTbq2Row(r as Record<string, unknown>)),
@@ -531,6 +541,17 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
   const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
 
+  const goiPs25Stats = useMemo(() => {
+    let daDat = 0;
+    let chuaDat = 0;
+    myRows.forEach(r => {
+      if (!isRegisteredRow(r)) return;
+      if (isGoiPs25Yes(r.goiPs25)) daDat += 1;
+      else if (isGoiPs25No(r.goiPs25)) chuaDat += 1;
+    });
+    return { daDat, chuaDat };
+  }, [myRows]);
+
   const repTierColumnTotals = useMemo(() => {
     const byTier = {} as Record<StoreTierId, number>;
     STORE_TIER_CONFIGS.forEach(t => {
@@ -564,6 +585,11 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         const achieved = monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
         return monthAchievementFilter === 'achieved' ? achieved : !achieved;
       });
+    }
+    if (goiPs25Filter === 'no') {
+      rows = rows.filter(r => isRegisteredRow(r) && isGoiPs25No(r.goiPs25));
+    } else if (goiPs25Filter === 'yes') {
+      rows = rows.filter(r => isRegisteredRow(r) && isGoiPs25Yes(r.goiPs25));
     }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
@@ -600,7 +626,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         saleT4Search.includes(q)
       );
     });
-  }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, currentMonthKey, saleT4ByCustomerCode]);
+  }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, goiPs25Filter, currentMonthKey, saleT4ByCustomerCode]);
 
   /** Một Rep duy nhất trong kết quả lọc → cột Rep thừa, ẩn đi */
   const hideRepColumn = useMemo(() => {
@@ -644,6 +670,37 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     void loadTbq2Data('initial');
   }, [loadTbq2Data]);
 
+  const handleGoiPs25Toggle = useCallback(
+    async (customerCode: string, next: 'YES' | 'NO') => {
+      if (!isAdmin) return;
+      const code = customerCode.trim();
+      if (!code) return;
+      setGoiPs25UpdatingCode(code);
+      try {
+        const res = await submitUpdateGoiPs25TBQ2(scriptUrl, {
+          employeeCode: currentEmployee.code,
+          employeeName: currentEmployee.name,
+          customerCode: code,
+          goiPs25: next,
+        });
+        if (res.status === 'success') {
+          setSheetRows(prev =>
+            prev.map(r => {
+              const rowCode = normalizeDangKyTbq2Row(r).customerCode.trim();
+              if (rowCode !== code) return r;
+              return setGoiPs25CellInRow(r, next);
+            })
+          );
+        } else {
+          window.alert(res.message || 'Cập nhật Gói PS 25% thất bại.');
+        }
+      } finally {
+        setGoiPs25UpdatingCode(null);
+      }
+    },
+    [isAdmin, scriptUrl, currentEmployee.code, currentEmployee.name]
+  );
+
   useEffect(() => {
     if (!imagePreviewModal) return;
     const onKey = (e: KeyboardEvent) => {
@@ -681,7 +738,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q2 (không hiển thị Q1 / trạng thái / thao tác sheet); có thể ẩn Rep */
-  const tableColSpan = hideRepColumn ? 21 : 22;
+  const tableColSpan = hideRepColumn ? 22 : 23;
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -893,8 +950,47 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   </button>
                 )}
               </div>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-[10px] font-bold uppercase tracking-tight text-[#404945] dark:text-slate-400">
+                  Gói PS 25%:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setGoiPs25Filter('all')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    goiPs25Filter === 'all'
+                      ? 'bg-[#003629] text-white border-[#003629] shadow-sm'
+                      : 'bg-white text-[#003629] border-[#c0c9c3]/50 hover:bg-[#edeeed] dark:bg-slate-800 dark:text-[#8abda9]'
+                  }`}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGoiPs25Filter('no')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    goiPs25Filter === 'no'
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-200'
+                  }`}
+                >
+                  Chưa đặt ({goiPs25Stats.chuaDat})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGoiPs25Filter('yes')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    goiPs25Filter === 'yes'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-200'
+                  }`}
+                >
+                  Đã đặt ({goiPs25Stats.daDat})
+                </button>
+              </div>
               <p className="text-[10px] text-[#404945] dark:text-slate-500 mt-2">
                 Bấm thẻ tier để lọc KH đã đăng ký theo cột FinalStoreTypeQ2; bấm lại thẻ đang chọn để bỏ lọc.
+                Cột <strong>Gói PS 25%</strong>: admin gạt YES/NO (lưu sheet DANGKYTBQ2); user chỉ xem.
               </p>
             </section>
 
@@ -985,6 +1081,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           title="Incentives theo FinalStoreTypeQ2 (sheet tiêu chí CT trưng bày)"
                         >
                           Incentives
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[4.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Gói PS 25% — admin gạt YES/NO"
+                        >
+                          Gói PS 25%
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-50/90 dark:bg-blue-950/35 border-r border-blue-200/50 dark:border-blue-900/35 leading-tight"
@@ -1131,6 +1233,27 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   </>
                                 );
                               })()}
+                              <td
+                                className={`${base} text-center ${tc.posm} ${tc.posmHover}`}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {isRegisteredRow(row) ? (
+                                  <div className="flex justify-center">
+                                    <GoiPs25Toggle
+                                      value={row.goiPs25}
+                                      disabled={!isAdmin}
+                                      loading={goiPs25UpdatingCode === row.customerCode.trim()}
+                                      onToggle={
+                                        isAdmin
+                                          ? next => void handleGoiPs25Toggle(row.customerCode, next)
+                                          : undefined
+                                      }
+                                    />
+                                  </div>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
                               {(() => {
                                 const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0 };
                                 return (
@@ -1445,7 +1568,21 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                 employeeName={currentEmployee.name}
               />
             </div>
-            <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end">
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-wrap justify-end gap-2">
+              {onStartOrder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code = String(selectedSalesRecord.CustomerCode ?? '').trim();
+                    if (!code) return;
+                    onStartOrder(code);
+                    setSelectedSalesRecord(null);
+                  }}
+                  className="px-6 py-2 rounded-xl text-sm font-bold bg-opella-green text-white hover:opacity-90 active:scale-95 transition-all shadow-md"
+                >
+                  Đặt hàng
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedSalesRecord(null)}

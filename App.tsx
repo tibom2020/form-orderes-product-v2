@@ -28,9 +28,24 @@ import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitReba
 import { getOrders, saveOrders } from './utils/storage';
 import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
-import { getInitials } from './utils/formatters';
+import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
+import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
+import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
+import {
+  calcPsOrderTotals,
+  mergePsOnInvoiceNote,
+  stripPsOnInvoiceNoteLines,
+  buildPsOnInvoiceNoteLine,
+} from './utils/psOnInvoicePromo';
+import {
+  computeCartGroupTotals,
+  computeMaxPayableFees,
+  computeAppliedRebates,
+  MAX_PRODUCT_DISCOUNT_RATIO,
+  MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
+} from './utils/orderDiscountCaps';
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
@@ -81,6 +96,10 @@ const App: React.FC = () => {
   const [isDummyBoxLocal, setIsDummyBoxLocal] = useState(false);
   const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
   const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
+  const [isPsOnInvoice25, setIsPsOnInvoice25] = useState(false);
+  const [psCustomerByCode, setPsCustomerByCode] = useState(
+    () => new Map<string, import('./utils/psCustomerRegistry').PsCustomerGate>()
+  );
 
   const [selectedRebateIds, setSelectedRebateIds] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Order[]>([]);
@@ -223,8 +242,13 @@ const App: React.FC = () => {
           ...s,
           FinalStoreTypeQ2: byCode.get(String(s.CustomerCode || '').trim()) || '',
         }));
+        const normalizedDk = (dangKyRows || []).map(r =>
+          normalizeDangKyTbq2Row(r as Record<string, unknown>)
+        );
+        setPsCustomerByCode(buildPsCustomerMap(normalizedDk));
       } catch (e) {
         console.warn("DANGKYTBQ2 sheet load failed (optional sheet)", e);
+        setPsCustomerByCode(new Map());
       }
       setAllSalesRecords(salesWithTbQ2);
       setMarketingData(marketing);
@@ -433,6 +457,7 @@ const App: React.FC = () => {
     setIsDummyBoxLocal(false);
     setIsDummyBoxImport(false);
     setIsCalciPlusPack476(false);
+    setIsPsOnInvoice25(false);
     setSelectedRebateIds([]);
     setActiveDraftId(null);
   }
@@ -469,6 +494,36 @@ const App: React.FC = () => {
     setIsDummyBoxImport(checked);
     toggleNoteLine('DummyBox Import -150k', checked);
   };
+  const psGate = useMemo(
+    () => lookupPsCustomerGate(psCustomerByCode, customerCode),
+    [psCustomerByCode, customerCode]
+  );
+
+  useEffect(() => {
+    if (!isPsOnInvoice25) return;
+    if (!psGate?.canShowCk25) {
+      setIsPsOnInvoice25(false);
+      setNote(prev => stripPsOnInvoiceNoteLines(prev));
+    }
+  }, [psGate?.canShowCk25, customerCode, isPsOnInvoice25]);
+
+  useEffect(() => {
+    if (!isPsOnInvoice25 || !psGate?.tierConfig) return;
+    setNote(prev => mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine()));
+  }, [cart, isPsOnInvoice25, psGate?.tierConfig]);
+
+  const handlePsOnInvoice25Toggle = (checked: boolean) => {
+    if (!psGate?.tierConfig) return;
+    setIsPsOnInvoice25(checked);
+    if (checked) {
+      setNote(prev => mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine()));
+      setIsOnTopLiXi(false);
+      setIsCalciPlusPack476(false);
+    } else {
+      setNote(prev => stripPsOnInvoiceNoteLines(prev));
+    }
+  };
+
   const handleCalciPlusPack476Toggle = (checked: boolean) => {
     setIsCalciPlusPack476(checked);
     setNote(prevNote => {
@@ -627,57 +682,64 @@ const App: React.FC = () => {
 
 
   const createOrderObject = (): Omit<Order, 'id' | 'createdAt' | 'status'> => {
-    const telfastGroupTotal = cart
-      .filter(item => TELFAST_GROUP_IDS.includes(item.id))
-      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
 
-    const ostelinGroupBaseTotal = cart
-      .filter(item => OSTELIN_GROUP_IDS.includes(item.id))
-      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    const groupTotals = computeCartGroupTotals(cart);
+    const { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal } = groupTotals;
 
-    const acemucGroupBaseTotal = cart
-      .filter(item => ACEMUC_GROUP_IDS.includes(item.id))
-      .reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
+    const psTotalsForOrder =
+      isPsOnInvoice25 && psGate?.tierConfig
+        ? calcPsOrderTotals(cart, psGate.tierConfig)
+        : null;
 
-    let totalMaxPayableFeeLocal = 0;
-    let totalMaxPayableFeeImport = 0;
-
-    cart.forEach(item => {
-      const basePriceLine = (item.basePrice ?? 0) * item.quantity;
-      if (basePriceLine > 0) {
-        const maxTotalDiscountLine = basePriceLine * 0.5;
-
-        const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-        const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
-        const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
-        let compareValue = isTelfastGroup ? telfastGroupTotal
-          : isOstelinGroup ? ostelinGroupBaseTotal
-          : isAcemucGroup ? acemucGroupBaseTotal
-          : item.price * item.quantity;
-
-        const monthlyDiscountPercent = getDiscountPercent(
-          item.promotion,
-          item.quantity,
-          compareValue,
-          item.id
-        );
-        const monthlyDiscountAmount = basePriceLine * monthlyDiscountPercent;
-        const maxPayableFeeLine = Math.max(0, maxTotalDiscountLine - monthlyDiscountAmount);
-
-        if (item.type === 'Local') totalMaxPayableFeeLocal += maxPayableFeeLine;
-        else totalMaxPayableFeeImport += maxPayableFeeLine;
-      }
+    const maxPayableFees = computeMaxPayableFees(cart, groupTotals, {
+      psDiscountGross: psTotalsForOrder?.discountGross ?? 0,
+      maxDiscountRatio: psTotalsForOrder
+        ? MAX_PRODUCT_DISCOUNT_RATIO
+        : MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
+      excludeMonthlyFromCap: !!psTotalsForOrder,
     });
 
-    const localRebates = currentCustomerRebates.filter(r => r.Group === 'LOCAL' && selectedRebateIds.includes(r["PromotionID#program"]));
-    const importRebates = currentCustomerRebates.filter(r => r.Group === 'IMPORT' && selectedRebateIds.includes(r["PromotionID#program"]));
+    const { rebateDiscount: totalRebateDiscount } = computeAppliedRebates(
+      currentCustomerRebates,
+      selectedRebateIds,
+      maxPayableFees
+    );
 
-    const availableLocalRebate = localRebates.reduce((sum, r) => sum + Number(r.RemainAmount), 0);
-    const availableImportRebate = importRebates.reduce((sum, r) => sum + Number(r.RemainAmount), 0);
+    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxAmountEligibility(cart);
+    const effectiveDummyBoxLocal =
+      dummyBoxListGate.inList &&
+      eligibleDummyBoxLocal &&
+      !dummyBoxListGate.goiLocalRegistered &&
+      isDummyBoxLocal;
+    const effectiveDummyBoxImport =
+      dummyBoxListGate.inList &&
+      eligibleDummyBoxImport &&
+      !dummyBoxListGate.goiImportRegistered &&
+      isDummyBoxImport;
+    const dummyBoxDiscount =
+      (effectiveDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
+      (effectiveDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
 
-    const usedLocalRebate = Math.min(availableLocalRebate, totalMaxPayableFeeLocal);
-    const usedImportRebate = Math.min(availableImportRebate, totalMaxPayableFeeImport);
-    const totalRebateDiscount = usedLocalRebate + usedImportRebate;
+    if (psTotalsForOrder) {
+      return {
+        customerCode,
+        customerName,
+        customerAddress,
+        note,
+        items: cart,
+        isOnTopLiXi: false,
+        isDummyBox: effectiveDummyBoxLocal || effectiveDummyBoxImport,
+        isDummyBoxLocal: effectiveDummyBoxLocal,
+        isDummyBoxImport: effectiveDummyBoxImport,
+        isCalciPlusPack476: false,
+        isPsOnInvoice25: true,
+        appliedRebates: selectedRebateIds,
+        totalAmount: psTotalsForOrder.baseSubtotal,
+        finalAmount: Math.max(0, psTotalsForOrder.finalAmount - totalRebateDiscount - dummyBoxDiscount),
+        totalSales,
+      };
+    }
 
     const totalAmount = cart.reduce((sum, item) => {
       const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
@@ -697,21 +759,7 @@ const App: React.FC = () => {
       );
     }, 0);
 
-    const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
-    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxAmountEligibility(cart);
-    const effectiveDummyBoxLocal =
-      dummyBoxListGate.inList &&
-      eligibleDummyBoxLocal &&
-      !dummyBoxListGate.goiLocalRegistered &&
-      isDummyBoxLocal;
-    const effectiveDummyBoxImport =
-      dummyBoxListGate.inList &&
-      eligibleDummyBoxImport &&
-      !dummyBoxListGate.goiImportRegistered &&
-      isDummyBoxImport;
-    const dummyBoxDiscount =
-      (effectiveDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) + (effectiveDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
     const calciPlusPack476Discount = isCalciPlusPack476
       ? cart
           .filter((i) => PACK_476_PRODUCT_IDS.includes(i.id))
@@ -751,6 +799,7 @@ const App: React.FC = () => {
       isDummyBoxLocal: effectiveDummyBoxLocal,
       isDummyBoxImport: effectiveDummyBoxImport,
       isCalciPlusPack476,
+      isPsOnInvoice25: false,
       appliedRebates: selectedRebateIds,
       totalAmount, finalAmount, totalSales,
       ostelin60VPackages: ostelin60VPackages > 0 ? ostelin60VPackages : undefined,
@@ -772,6 +821,15 @@ const App: React.FC = () => {
 
   const handleSubmitOrder = async () => {
     if (!customerCode || cart.length === 0 || isLoading) return;
+    if (isPsOnInvoice25 && psGate?.tierConfig) {
+      const psTotals = calcPsOrderTotals(cart, psGate.tierConfig);
+      if (!psTotals.eligible) {
+        alert(
+          `Đơn chưa đạt mức tối thiểu ${psGate.tierLabel}: cần ${formatCurrency(psTotals.minOrder)} (chưa VAT, basePrice). Hiện tại: ${formatCurrency(psTotals.baseSubtotal)}.`
+        );
+        return;
+      }
+    }
     setIsLoading(true);
     const orderObj = createOrderObject();
 
@@ -832,6 +890,7 @@ const App: React.FC = () => {
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
+    setIsPsOnInvoice25(!!d.isPsOnInvoice25);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
       setIsDummyBoxLocal(true);
     }
@@ -1344,7 +1403,14 @@ const App: React.FC = () => {
             <div className="flex flex-col-reverse lg:flex-row gap-6 mt-2">
               <div className="lg:w-2/3 space-y-4 lg:order-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredProducts.map(p => <ProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
+                  {filteredProducts.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onAddToCart={handleAddToCart}
+                      hideMonthlyPromo={isPsOnInvoice25}
+                    />
+                  ))}
                 </div>
               </div>
               <div className="lg:w-1/3 lg:order-2">
@@ -1371,6 +1437,9 @@ const App: React.FC = () => {
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
+                    psGate={psGate}
+                    isPsOnInvoice25={isPsOnInvoice25}
+                    onIsPsOnInvoice25Change={handlePsOnInvoice25Toggle}
                   />
                 </div>
               </div>
@@ -1412,6 +1481,7 @@ const App: React.FC = () => {
             scriptUrl={GOOGLE_SCRIPT_URL}
             isAdmin={loggedInEmployee?.code === ADMIN_CODE}
             rebates={allRebates}
+            onStartOrder={handleCustomerSelectFromDashboard}
           />
         )}
 

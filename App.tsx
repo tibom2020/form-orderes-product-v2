@@ -31,6 +31,7 @@ import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './util
 import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
+import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate } from './utils/dummyBoxGate';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
 import {
@@ -631,33 +632,24 @@ const App: React.FC = () => {
     return allRebates.filter(r => String(r.code) === codeStr);
   }, [allRebates, customerCode]);
 
-  /** Gộp DummyBoxRecord + DummyBoxRecordBs (cùng logic dedup LandingPage) để kiểm tra KH trong danh sách & gói đã đăng ký */
-  const mergedDummyBoxMarketingByCode = useMemo(() => {
-    const map = new Map<string, MarketingRecord>();
-    [...marketingData, ...marketingDataBs].forEach((record) => {
-      if (!record) return;
-      const code = String(record.CustomerCode ?? '').trim();
-      if (!code) return;
-      map.set(code, record);
-    });
-    return map;
-  }, [marketingData, marketingDataBs]);
+  const mergedDummyBoxMarketingByCode = useMemo(
+    () => mergeDummyBoxMarketingByCode([...marketingData, ...marketingDataBs]),
+    [marketingData, marketingDataBs]
+  );
 
   const dummyBoxListGate = useMemo(() => {
     const code = String(customerCode ?? '').trim();
-    if (!code) {
-      return { inList: false, goiLocalRegistered: false, goiImportRegistered: false };
-    }
-    const rec = mergedDummyBoxMarketingByCode.get(code);
-    if (!rec) {
-      return { inList: false, goiLocalRegistered: false, goiImportRegistered: false };
-    }
-    return {
-      inList: true,
-      goiLocalRegistered: rec.GoiLocal === 'YES',
-      goiImportRegistered: rec.GoiImport === 'YES',
-    };
-  }, [customerCode, mergedDummyBoxMarketingByCode]);
+    const orderHadLocal = sentOrders.some(
+      o => String(o.customerCode).trim() === code && !!o.isDummyBoxLocal
+    );
+    const orderHadImport = sentOrders.some(
+      o => String(o.customerCode).trim() === code && !!o.isDummyBoxImport
+    );
+    return buildDummyBoxListGate(code, mergedDummyBoxMarketingByCode, {
+      orderHadDummyBoxLocal: orderHadLocal,
+      orderHadDummyBoxImport: orderHadImport,
+    });
+  }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders]);
 
   const handleToggleRebate = (rebateId: string) => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);

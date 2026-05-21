@@ -3,12 +3,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { CartItem, Rebate, Customer, SalesRecord } from '../types';
 
-/** Khớp sheet DummyBox (LandingPage): chỉ mở tick DummyBox khi KH trong danh sách; khóa nếu đã đăng ký gói */
-export interface DummyBoxListGate {
-    inList: boolean;
-    goiLocalRegistered: boolean;
-    goiImportRegistered: boolean;
-}
+import type { DummyBoxListGate } from '../utils/dummyBoxGate';
+export type { DummyBoxListGate };
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
 import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
@@ -335,15 +331,22 @@ const Cart: React.FC<CartProps> = (props) => {
     const dummyBoxLocalLockedRegistered = dummyBoxListGate?.goiLocalRegistered === true;
     const dummyBoxImportLockedRegistered = dummyBoxListGate?.goiImportRegistered === true;
 
-    const canToggleDummyBoxLocal = customerInDummyBoxList && eligibleDummyBoxLocal && !dummyBoxLocalLockedRegistered;
-    const canToggleDummyBoxImport = customerInDummyBoxList && eligibleDummyBoxImport && !dummyBoxImportLockedRegistered;
+    /** Hiện checkbox (có thể khóa) khi KH trong sheet HOẶC đã đặt gói — kể cả không còn trên tab DummyBox */
+    const showDummyBoxLocal = customerInDummyBoxList || dummyBoxLocalLockedRegistered;
+    const showDummyBoxImport = customerInDummyBoxList || dummyBoxImportLockedRegistered;
+
+    const canToggleDummyBoxLocal =
+        customerInDummyBoxList && eligibleDummyBoxLocal && !dummyBoxLocalLockedRegistered;
+    const canToggleDummyBoxImport =
+        customerInDummyBoxList && eligibleDummyBoxImport && !dummyBoxImportLockedRegistered;
 
     useEffect(() => {
         if (dummyBoxListGate === undefined) return;
-        if (!customerInDummyBoxList) {
-            if (isDummyBoxLocal && onIsDummyBoxLocalChange) onIsDummyBoxLocalChange(false);
-            if (isDummyBoxImport && onIsDummyBoxImportChange) onIsDummyBoxImportChange(false);
-            return;
+        if (!customerInDummyBoxList && !dummyBoxLocalLockedRegistered && isDummyBoxLocal && onIsDummyBoxLocalChange) {
+            onIsDummyBoxLocalChange(false);
+        }
+        if (!customerInDummyBoxList && !dummyBoxImportLockedRegistered && isDummyBoxImport && onIsDummyBoxImportChange) {
+            onIsDummyBoxImportChange(false);
         }
         if (dummyBoxLocalLockedRegistered && isDummyBoxLocal && onIsDummyBoxLocalChange) onIsDummyBoxLocalChange(false);
         if (dummyBoxImportLockedRegistered && isDummyBoxImport && onIsDummyBoxImportChange) onIsDummyBoxImportChange(false);
@@ -358,18 +361,18 @@ const Cart: React.FC<CartProps> = (props) => {
         onIsDummyBoxImportChange,
     ]);
 
-    const dummyBoxLocalTitle = !customerInDummyBoxList
-        ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
-        : dummyBoxLocalLockedRegistered
-            ? 'KH đã đăng ký gói Local trên DummyBox — không chọn DummyBox Local lại'
+    const dummyBoxLocalTitle = dummyBoxLocalLockedRegistered
+        ? 'KH đã đặt gói DummyBox Local — không chọn lại (kể cả khi không còn trên tab DummyBox)'
+        : !customerInDummyBoxList
+            ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
             : eligibleDummyBoxLocal
                 ? 'Đủ điều kiện gói Local: tổng đơn sau CK ≥ 1.000.000'
                 : 'Chưa đủ điều kiện gói Local (xem calculator để kiểm tra)';
 
-    const dummyBoxImportTitle = !customerInDummyBoxList
-        ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
-        : dummyBoxImportLockedRegistered
-            ? 'KH đã đăng ký gói Import trên DummyBox — không chọn DummyBox Import lại'
+    const dummyBoxImportTitle = dummyBoxImportLockedRegistered
+        ? 'KH đã đặt gói DummyBox Import — không chọn lại (kể cả khi không còn trên tab DummyBox)'
+        : !customerInDummyBoxList
+            ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
             : eligibleDummyBoxImport
                 ? 'Đủ điều kiện gói Import: tổng đơn sau CK ≥ 1.000.000'
                 : 'Chưa đủ điều kiện gói Import (xem calculator để kiểm tra)';
@@ -720,18 +723,22 @@ const Cart: React.FC<CartProps> = (props) => {
                         </div>
                     )}
 
-                    {/* Toggles - CTKM OPELLA 3/2026: DummyBox Local / Import (chỉ KH trong sheet DummyBox; khóa nếu đã đăng ký gói) */}
+                    {/* Toggles - DummyBox: tick mới chỉ KH trong sheet; khóa vẫn hiện nếu đã đặt gói */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 py-0.5">
-                        {onIsDummyBoxLocalChange && (
+                        {showDummyBoxLocal && onIsDummyBoxLocalChange && (
                             <div className="flex items-center space-x-1.5">
-                                <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!canToggleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold ${canToggleDummyBoxLocal ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxLocalTitle}>DummyBox Local (-150k)</label>
+                                <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal && canToggleDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!canToggleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold ${canToggleDummyBoxLocal ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxLocalTitle}>
+                                    DummyBox Local (-150k){dummyBoxLocalLockedRegistered ? ' · Đã đặt' : ''}
+                                </label>
                             </div>
                         )}
-                        {onIsDummyBoxImportChange && (
+                        {showDummyBoxImport && onIsDummyBoxImportChange && (
                             <div className="flex items-center space-x-1.5">
-                                <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!canToggleDummyBoxImport} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold ${canToggleDummyBoxImport ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImportTitle}>DummyBox Import (-150k)</label>
+                                <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport && canToggleDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!canToggleDummyBoxImport} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold ${canToggleDummyBoxImport ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImportTitle}>
+                                    DummyBox Import (-150k){dummyBoxImportLockedRegistered ? ' · Đã đặt' : ''}
+                                </label>
                             </div>
                         )}
                     </div>

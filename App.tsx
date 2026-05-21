@@ -81,6 +81,8 @@ const App: React.FC = () => {
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
   const [showSaleKhPsReportOnMount, setShowSaleKhPsReportOnMount] = useState(false);
   const hasShownLoginReminder = useRef(false);
+  /** Tab PS 2026: mount một lần, ẩn khi đổi tab — giữ dữ liệu sheet đã tải */
+  const [storePsTabMounted, setStorePsTabMounted] = useState(false);
 
   const [customerCode, setCustomerCode] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -467,7 +469,13 @@ const App: React.FC = () => {
     setPostLoginHydrating(false);
     setIsSuperUser(false);
     resetOrderState();
+    setStorePsTabMounted(false);
     setViewMode('order');
+  };
+
+  const openStoreRegistrationTab = () => {
+    setStorePsTabMounted(true);
+    setViewMode('storeRegistration');
   };
 
   const toggleNoteLine = (lineText: string, checked: boolean) => {
@@ -1197,7 +1205,7 @@ const App: React.FC = () => {
             <span className="sm:hidden">BC</span>
           </button>
           <button
-            onClick={() => setViewMode('storeRegistration')}
+            onClick={openStoreRegistrationTab}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'storeRegistration' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
             <IdentificationIcon />
@@ -1475,14 +1483,19 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'storeRegistration' && (
-          <StoreProgramRegistrationTab
-            currentEmployee={loggedInEmployee!}
-            scriptUrl={GOOGLE_SCRIPT_URL}
-            isAdmin={loggedInEmployee?.code === ADMIN_CODE}
-            rebates={allRebates}
-            onStartOrder={handleCustomerSelectFromDashboard}
-          />
+        {storePsTabMounted && loggedInEmployee && (
+          <div
+            className={viewMode === 'storeRegistration' ? 'block w-full' : 'hidden'}
+            aria-hidden={viewMode !== 'storeRegistration'}
+          >
+            <StoreProgramRegistrationTab
+              currentEmployee={loggedInEmployee}
+              scriptUrl={GOOGLE_SCRIPT_URL}
+              isAdmin={loggedInEmployee.code === ADMIN_CODE}
+              rebates={allRebates}
+              onStartOrder={handleCustomerSelectFromDashboard}
+            />
+          </div>
         )}
 
         {viewMode === 'purchaseHistory' && (

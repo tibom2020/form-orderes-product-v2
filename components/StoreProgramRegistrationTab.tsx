@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { ArrowsRotateIcon } from './icons';
 import type { Employee } from '../types';
 import { formatCurrency, formatVndDong, formatSheetSaleQ1Display, parseSheetSalesAmount } from '../utils/formatters';
 import {
@@ -454,6 +455,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [selectedSalesRecord, setSelectedSalesRecord] = useState<SalesRecord | null>(null);
   /** Mã KH đang ghi Gói PS 25% lên sheet */
   const [goiPs25UpdatingCode, setGoiPs25UpdatingCode] = useState<string | null>(null);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const didInitialLoadRef = useRef(false);
 
   const normalizedRows = useMemo(
     () => sheetRows.map(r => normalizeDangKyTbq2Row(r as Record<string, unknown>)),
@@ -656,6 +659,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         } else {
           setLoadError(null);
         }
+        setLastLoadedAt(Date.now());
       } catch {
         setLoadError('Không tải được dữ liệu. Kiểm tra sheet và URL Script.');
       } finally {
@@ -667,6 +671,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   );
 
   useEffect(() => {
+    if (didInitialLoadRef.current) return;
+    didInitialLoadRef.current = true;
     void loadTbq2Data('initial');
   }, [loadTbq2Data]);
 
@@ -759,9 +765,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
             type="button"
             onClick={() => void loadTbq2Data('refresh')}
             disabled={loading || refreshing}
-            className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-white dark:bg-slate-800 text-[#003629] dark:text-[#8abda9] border border-[#c0c9c3]/50 dark:border-slate-600 hover:bg-[#edeeed] dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all"
-            title="Tải lại DANGKYTBQ2 & ngân sách Rep"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-white dark:bg-slate-800 text-[#003629] dark:text-[#8abda9] border border-[#c0c9c3]/50 dark:border-slate-600 hover:bg-[#edeeed] dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all"
+            title="Tải lại dữ liệu từ sheet (DANGKYTBQ2, ngân sách Rep, DOANH_SO)"
           >
+            <span className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}>
+              <ArrowsRotateIcon />
+            </span>
             {refreshing ? 'Đang tải…' : 'Làm mới'}
           </button>
           <button
@@ -1013,9 +1022,35 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                 Vuốt ngang / dọc trong bảng khi màn hình nhỏ.
               </p>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#003629] dark:text-[#8abda9] uppercase tracking-wider ml-1">
-                  Tìm kiếm khách hàng
-                </label>
+                <div className="flex flex-wrap items-end justify-between gap-2 ml-1">
+                  <label className="text-xs font-bold text-[#003629] dark:text-[#8abda9] uppercase tracking-wider">
+                    Tìm kiếm khách hàng
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void loadTbq2Data('refresh')}
+                    disabled={loading || refreshing}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-[#003629] text-white dark:bg-[#8abda9] dark:text-[#1a3028] hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all shadow-sm"
+                    title="Tải lại dữ liệu sheet"
+                  >
+                    <span className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}>
+                      <ArrowsRotateIcon />
+                    </span>
+                    {refreshing ? 'Đang làm mới…' : 'Làm mới dữ liệu'}
+                  </button>
+                </div>
+                {lastLoadedAt != null && !loading && (
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 ml-1">
+                    Dữ liệu lúc{' '}
+                    {new Date(lastLoadedAt).toLocaleString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      day: '2-digit',
+                      month: '2-digit',
+                    })}
+                    . Chuyển tab không tải lại — bấm Làm mới khi cần.
+                  </p>
+                )}
                 <div className="relative">
                   <input
                     className="w-full h-12 pl-4 pr-4 bg-white dark:bg-slate-800 border rounded-2xl text-sm shadow-sm focus:ring-2 focus:ring-[#003629]/20 dark:focus:ring-[#8abda9]/30 outline-none border-[#c0c9c3]/30 font-medium dark:text-white"

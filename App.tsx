@@ -32,6 +32,7 @@ import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
 import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate } from './utils/dummyBoxGate';
+import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
 import {
@@ -58,7 +59,7 @@ const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 const SHOW_CALCI_PLUS_TAB = false;
-const SHOW_OSTELIN_60V_TAB = false;
+const SHOW_OSTELIN_60V_TAB = true;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
@@ -112,8 +113,8 @@ const App: React.FC = () => {
   const [newsItems, setNewsItems] = useState<AdminNewsItem[]>([]);
   const [gppComments, setGppComments] = useState<Record<string, string>>({});
   const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
-  /** Sheet OSTELIN_60V_GOI — dữ liệu ghi đơn gói Ostelin 60V khi gửi đơn */
-  // const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
+  /** Sheet OSTELIN_60V_GOI — khóa tick gói Ostelin nếu KH đã có SL gói > 0 */
+  const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -265,10 +266,10 @@ const App: React.FC = () => {
       }
       try {
         const ostelinGoi = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET);
-        // setOstelin60VGoiRows(ostelinGoi || []);
+        setOstelin60VGoiRows(ostelinGoi || []);
       } catch (e) {
         console.warn("OSTELIN_60V_GOI sheet load failed (optional sheet)", e);
-        // setOstelin60VGoiRows([]);
+        setOstelin60VGoiRows([]);
       }
     } catch (e) {
       console.error("Critical data load failed", e);
@@ -655,6 +656,30 @@ const App: React.FC = () => {
     });
   }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders]);
 
+  /** KH đã có gói Ostelin 60V (Đợt 1) — không tick tặng máy đo HA / ghi sheet Đợt 2; vẫn CK 5h 21.67% */
+  const ostelin60VGoiPurchasedCodeSet = useMemo(() => {
+    const purchased = new Set<string>();
+    ostelin60VGoiRows.forEach((row) => {
+      const code = String(row['CustomerCode'] ?? '').trim();
+      if (!code) return;
+      const slGoi =
+        Number(row['SL_goi'] ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
+      if (slGoi > 0) purchased.add(code);
+    });
+    sentOrders.forEach((o) => {
+      const code = String(o.customerCode ?? '').trim();
+      if (!code) return;
+      if ((o.ostelin60VPackages ?? 0) > 0) purchased.add(code);
+    });
+    return purchased;
+  }, [ostelin60VGoiRows, sentOrders]);
+
+  const ostelin60VTangCanLocked = useMemo(() => {
+    const code = String(customerCode ?? '').trim();
+    if (!code) return false;
+    return ostelin60VGoiPurchasedCodeSet.has(code);
+  }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
+
   const handleToggleRebate = (rebateId: string) => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
     if (!rebate) return;
@@ -800,9 +825,16 @@ const App: React.FC = () => {
     let ostelin60VPackages = 0;
     let ostelin60VAmount = 0;
     let ostelin60VQuantity: number | undefined;
-    if (ostelin60vItem && ostelin60vItem.quantity >= OSTELIN_60V_GOI_MIN_QTY) {
+    let ostelin60VDot2: boolean | undefined;
+    const canRecordOstelinTangCanGoi =
+      !ostelin60VTangCanLocked &&
+      noteHasOstelinTangCan(note) &&
+      !!ostelin60vItem &&
+      ostelin60vItem.quantity >= OSTELIN_60V_GOI_MIN_QTY;
+    if (canRecordOstelinTangCanGoi && ostelin60vItem) {
       ostelin60VPackages = 1;
       ostelin60VQuantity = ostelin60vItem.quantity;
+      ostelin60VDot2 = isOstelin60VDot2Order();
       ostelin60VAmount = Math.round(
         calculateLineTotal(
           ostelin60vItem.price,
@@ -826,6 +858,7 @@ const App: React.FC = () => {
       ostelin60VPackages: ostelin60VPackages > 0 ? ostelin60VPackages : undefined,
       ostelin60VAmount: ostelin60VPackages > 0 ? ostelin60VAmount : undefined,
       ostelin60VQuantity: ostelin60VQuantity,
+      ostelin60VDot2: ostelin60VDot2 || undefined,
     };
   };
 
@@ -1459,6 +1492,7 @@ const App: React.FC = () => {
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
+                    ostelin60VTangCanLocked={ostelin60VTangCanLocked}
                     psGate={psGate}
                     isPsOnInvoice25={isPsOnInvoice25}
                     onIsPsOnInvoice25Change={handlePsOnInvoice25Toggle}
@@ -1619,7 +1653,7 @@ const App: React.FC = () => {
         )}
 
         {SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v' && (
-          <Ostelin60VTab />
+          <Ostelin60VTab currentEmployee={loggedInEmployee!} />
         )}
         {viewMode === 'repActiveAcemucOstelin' && (
           <RepActiveAcemucOstelinTab

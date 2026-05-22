@@ -37,6 +37,7 @@ interface OrderPayload {
   ostelin60VPackages?: number;
   ostelin60VAmount?: number;
   ostelin60VQuantity?: number;
+  ostelin60VDot2?: boolean;
 }
 
 export const postOrderToGoogleSheet = async (

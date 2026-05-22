@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SalesRecord } from '../types';
 import { Employee } from '../types';
 import { formatCurrency } from '../utils/formatters';
-import { ACEMUC_ACTIVE_MIN_QTY, ACEMUC_Q2_TARGET_PER_REP } from '../constants';
+import { ACEMUC_ACTIVE_MIN_QTY, ACEMUC_Q2_TARGET_PER_REP, ADMIN_CODE } from '../constants';
+import { salesRecordMatchesEmployee } from '../utils/employeeScope';
 import { ChartBarIcon } from './icons';
 
 interface Props {
@@ -70,6 +71,49 @@ function repOptionsFrom(customers: CustomerRow[]): string[] {
   return Array.from(s).sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
+/** Đồng bộ chiều cao 3 bảng Rep — header cố định, hàng NV ngang nhau */
+const REP_PANEL_TITLE_CLASS =
+  'px-4 border-b shrink-0 min-h-[3.5rem] flex items-center';
+const REP_TABLE_WRAP_CLASS = 'overflow-auto flex-1 min-h-0 max-h-[min(560px,58vh)]';
+const REP_TH_CLASS =
+  'px-3 py-2 border-b border-slate-200 dark:border-slate-600 align-bottom h-[4.25rem]';
+const REP_TR_CLASS = 'h-11 align-middle';
+const REP_THEAD_CLASS =
+  'sticky top-0 z-20 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-sm';
+
+function RepNameCell({
+  rep,
+  isTop,
+  isMe,
+  topTitle,
+}: {
+  rep: string;
+  isTop?: boolean;
+  isMe?: boolean;
+  topTitle?: string;
+}) {
+  return (
+    <td className={`${REP_TR_CLASS} px-3 font-bold text-slate-800 dark:text-white`}>
+      <span className="inline-flex items-center gap-1.5 flex-wrap leading-tight">
+        <span className="whitespace-nowrap">{rep}</span>
+        {isTop && (
+          <span
+            className="inline-flex items-center shrink-0 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm"
+            title={topTitle}
+          >
+            ★ TOP 1
+          </span>
+        )}
+        {isMe && (
+          <span className="inline-block shrink-0 px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white">
+            BẠN
+          </span>
+        )}
+      </span>
+    </td>
+  );
+}
+
 const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmployee }) => {
   const [acemucSearch, setAcemucSearch] = useState('');
   const [ostelinSearch, setOstelinSearch] = useState('');
@@ -78,13 +122,30 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
   const [pharmatonRepFilter, setPharmatonRepFilter] = useState('');
   const [ostelinRepFilter, setOstelinRepFilter] = useState('');
 
-  /** Hiển thị toàn bộ nhân viên cho mọi user. */
-  const scopedRecords = salesRecords;
+  const scopedRecords = useMemo(
+    () => salesRecords.filter((r) => salesRecordMatchesEmployee(r, currentEmployee)),
+    [salesRecords, currentEmployee]
+  );
+
+  /** Đồng bộ lọc Rep trên bảng KH với NV chọn ở header */
+  useEffect(() => {
+    if (currentEmployee.code === ADMIN_CODE) {
+      setAcemucRepFilter('');
+      setPharmatonRepFilter('');
+      setOstelinRepFilter('');
+    } else {
+      setAcemucRepFilter(currentEmployee.name);
+      setPharmatonRepFilter(currentEmployee.name);
+      setOstelinRepFilter(currentEmployee.name);
+    }
+  }, [currentEmployee.code, currentEmployee.name]);
+
   const myRepKey = currentEmployee.name.trim().toLowerCase();
 
+  /** Bảng theo Rep — toàn bộ NV (mọi user + admin xem hết) */
   const acemucByRep = useMemo<AcemucRepRow[]>(() => {
     const m = new Map<string, { active: number; sale: number }>();
-    scopedRecords.forEach(r => {
+    salesRecords.forEach(r => {
       const rep = String(r.Rep ?? '').trim();
       if (!rep) return;
       const qty = num(asRec(r)['ACEMUC_QTY']);
@@ -102,11 +163,11 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         return { rep, target, active: v.active, pct, todo, sale: v.sale };
       })
       .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
-  }, [scopedRecords]);
+  }, [salesRecords]);
 
   const pharmatonByRep = useMemo<PharmatonRepRow[]>(() => {
     const m = new Map<string, { active: number; sale: number }>();
-    scopedRecords.forEach(r => {
+    salesRecords.forEach(r => {
       const rep = String(r.Rep ?? '').trim();
       if (!rep) return;
       const qty = num(asRec(r)['PMT_QTY']);
@@ -119,11 +180,11 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
     return Array.from(m.entries())
       .map(([rep, v]) => ({ rep, active: v.active, sale: v.sale }))
       .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
-  }, [scopedRecords]);
+  }, [salesRecords]);
 
   const ostelinByRep = useMemo<OstelinRepRow[]>(() => {
     const m = new Map<string, { active: number; sale: number }>();
-    scopedRecords.forEach(r => {
+    salesRecords.forEach(r => {
       const rep = String(r.Rep ?? '').trim();
       if (!rep) return;
       const sale = num(asRec(r)['OSTELIN']);
@@ -135,7 +196,7 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
     return Array.from(m.entries())
       .map(([rep, v]) => ({ rep, active: v.active, sale: v.sale }))
       .sort((a, b) => a.rep.localeCompare(b.rep, 'vi'));
-  }, [scopedRecords]);
+  }, [salesRecords]);
 
   const acemucTotals = useMemo(() => {
     const target = acemucByRep.reduce((s, r) => s + r.target, 0);
@@ -190,6 +251,21 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
       return best;
     }, ostelinByRep[0]);
   }, [ostelinByRep]);
+
+  const acemucByRepMap = useMemo(() => new Map(acemucByRep.map(r => [r.rep, r])), [acemucByRep]);
+  const pharmatonByRepMap = useMemo(() => new Map(pharmatonByRep.map(r => [r.rep, r])), [pharmatonByRep]);
+  const ostelinByRepMap = useMemo(() => new Map(ostelinByRep.map(r => [r.rep, r])), [ostelinByRep]);
+
+  /** Cùng thứ tự Rep trên cả 3 bảng để so sánh ngang */
+  const alignedRepNames = useMemo(() => {
+    const names = new Set<string>();
+    acemucByRep.forEach(r => names.add(r.rep));
+    pharmatonByRep.forEach(r => names.add(r.rep));
+    ostelinByRep.forEach(r => names.add(r.rep));
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [acemucByRep, pharmatonByRep, ostelinByRep]);
+
+  const hasRepStats = alignedRepNames.length > 0;
 
   const acemucCustomers = useMemo<CustomerRow[]>(() => {
     return scopedRecords
@@ -264,79 +340,75 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         <div className="w-8 h-8 rounded-lg bg-opella-green/20 flex items-center justify-center">
           <ChartBarIcon />
         </div>
-        <h2 className="text-lg font-black text-opella-green uppercase">
-          THEO DÕI REP ACTIVE — ACEMUC, PHARMATON & OSTELIN (Q2)
-        </h2>
+        <div>
+          <h2 className="text-lg font-black text-opella-green uppercase">
+            THEO DÕI REP ACTIVE — ACEMUC, PHARMATON & OSTELIN (Q2)
+          </h2>
+          {currentEmployee.code !== ADMIN_CODE && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-bold">
+              Thống kê Rep: tất cả NV · Danh sách KH: {currentEmployee.name}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
         {/* ACEMUC by Rep */}
-        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 flex items-center justify-between">
-            <h3 className="text-sm font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide">
-              ACEMUC — Active Q2 (mua ≥ {ACEMUC_ACTIVE_MIN_QTY} hộp bất kỳ)
+        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50 flex flex-col min-h-[28rem] max-h-[min(680px,70vh)]">
+          <div className={`${REP_PANEL_TITLE_CLASS} border-slate-200 dark:border-slate-600 bg-amber-50 dark:bg-amber-950/30 justify-between gap-2`}>
+            <h3 className="text-sm font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide leading-tight">
+              ACEMUC — Active Q2 (≥{ACEMUC_ACTIVE_MIN_QTY}h)
             </h3>
-            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
+            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 shrink-0">
               Target/Rep: {ACEMUC_Q2_TARGET_PER_REP}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className={`${REP_TABLE_WRAP_CLASS} overflow-x-auto`}>
             <table className="w-full text-left text-sm border-collapse min-w-[640px]">
-              <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
+              <thead className={REP_THEAD_CLASS}>
                 <tr>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-amber-100/70 dark:bg-amber-900/40">Target Q2 - ACTIVE</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-amber-100/70 dark:bg-amber-900/40">Achive Q2<br/>(mua ≥{ACEMUC_ACTIVE_MIN_QTY}h bất kỳ)</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">% Achive</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-amber-100/70 dark:bg-amber-900/40">Todo 100%</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Achive Q2</th>
+                  <th className={`${REP_TH_CLASS} w-[11rem]`}>Rep</th>
+                  <th className={`${REP_TH_CLASS} text-right bg-amber-100/70 dark:bg-amber-900/40`} title="Target Q2 - ACTIVE">Target</th>
+                  <th className={`${REP_TH_CLASS} text-right bg-amber-100/70 dark:bg-amber-900/40`} title={`Achive Q2 (mua ≥${ACEMUC_ACTIVE_MIN_QTY}h bất kỳ)`}>Active KH</th>
+                  <th className={`${REP_TH_CLASS} text-right`}>% Achive</th>
+                  <th className={`${REP_TH_CLASS} text-right bg-amber-100/70 dark:bg-amber-900/40`}>Todo</th>
+                  <th className={`${REP_TH_CLASS} text-right`} title="Sale Acemuc Q2">Sale Q2</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {acemucByRep.length === 0 ? (
+                {!hasRepStats ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400 italic">Chưa có dữ liệu</td></tr>
-                ) : acemucByRep.map(r => {
-                  const isTop = acemucTopRep?.rep === r.rep && r.active > 0;
-                  const isMe = r.rep.trim().toLowerCase() === myRepKey;
+                ) : alignedRepNames.map(rep => {
+                  const r = acemucByRepMap.get(rep);
+                  const target = r?.target ?? ACEMUC_Q2_TARGET_PER_REP;
+                  const active = r?.active ?? 0;
+                  const pct = r?.pct ?? (target > 0 ? (active / target) * 100 : 0);
+                  const todo = r?.todo ?? Math.max(target - active, 0);
+                  const sale = r?.sale ?? 0;
+                  const isTop = acemucTopRep?.rep === rep && active > 0;
+                  const isMe = rep.trim().toLowerCase() === myRepKey;
                   return (
-                  <tr
-                    key={r.rep}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${
-                      isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
-                    } ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
-                  >
-                    <td className="px-3 py-2 font-bold text-slate-800 dark:text-white whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5">
-                        {r.rep}
-                        {isTop && (
-                          <span
-                            className="inline-flex items-center gap-0.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm"
-                            title="Top 1 Active Acemuc"
-                          >
-                            ★ TOP 1
-                          </span>
-                        )}
-                        {isMe && (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white">BẠN</span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">{r.target}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300">{r.active}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums font-bold ${pctClass(r.pct)}`}>{r.pct.toFixed(2)}%</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-700 dark:text-slate-200">{r.todo}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-white">{formatCurrency(Math.round(r.sale))}</td>
-                  </tr>
+                    <tr
+                      key={rep}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''} ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''} ${!r ? 'opacity-60' : ''}`}
+                    >
+                      <RepNameCell rep={rep} isTop={isTop} isMe={isMe} topTitle="Top 1 Active Acemuc" />
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums text-slate-700 dark:text-slate-200`}>{target}</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300`}>{active}</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold ${pctClass(pct)}`}>{pct.toFixed(2)}%</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-slate-700 dark:text-slate-200`}>{todo}</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-slate-800 dark:text-white`}>{formatCurrency(Math.round(sale))}</td>
+                    </tr>
                   );
                 })}
-                {acemucByRep.length > 0 && (
-                  <tr className="bg-slate-100 dark:bg-slate-700 font-black">
-                    <td className="px-3 py-2 uppercase">Grand Total</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{acemucTotals.target}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-rose-700 dark:text-rose-300">{acemucTotals.active}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums ${pctClass(acemucTotals.pct)}`}>{acemucTotals.pct.toFixed(2)}%</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{acemucTotals.todo}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Math.round(acemucTotals.sale))}</td>
+                {hasRepStats && (
+                  <tr className={`${REP_TR_CLASS} bg-slate-100 dark:bg-slate-700 font-black sticky bottom-0 z-10`}>
+                    <td className="px-3 uppercase">Grand Total</td>
+                    <td className="px-3 text-right tabular-nums">{acemucTotals.target}</td>
+                    <td className="px-3 text-right tabular-nums text-rose-700 dark:text-rose-300">{acemucTotals.active}</td>
+                    <td className={`px-3 text-right tabular-nums ${pctClass(acemucTotals.pct)}`}>{acemucTotals.pct.toFixed(2)}%</td>
+                    <td className="px-3 text-right tabular-nums">{acemucTotals.todo}</td>
+                    <td className="px-3 text-right tabular-nums">{formatCurrency(Math.round(acemucTotals.sale))}</td>
                   </tr>
                 )}
               </tbody>
@@ -345,60 +417,46 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         </div>
 
         {/* PHARMATON by Rep */}
-        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-violet-50 dark:bg-violet-950/30">
-            <h3 className="text-sm font-black text-violet-800 dark:text-violet-200 uppercase tracking-wide">
+        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50 flex flex-col min-h-[28rem] max-h-[min(680px,70vh)]">
+          <div className={`${REP_PANEL_TITLE_CLASS} border-slate-200 dark:border-slate-600 bg-violet-50 dark:bg-violet-950/30`}>
+            <h3 className="text-sm font-black text-violet-800 dark:text-violet-200 uppercase tracking-wide leading-tight">
               PHARMATON — Active Q2 (PMT_QTY &gt; 0)
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className={`${REP_TABLE_WRAP_CLASS} overflow-x-auto`}>
             <table className="w-full text-left text-sm border-collapse min-w-[420px]">
-              <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
+              <thead className={REP_THEAD_CLASS}>
                 <tr>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-violet-100/70 dark:bg-violet-900/40">Active PMT Q2</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Sale Pharmaton</th>
+                  <th className={`${REP_TH_CLASS} w-[11rem]`}>Rep</th>
+                  <th className={`${REP_TH_CLASS} text-right bg-violet-100/70 dark:bg-violet-900/40`}>Active PMT Q2</th>
+                  <th className={`${REP_TH_CLASS} text-right`}>Sale Pharmaton</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {pharmatonByRep.length === 0 ? (
+                {!hasRepStats ? (
                   <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400 italic">Chưa có dữ liệu</td></tr>
-                ) : pharmatonByRep.map(r => {
-                  const isTop = pharmatonTopRep?.rep === r.rep && r.active > 0;
-                  const isMe = r.rep.trim().toLowerCase() === myRepKey;
+                ) : alignedRepNames.map(rep => {
+                  const r = pharmatonByRepMap.get(rep);
+                  const active = r?.active ?? 0;
+                  const sale = r?.sale ?? 0;
+                  const isTop = pharmatonTopRep?.rep === rep && active > 0;
+                  const isMe = rep.trim().toLowerCase() === myRepKey;
                   return (
-                  <tr
-                    key={r.rep}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${
-                      isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
-                    } ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
-                  >
-                    <td className="px-3 py-2 font-bold text-slate-800 dark:text-white whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5">
-                        {r.rep}
-                        {isTop && (
-                          <span
-                            className="inline-flex items-center gap-0.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm"
-                            title="Top 1 Active Pharmaton"
-                          >
-                            ★ TOP 1
-                          </span>
-                        )}
-                        {isMe && (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white">BẠN</span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300">{r.active}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-white">{formatCurrency(Math.round(r.sale))}</td>
-                  </tr>
+                    <tr
+                      key={rep}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''} ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''} ${!r ? 'opacity-60' : ''}`}
+                    >
+                      <RepNameCell rep={rep} isTop={isTop} isMe={isMe} topTitle="Top 1 Active Pharmaton" />
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300`}>{active}</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-slate-800 dark:text-white`}>{formatCurrency(Math.round(sale))}</td>
+                    </tr>
                   );
                 })}
-                {pharmatonByRep.length > 0 && (
-                  <tr className="bg-slate-100 dark:bg-slate-700 font-black">
-                    <td className="px-3 py-2 uppercase">Grand Total</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-rose-700 dark:text-rose-300">{pharmatonTotals.active}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Math.round(pharmatonTotals.sale))}</td>
+                {hasRepStats && (
+                  <tr className={`${REP_TR_CLASS} bg-slate-100 dark:bg-slate-700 font-black sticky bottom-0 z-10`}>
+                    <td className="px-3 uppercase">Grand Total</td>
+                    <td className="px-3 text-right tabular-nums text-rose-700 dark:text-rose-300">{pharmatonTotals.active}</td>
+                    <td className="px-3 text-right tabular-nums">{formatCurrency(Math.round(pharmatonTotals.sale))}</td>
                   </tr>
                 )}
               </tbody>
@@ -407,60 +465,46 @@ const RepActiveAcemucOstelinTab: React.FC<Props> = ({ salesRecords, currentEmplo
         </div>
 
         {/* OSTELIN by Rep */}
-        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 bg-emerald-50 dark:bg-emerald-950/30">
-            <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-200 uppercase tracking-wide">
+        <div className="border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden bg-white dark:bg-slate-800/50 flex flex-col min-h-[28rem] max-h-[min(680px,70vh)]">
+          <div className={`${REP_PANEL_TITLE_CLASS} border-slate-200 dark:border-slate-600 bg-emerald-50 dark:bg-emerald-950/30`}>
+            <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-200 uppercase tracking-wide leading-tight">
               OSTELIN — Active Q2 (sale &gt; 0)
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className={`${REP_TABLE_WRAP_CLASS} overflow-x-auto`}>
             <table className="w-full text-left text-sm border-collapse min-w-[420px]">
-              <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
+              <thead className={REP_THEAD_CLASS}>
                 <tr>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600">Rep</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right bg-emerald-100/70 dark:bg-emerald-900/40">Active Ostelin Q2</th>
-                  <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-right">Sale Ostelin</th>
+                  <th className={`${REP_TH_CLASS} w-[11rem]`}>Rep</th>
+                  <th className={`${REP_TH_CLASS} text-right bg-emerald-100/70 dark:bg-emerald-900/40`}>Active Ostelin Q2</th>
+                  <th className={`${REP_TH_CLASS} text-right`}>Sale Ostelin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {ostelinByRep.length === 0 ? (
+                {!hasRepStats ? (
                   <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400 italic">Chưa có dữ liệu</td></tr>
-                ) : ostelinByRep.map(r => {
-                  const isTop = ostelinTopRep?.rep === r.rep && r.active > 0;
-                  const isMe = r.rep.trim().toLowerCase() === myRepKey;
+                ) : alignedRepNames.map(rep => {
+                  const r = ostelinByRepMap.get(rep);
+                  const active = r?.active ?? 0;
+                  const sale = r?.sale ?? 0;
+                  const isTop = ostelinTopRep?.rep === rep && active > 0;
+                  const isMe = rep.trim().toLowerCase() === myRepKey;
                   return (
-                  <tr
-                    key={r.rep}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${
-                      isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
-                    } ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''}`}
-                  >
-                    <td className="px-3 py-2 font-bold text-slate-800 dark:text-white whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5">
-                        {r.rep}
-                        {isTop && (
-                          <span
-                            className="inline-flex items-center gap-0.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-950 shadow-sm"
-                            title="Top 1 Active Ostelin"
-                          >
-                            ★ TOP 1
-                          </span>
-                        )}
-                        {isMe && (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-600 text-white">BẠN</span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300">{r.active}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-white">{formatCurrency(Math.round(r.sale))}</td>
-                  </tr>
+                    <tr
+                      key={rep}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 ${isTop ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''} ${isMe ? 'ring-1 ring-inset ring-emerald-300 dark:ring-emerald-700' : ''} ${!r ? 'opacity-60' : ''}`}
+                    >
+                      <RepNameCell rep={rep} isTop={isTop} isMe={isMe} topTitle="Top 1 Active Ostelin" />
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-rose-700 dark:text-rose-300`}>{active}</td>
+                      <td className={`${REP_TR_CLASS} px-3 text-right tabular-nums font-bold text-slate-800 dark:text-white`}>{formatCurrency(Math.round(sale))}</td>
+                    </tr>
                   );
                 })}
-                {ostelinByRep.length > 0 && (
-                  <tr className="bg-slate-100 dark:bg-slate-700 font-black">
-                    <td className="px-3 py-2 uppercase">Grand Total</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-rose-700 dark:text-rose-300">{ostelinTotals.active}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Math.round(ostelinTotals.sale))}</td>
+                {hasRepStats && (
+                  <tr className={`${REP_TR_CLASS} bg-slate-100 dark:bg-slate-700 font-black sticky bottom-0 z-10`}>
+                    <td className="px-3 uppercase">Grand Total</td>
+                    <td className="px-3 text-right tabular-nums text-rose-700 dark:text-rose-300">{ostelinTotals.active}</td>
+                    <td className="px-3 text-right tabular-nums">{formatCurrency(Math.round(ostelinTotals.sale))}</td>
                   </tr>
                 )}
               </tbody>

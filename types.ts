@@ -244,6 +244,8 @@ export interface Order {
   ostelin60VPackages?: number;
   ostelin60VAmount?: number;
   ostelin60VQuantity?: number;
+  /** Đợt 2 Ostelin 60V (từ 20/05/2026) — ghi cột Dot_2 trên sheet */
+  ostelin60VDot2?: boolean;
 }
 
 // Interface cho lịch sử mua hàng từ Sheet HISTORY_GG và HISTORY_BM (merged)

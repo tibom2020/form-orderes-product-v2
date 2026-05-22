@@ -240,16 +240,19 @@ function handleOrder(data, ss, output) {
       updateLiXiOntopStats(ss, data.employeeName, data.customerCode, data.customerName, data.totalSales || 0);
     }
 
-    // --- OSTELIN 60V: Ghi gói 5h ck 21.67% (1 gói/đơn đủ điều kiện) + KH để đối soát 1 gói/KH ---
+    // --- OSTELIN 60V: Ghi gói 5h ck 21.67% (1 gói/đơn đủ điều kiện); cột Dot_2 = Đợt 2 ---
     var ostelin60VPackages = Number(data.ostelin60VPackages) || 0;
     var ostelin60VAmount = Number(data.ostelin60VAmount) || 0;
     if (ostelin60VPackages > 0 && ostelin60VAmount >= 0) {
       var sheetOstelinGoi = ss.getSheetByName("OSTELIN_60V_GOI");
       if (!sheetOstelinGoi) {
         sheetOstelinGoi = ss.insertSheet("OSTELIN_60V_GOI");
-        sheetOstelinGoi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien"]);
-        sheetOstelinGoi.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#d9ead3");
+        sheetOstelinGoi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien", "Dot_2"]);
+        sheetOstelinGoi.getRange(1, 1, 1, 8).setFontWeight("bold").setBackground("#d9ead3");
+      } else if (sheetOstelinGoi.getLastColumn() < 8) {
+        sheetOstelinGoi.getRange(1, 8).setValue("Dot_2").setFontWeight("bold").setBackground("#d9ead3");
       }
+      var dot2Label = (data.ostelin60VDot2 === true || String(data.ostelin60VDot2).toLowerCase() === "true") ? "Đợt 2" : "";
       sheetOstelinGoi.appendRow([
         new Date(),
         data.employeeName || "",
@@ -257,7 +260,8 @@ function handleOrder(data, ss, output) {
         data.customerName || "",
         Number(data.ostelin60VQuantity) || 0,
         ostelin60VPackages,
-        ostelin60VAmount
+        ostelin60VAmount,
+        dot2Label
       ]);
     }
 

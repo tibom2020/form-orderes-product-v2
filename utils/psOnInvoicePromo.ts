@@ -3,7 +3,11 @@ import {
   STORE_TIER_CONFIGS,
   type StoreTierConfig,
 } from '../components/StoreProgramRegistrationTab';
-export const PS_ON_INVOICE_NOTE_MARKER = 'CK PS On Invoice 25%';
+/** Mã CTKM / dòng ghi chú đơn Perfect Store tháng 5/2026 */
+export const PS_ON_INVOICE_NOTE_MARKER = 'SPECIAL_PS0526';
+
+/** Ghi chú đơn cũ — vẫn gỡ khi tắt CTKM / đổi KH */
+const PS_ON_INVOICE_NOTE_MARKER_LEGACY = 'CK PS On Invoice 25%';
 
 /** Giảm Net theo bảng CTKM (sau TNCN ~1.5%) */
 const NET_BY_REWARD: Record<number, number> = {
@@ -101,7 +105,7 @@ export function calcPsOrderTotals(items: CartItem[], tier: StoreTierConfig): PsO
   };
 }
 
-/** Ghi chú đơn: CK PS On Invoice 25% - {loại trưng bày Q2} */
+/** Ghi chú đơn: SPECIAL_PS0526 - {loại trưng bày Q2} */
 export function buildPsOnInvoiceNoteLine(tierLabel?: string): string {
   const label = String(tierLabel ?? '').trim();
   return label ? `${PS_ON_INVOICE_NOTE_MARKER} - ${label}` : PS_ON_INVOICE_NOTE_MARKER;
@@ -111,7 +115,12 @@ export function stripPsOnInvoiceNoteLines(note: string): string {
   return note
     .split('\n')
     .map(l => l.trim())
-    .filter(l => l && !l.includes(PS_ON_INVOICE_NOTE_MARKER))
+    .filter(
+      l =>
+        l &&
+        !l.includes(PS_ON_INVOICE_NOTE_MARKER) &&
+        !l.includes(PS_ON_INVOICE_NOTE_MARKER_LEGACY)
+    )
     .join('\n');
 }
 

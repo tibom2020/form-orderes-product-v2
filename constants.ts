@@ -60,7 +60,7 @@ export const PRODUCTS: Product[] = [
   { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
   { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
   { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 15.76%, 4h ck 17.73% (đến 30.05.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 5h ck 21.67% (đến 30.05.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 /**
@@ -1043,6 +1043,8 @@ export const OSTELIN_60V_PRODUCT_ID = 25;
 /** Tối thiểu 5 hộp để áp CK 21.67% & ghi theo dõi (1 gói/đơn đủ điều kiện) */
 export const OSTELIN_60V_GOI_MIN_QTY = 5;
 export const OSTELIN_60V_GOI_SHEET = 'OSTELIN_60V_GOI';
+/** Cột sheet Apps Script: Dot_2 = "Đợt 2" cho đơn từ 20/05/2026 */
+export const OSTELIN_60V_DOT2_SHEET_COL = 'Dot_2';
 /** Theo dõi gói 4.76% (CalciPlus + Enterogermina 2B/20) */
 export const CALCIPLUS_GOI_SHEET = 'CALCIPLUS_GOI';
 

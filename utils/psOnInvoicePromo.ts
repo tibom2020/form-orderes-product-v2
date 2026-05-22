@@ -101,8 +101,10 @@ export function calcPsOrderTotals(items: CartItem[], tier: StoreTierConfig): PsO
   };
 }
 
-export function buildPsOnInvoiceNoteLine(): string {
-  return PS_ON_INVOICE_NOTE_MARKER;
+/** Ghi chú đơn: CK PS On Invoice 25% - {loại trưng bày Q2} */
+export function buildPsOnInvoiceNoteLine(tierLabel?: string): string {
+  const label = String(tierLabel ?? '').trim();
+  return label ? `${PS_ON_INVOICE_NOTE_MARKER} - ${label}` : PS_ON_INVOICE_NOTE_MARKER;
 }
 
 export function stripPsOnInvoiceNoteLines(note: string): string {

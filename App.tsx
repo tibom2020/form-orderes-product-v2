@@ -519,7 +519,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isPsOnInvoice25 || !psGate?.tierConfig) return;
-    setNote(prev => mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine()));
+    setNote(prev =>
+      mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine(psGate.tierConfig.label))
+    );
   }, [cart, isPsOnInvoice25, psGate?.tierConfig]);
 
   const handlePsOnInvoice25Toggle = (checked: boolean) => {
@@ -527,7 +529,9 @@ const App: React.FC = () => {
     setIsPsOnInvoice25(checked);
     if (checked) {
       setCart(prev => prev.map(cartItemForPsPricing));
-      setNote(prev => mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine()));
+      setNote(prev =>
+        mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine(psGate.tierConfig.label))
+      );
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
     } else {

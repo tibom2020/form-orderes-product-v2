@@ -11,13 +11,17 @@ const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8
 /** Khớp `Cart.tsx` — DummyBoxImportCalculator */
 const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20];
 
-/** Khớp logic `Cart.tsx` — dùng chung cho đơn hàng & chi tiết giỏ */
-export function getDummyBoxAmountEligibility(items: CartItem[]): { eligibleDummyBoxLocal: boolean; eligibleDummyBoxImport: boolean } {
+export function getDummyBoxEligibilityTotals(items: CartItem[]): {
+    localTotalAfterDiscount: number;
+    importTotalAfterDiscount: number;
+    eligibleDummyBoxLocal: boolean;
+    eligibleDummyBoxImport: boolean;
+} {
     const telfastLocalConditionTotal = items
         .filter((item) => TELFAST_GROUP_IDS.includes(item.id))
         .reduce((sum, item) => sum + (item.basePrice ?? item.price) * item.quantity, 0);
 
-    const sumAfterDiscountLocal = items
+    const localTotalAfterDiscount = items
         .filter((item) => DUMMY_BOX_LOCAL_CALC_IDS.includes(item.id))
         .reduce((sum, item) => {
             const isTelfast = TELFAST_GROUP_IDS.includes(item.id);
@@ -26,16 +30,28 @@ export function getDummyBoxAmountEligibility(items: CartItem[]): { eligibleDummy
             const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
             return sum + lineAfterDiscount;
         }, 0);
-    const eligibleDummyBoxLocal = sumAfterDiscountLocal >= DUMMY_BOX_LOCAL_MIN_AMOUNT;
 
-    const sumAfterDiscountImport = items
+    const importTotalAfterDiscount = items
         .filter((item) => DUMMY_BOX_IMPORT_CALC_IDS.includes(item.id))
         .reduce((sum, item) => {
             const discountPercent = getDiscountPercent(item.promotion, item.quantity, undefined);
             const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
             return sum + lineAfterDiscount;
         }, 0);
-    const eligibleDummyBoxImport = sumAfterDiscountImport >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
 
+    return {
+        localTotalAfterDiscount,
+        importTotalAfterDiscount,
+        eligibleDummyBoxLocal: localTotalAfterDiscount >= DUMMY_BOX_LOCAL_MIN_AMOUNT,
+        eligibleDummyBoxImport: importTotalAfterDiscount >= DUMMY_BOX_IMPORT_MIN_AMOUNT,
+    };
+}
+
+/** Khớp logic `Cart.tsx` — dùng chung cho đơn hàng & chi tiết giỏ */
+export function getDummyBoxAmountEligibility(items: CartItem[]): {
+    eligibleDummyBoxLocal: boolean;
+    eligibleDummyBoxImport: boolean;
+} {
+    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxEligibilityTotals(items);
     return { eligibleDummyBoxLocal, eligibleDummyBoxImport };
 }

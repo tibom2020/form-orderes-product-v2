@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { CartItem, Rebate, Customer, SalesRecord } from '../types';
 
-import type { DummyBoxListGate } from '../utils/dummyBoxGate';
+import { getDummyBoxToggleState, type DummyBoxListGate } from '../utils/dummyBoxGate';
 export type { DummyBoxListGate };
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIcon } from './icons';
 import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
@@ -12,7 +12,7 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
 import { calcPsOrderTotals, getPsCartUnitPrice, PS_ON_INVOICE_NOTE_MARKER } from '../utils/psOnInvoicePromo';
 import type { PsCustomerGate } from '../utils/psCustomerRegistry';
-import { getDummyBoxAmountEligibility } from '../utils/dummyBoxEligibility';
+import { getDummyBoxEligibilityTotals } from '../utils/dummyBoxEligibility';
 import {
     computeCartGroupTotals,
     computeMaxPayableFees,
@@ -274,8 +274,12 @@ const Cart: React.FC<CartProps> = (props) => {
     // --- Search Logic ---
     const [showSuggestions, setShowSuggestions] = useState(false);
 
+    /** Gói CK PS 25% — không chọn trả phí rebate / preset trả tối đa phí */
+    const rebatePaymentLocked = isPsOnInvoice25;
+
     // Helper: append/remove note preset text
     const toggleNotePreset = (preset: string) => {
+        if (rebatePaymentLocked) return;
         if (note.includes(preset)) {
             onNoteChange(note.replace(new RegExp(`\\s*${preset}\\s*`, 'g'), ' ').trim());
         } else {
@@ -366,34 +370,44 @@ const Cart: React.FC<CartProps> = (props) => {
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isPsOnInvoice25 ? 0 : isOnTopLiXi ? 250000 : 0;
 
-    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = useMemo(
-        () => getDummyBoxAmountEligibility(items),
-        [items]
+    const dummyBoxEligibility = useMemo(() => getDummyBoxEligibilityTotals(items), [items]);
+    const { eligibleDummyBoxLocal, eligibleDummyBoxImport, localTotalAfterDiscount, importTotalAfterDiscount } =
+        dummyBoxEligibility;
+
+    const dummyBoxLocalToggle = useMemo(
+        () =>
+            getDummyBoxToggleState(dummyBoxListGate, 'local', eligibleDummyBoxLocal, {
+                amountAfterDiscount: localTotalAfterDiscount,
+            }),
+        [dummyBoxListGate, eligibleDummyBoxLocal, localTotalAfterDiscount]
+    );
+    const dummyBoxImportToggle = useMemo(
+        () =>
+            getDummyBoxToggleState(dummyBoxListGate, 'import', eligibleDummyBoxImport, {
+                amountAfterDiscount: importTotalAfterDiscount,
+            }),
+        [dummyBoxListGate, eligibleDummyBoxImport, importTotalAfterDiscount]
     );
 
-    const customerInDummyBoxList = dummyBoxListGate === undefined ? true : dummyBoxListGate.inList;
+    const canToggleDummyBoxLocal = dummyBoxLocalToggle.canToggle;
+    const canToggleDummyBoxImport = dummyBoxImportToggle.canToggle;
     const dummyBoxLocalLockedRegistered = dummyBoxListGate?.goiLocalRegistered === true;
     const dummyBoxImportLockedRegistered = dummyBoxListGate?.goiImportRegistered === true;
 
-    /** Luôn hiện nút; chỉ cho tick khi KH trong sheet, đủ điều kiện và chưa đặt gói */
-    const canToggleDummyBoxLocal =
-        customerInDummyBoxList && eligibleDummyBoxLocal && !dummyBoxLocalLockedRegistered;
-    const canToggleDummyBoxImport =
-        customerInDummyBoxList && eligibleDummyBoxImport && !dummyBoxImportLockedRegistered;
-
     useEffect(() => {
         if (dummyBoxListGate === undefined) return;
-        if (!customerInDummyBoxList && !dummyBoxLocalLockedRegistered && isDummyBoxLocal && onIsDummyBoxLocalChange) {
+        if (dummyBoxListGate.pending) return;
+        const inList = dummyBoxListGate.inList;
+        if (!inList && !dummyBoxLocalLockedRegistered && isDummyBoxLocal && onIsDummyBoxLocalChange) {
             onIsDummyBoxLocalChange(false);
         }
-        if (!customerInDummyBoxList && !dummyBoxImportLockedRegistered && isDummyBoxImport && onIsDummyBoxImportChange) {
+        if (!inList && !dummyBoxImportLockedRegistered && isDummyBoxImport && onIsDummyBoxImportChange) {
             onIsDummyBoxImportChange(false);
         }
         if (dummyBoxLocalLockedRegistered && isDummyBoxLocal && onIsDummyBoxLocalChange) onIsDummyBoxLocalChange(false);
         if (dummyBoxImportLockedRegistered && isDummyBoxImport && onIsDummyBoxImportChange) onIsDummyBoxImportChange(false);
     }, [
         dummyBoxListGate,
-        customerInDummyBoxList,
         dummyBoxLocalLockedRegistered,
         dummyBoxImportLockedRegistered,
         isDummyBoxLocal,
@@ -401,22 +415,6 @@ const Cart: React.FC<CartProps> = (props) => {
         onIsDummyBoxLocalChange,
         onIsDummyBoxImportChange,
     ]);
-
-    const dummyBoxLocalTitle = dummyBoxLocalLockedRegistered
-        ? 'KH đã đặt gói DummyBox Local — không chọn lại (kể cả khi không còn trên tab DummyBox)'
-        : !customerInDummyBoxList
-            ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
-            : eligibleDummyBoxLocal
-                ? 'Đủ điều kiện gói Local: tổng đơn sau CK ≥ 1.000.000'
-                : 'Chưa đủ điều kiện gói Local (xem calculator để kiểm tra)';
-
-    const dummyBoxImportTitle = dummyBoxImportLockedRegistered
-        ? 'KH đã đặt gói DummyBox Import — không chọn lại (kể cả khi không còn trên tab DummyBox)'
-        : !customerInDummyBoxList
-            ? 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)'
-            : eligibleDummyBoxImport
-                ? 'Đủ điều kiện gói Import: tổng đơn sau CK ≥ 1.000.000'
-                : 'Chưa đủ điều kiện gói Import (xem calculator để kiểm tra)';
 
     // CTKM gói 4.76% đã kết thúc: luôn tắt cờ để tránh đơn nháp cũ còn áp dụng.
     useEffect(() => {
@@ -469,8 +467,13 @@ const Cart: React.FC<CartProps> = (props) => {
     const hasLocalMaxNote = note.includes('Trả tối đa phí Local');
     const hasImportMaxNote = note.includes('Trả tối đa phí Import');
 
-    const feeOverNeedsNote = (localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote);
-    const rebateWithoutProducts = (selectedLocalRebateTotal > 0 && localProductCount < 1) || (selectedImportRebateTotal > 0 && importProductCount < 1);
+    const feeOverNeedsNote =
+        !rebatePaymentLocked &&
+        ((localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote));
+    const rebateWithoutProducts =
+        !rebatePaymentLocked &&
+        ((selectedLocalRebateTotal > 0 && localProductCount < 1) ||
+            (selectedImportRebateTotal > 0 && importProductCount < 1));
     const psSubmitBlocked =
         isPsOnInvoice25 && psTotals != null && !psTotals.eligible;
     const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts || psSubmitBlocked;
@@ -602,15 +605,20 @@ const Cart: React.FC<CartProps> = (props) => {
                     )}
 
                     {rebates.length > 0 && (
-                        <div className="mt-2 space-y-2">
+                        <div className={`mt-2 space-y-2 ${rebatePaymentLocked ? 'opacity-60' : ''}`}>
+                            {rebatePaymentLocked && (
+                                <p className="text-[10px] font-bold text-violet-800 dark:text-violet-200 px-2 py-1 rounded border border-violet-200 dark:border-violet-700 bg-violet-50/90 dark:bg-violet-950/40">
+                                    {PS_ON_INVOICE_NOTE_MARKER}: không chọn trả phí rebate trên đơn này.
+                                </p>
+                            )}
                             {localRebates.length > 0 && (
                                 <div className="space-y-1.5">
                                     <p className="px-2 py-1 bg-green-50 dark:bg-green-900/20 text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-wide rounded border border-green-100 dark:border-green-800/50">
-                                        TỔNG PHÍ CẦN TRẢ LOCAL: {formatCurrency(selectedLocalRebateTotal)}
+                                        TỔNG PHÍ CẦN TRẢ LOCAL: {formatCurrency(rebatePaymentLocked ? 0 : selectedLocalRebateTotal)}
                                     </p>
                                     {localRebates.map(r => (
-                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                        <label key={r["PromotionID#program"]} title={rebatePaymentLocked ? 'Đã khóa — đơn CK PS 25%' : undefined} className={`flex items-start p-2.5 rounded-lg border transition-all ${rebatePaymentLocked ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700' : `cursor-pointer ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}`}>
+                                            <input type="checkbox" checked={!rebatePaymentLocked && selectedRebateIds.includes(r["PromotionID#program"])} disabled={rebatePaymentLocked} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" />
                                             <div className="ml-2.5 flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
@@ -626,11 +634,11 @@ const Cart: React.FC<CartProps> = (props) => {
                             {importRebates.length > 0 && (
                                 <div className="space-y-1.5">
                                     <p className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wide rounded border border-blue-100 dark:border-blue-800/50">
-                                        TỔNG PHÍ CẦN TRẢ IMPORT: {formatCurrency(selectedImportRebateTotal)}
+                                        TỔNG PHÍ CẦN TRẢ IMPORT: {formatCurrency(rebatePaymentLocked ? 0 : selectedImportRebateTotal)}
                                     </p>
                                     {importRebates.map(r => (
-                                        <label key={r["PromotionID#program"]} className={`flex items-start p-2.5 rounded-lg border cursor-pointer transition-all ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                            <input type="checkbox" checked={selectedRebateIds.includes(r["PromotionID#program"])} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                        <label key={r["PromotionID#program"]} title={rebatePaymentLocked ? 'Đã khóa — đơn CK PS 25%' : undefined} className={`flex items-start p-2.5 rounded-lg border transition-all ${rebatePaymentLocked ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700' : `cursor-pointer ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-opella-beige/50 dark:bg-opella-green/20 border-opella-green/50 dark:border-opella-green shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}`}>
+                                            <input type="checkbox" checked={!rebatePaymentLocked && selectedRebateIds.includes(r["PromotionID#program"])} disabled={rebatePaymentLocked} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-opella-green focus:ring-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" />
                                             <div className="ml-2.5 flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
@@ -769,16 +777,16 @@ const Cart: React.FC<CartProps> = (props) => {
                         {onIsDummyBoxLocalChange && (
                             <div className="flex items-center space-x-1.5">
                                 <input type="checkbox" id="dummy-box-local" checked={!!isDummyBoxLocal && canToggleDummyBoxLocal} onChange={(e) => onIsDummyBoxLocalChange(e.target.checked)} disabled={!canToggleDummyBoxLocal} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold ${canToggleDummyBoxLocal ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxLocalTitle}>
-                                    DummyBox Local (-150k){dummyBoxLocalLockedRegistered ? ' · Đã đặt' : ''}
+                                <label htmlFor="dummy-box-local" className={`text-[11px] font-bold ${canToggleDummyBoxLocal ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxLocalToggle.title}>
+                                    DummyBox Local (-150k){dummyBoxLocalLockedRegistered ? ' · Đã đặt' : dummyBoxLocalToggle.labelSuffix}
                                 </label>
                             </div>
                         )}
                         {onIsDummyBoxImportChange && (
                             <div className="flex items-center space-x-1.5">
                                 <input type="checkbox" id="dummy-box-import" checked={!!isDummyBoxImport && canToggleDummyBoxImport} onChange={(e) => onIsDummyBoxImportChange(e.target.checked)} disabled={!canToggleDummyBoxImport} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
-                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold ${canToggleDummyBoxImport ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImportTitle}>
-                                    DummyBox Import (-150k){dummyBoxImportLockedRegistered ? ' · Đã đặt' : ''}
+                                <label htmlFor="dummy-box-import" className={`text-[11px] font-bold ${canToggleDummyBoxImport ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImportToggle.title}>
+                                    DummyBox Import (-150k){dummyBoxImportLockedRegistered ? ' · Đã đặt' : dummyBoxImportToggle.labelSuffix}
                                 </label>
                             </div>
                         )}
@@ -868,7 +876,7 @@ const Cart: React.FC<CartProps> = (props) => {
 
                     {isPsOnInvoice25 && (
                         <p className="text-[9px] text-violet-700 dark:text-violet-300 font-bold py-0.5">
-                            {PS_ON_INVOICE_NOTE_MARKER} + trả phí: tối đa 49% CK/sản phẩm (basePrice); phí trả theo cột Phí Trả Max.
+                            {PS_ON_INVOICE_NOTE_MARKER}: CK tối đa 49% theo basePrice — không trả phí rebate trên đơn này.
                         </p>
                     )}
 
@@ -893,11 +901,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <input
                                     type="checkbox"
                                     id="note-local-max"
-                                    checked={note.includes('Trả tối đa phí Local')}
+                                    checked={!rebatePaymentLocked && note.includes('Trả tối đa phí Local')}
+                                    disabled={rebatePaymentLocked}
                                     onChange={() => toggleNotePreset('Trả tối đa phí Local')}
-                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
+                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
-                                <label htmlFor="note-local-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Local</label>
+                                <label htmlFor="note-local-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí Local</label>
                             </div>
                         </div>
                         {/* IMPORT */}
@@ -919,11 +928,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <input
                                     type="checkbox"
                                     id="note-import-max"
-                                    checked={note.includes('Trả tối đa phí Import')}
+                                    checked={!rebatePaymentLocked && note.includes('Trả tối đa phí Import')}
+                                    disabled={rebatePaymentLocked}
                                     onChange={() => toggleNotePreset('Trả tối đa phí Import')}
-                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green"
+                                    className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
-                                <label htmlFor="note-import-max" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Trả tối đa phí Import</label>
+                                <label htmlFor="note-import-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí Import</label>
                             </div>
                         </div>
                     </div>

@@ -31,7 +31,7 @@ import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './util
 import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
-import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate } from './utils/dummyBoxGate';
+import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate, normalizeCustomerCodeKey } from './utils/dummyBoxGate';
 import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
@@ -52,6 +52,18 @@ import {
 
 
 const ADMIN_CODE = '20043741'; // Phan Viet Linh
+
+/** Gói CK PS 25% — không kết hợp trả phí rebate trên đơn */
+function stripRebatePaymentFromNote(note: string): string {
+  return note
+    .split('\n')
+    .filter((line) => !/^TRẢ PHÍ\s/i.test(line.trim()))
+    .join('\n')
+    .replace(/\s*Trả tối đa phí Local\s*/gi, ' ')
+    .replace(/\s*Trả tối đa phí Import\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 /** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76% */
 const SHOW_PRICE_LIST_TAB = false;
@@ -79,6 +91,8 @@ const App: React.FC = () => {
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [marketingDataBs, setMarketingDataBs] = useState<MarketingRecord[]>([]);
+  /** True sau khi loadCriticalData hoàn tất phần DummyBox (kể cả mảng rỗng) */
+  const [dummyBoxSheetsReady, setDummyBoxSheetsReady] = useState(false);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
   const [viewMode, setViewMode] = useState<ViewMode>('order');
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
@@ -190,6 +204,7 @@ const App: React.FC = () => {
 
   /** Phase 1: Dữ liệu cốt lõi cho Order/Rebate/Landing. `skipDangMucKh`: đã tải DANH_MUC_KH ở bước trước (post-login). */
   const loadCriticalData = async (options?: { skipDangMucKh?: boolean }) => {
+    setDummyBoxSheetsReady(false);
     try {
       let rebates: Rebate[];
       let sales: SalesRecord[];
@@ -273,6 +288,8 @@ const App: React.FC = () => {
       }
     } catch (e) {
       console.error("Critical data load failed", e);
+    } finally {
+      setDummyBoxSheetsReady(true);
     }
   };
 
@@ -468,6 +485,7 @@ const App: React.FC = () => {
   }
 
   const handleLogout = () => {
+    setDummyBoxSheetsReady(false);
     setLoggedInEmployee(null);
     setPostLoginHydrating(false);
     setIsSuperUser(false);
@@ -525,13 +543,26 @@ const App: React.FC = () => {
     );
   }, [cart, isPsOnInvoice25, psGate?.tierConfig]);
 
+  useEffect(() => {
+    if (!isPsOnInvoice25) return;
+    setSelectedRebateIds((prev) => (prev.length === 0 ? prev : []));
+    setNote((prev) => {
+      const stripped = stripRebatePaymentFromNote(prev);
+      return stripped === prev ? prev : stripped;
+    });
+  }, [isPsOnInvoice25]);
+
   const handlePsOnInvoice25Toggle = (checked: boolean) => {
     if (!psGate?.tierConfig) return;
     setIsPsOnInvoice25(checked);
     if (checked) {
       setCart(prev => prev.map(cartItemForPsPricing));
+      setSelectedRebateIds([]);
       setNote(prev =>
-        mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine(psGate.tierConfig.label))
+        mergePsOnInvoiceNote(
+          stripRebatePaymentFromNote(prev),
+          buildPsOnInvoiceNoteLine(psGate.tierConfig.label)
+        )
       );
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
@@ -643,18 +674,19 @@ const App: React.FC = () => {
   );
 
   const dummyBoxListGate = useMemo(() => {
-    const code = String(customerCode ?? '').trim();
+    const code = normalizeCustomerCodeKey(customerCode);
     const orderHadLocal = sentOrders.some(
-      o => String(o.customerCode).trim() === code && !!o.isDummyBoxLocal
+      o => normalizeCustomerCodeKey(o.customerCode) === code && !!o.isDummyBoxLocal
     );
     const orderHadImport = sentOrders.some(
-      o => String(o.customerCode).trim() === code && !!o.isDummyBoxImport
+      o => normalizeCustomerCodeKey(o.customerCode) === code && !!o.isDummyBoxImport
     );
     return buildDummyBoxListGate(code, mergedDummyBoxMarketingByCode, {
       orderHadDummyBoxLocal: orderHadLocal,
       orderHadDummyBoxImport: orderHadImport,
+      pending: !dummyBoxSheetsReady,
     });
-  }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders]);
+  }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders, dummyBoxSheetsReady]);
 
   /** KH đã có gói Ostelin 60V (Đợt 1) — không tick tặng máy đo HA / ghi sheet Đợt 2; vẫn CK 5h 21.67% */
   const ostelin60VGoiPurchasedCodeSet = useMemo(() => {
@@ -681,6 +713,7 @@ const App: React.FC = () => {
   }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
 
   const handleToggleRebate = (rebateId: string) => {
+    if (isPsOnInvoice25) return;
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
     if (!rebate) return;
 
@@ -754,11 +787,13 @@ const App: React.FC = () => {
 
     const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxAmountEligibility(cart);
     const effectiveDummyBoxLocal =
+      !dummyBoxListGate.pending &&
       dummyBoxListGate.inList &&
       eligibleDummyBoxLocal &&
       !dummyBoxListGate.goiLocalRegistered &&
       isDummyBoxLocal;
     const effectiveDummyBoxImport =
+      !dummyBoxListGate.pending &&
       dummyBoxListGate.inList &&
       eligibleDummyBoxImport &&
       !dummyBoxListGate.goiImportRegistered &&
@@ -940,7 +975,6 @@ const App: React.FC = () => {
     setCustomerAddress(d.customerAddress);
     const psDraft = !!d.isPsOnInvoice25;
     setCart(psDraft ? d.items.map(cartItemForPsPricing) : d.items);
-    setNote(d.note);
     setIsOnTopLiXi(d.isOnTopLiXi);
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
@@ -949,7 +983,8 @@ const App: React.FC = () => {
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
       setIsDummyBoxLocal(true);
     }
-    setSelectedRebateIds(d.appliedRebates || []);
+    setNote(psDraft ? stripRebatePaymentFromNote(d.note) : d.note);
+    setSelectedRebateIds(psDraft ? [] : d.appliedRebates || []);
     setActiveDraftId(d.id);
   };
 

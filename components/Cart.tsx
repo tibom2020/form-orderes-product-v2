@@ -236,6 +236,8 @@ interface CartProps {
     psGate?: PsCustomerGate | null;
     isPsOnInvoice25?: boolean;
     onIsPsOnInvoice25Change?: (checked: boolean) => void;
+    psSuatSelected?: number;
+    onPsSuatSelectedChange?: (suat: number) => void;
 }
 
 const Cart: React.FC<CartProps> = (props) => {
@@ -256,6 +258,8 @@ const Cart: React.FC<CartProps> = (props) => {
         psGate = null,
         isPsOnInvoice25 = false,
         onIsPsOnInvoice25Change,
+        psSuatSelected = 0,
+        onPsSuatSelectedChange,
     } = props;
 
     const psTierLabel =
@@ -265,8 +269,15 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const psTotals = useMemo(() => {
         if (!isPsOnInvoice25 || !psGate?.tierConfig) return null;
-        return calcPsOrderTotals(items, psGate.tierConfig);
-    }, [isPsOnInvoice25, psGate, items]);
+        return calcPsOrderTotals(items, psGate.tierConfig, {
+            usedSuatFromSheet: psGate.suatPsDaDung,
+            suatToApply: psSuatSelected > 0 ? psSuatSelected : undefined,
+        });
+    }, [isPsOnInvoice25, psGate, items, psSuatSelected]);
+
+    const psSuatPickMax = psTotals
+        ? Math.min(psTotals.suatFromCart, psTotals.suatRemaining)
+        : 0;
 
     const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -475,7 +486,9 @@ const Cart: React.FC<CartProps> = (props) => {
         ((selectedLocalRebateTotal > 0 && localProductCount < 1) ||
             (selectedImportRebateTotal > 0 && importProductCount < 1));
     const psSubmitBlocked =
-        isPsOnInvoice25 && psTotals != null && !psTotals.eligible;
+        isPsOnInvoice25 &&
+        psTotals != null &&
+        (psTotals.suatRemaining < 1 || !psTotals.eligible);
     const isSubmitBlocked = feeOverNeedsNote || rebateWithoutProducts || psSubmitBlocked;
 
     const showSubmitSuccessUi = useMemo(
@@ -582,6 +595,11 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <span className="text-[10px] font-bold text-violet-900 dark:text-violet-200 uppercase">Loại PS</span>
                                 <span className="text-sm font-black text-violet-800 dark:text-violet-100">{psTierLabel}</span>
                             </div>
+                            {psGate && !psGate.canShowCk25 && psGate.inPsList && (
+                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-200">
+                                    Đã hết suất PS ({psGate.suatPsDaDung}/{psGate.suatMax}) — không chọn {PS_ON_INVOICE_NOTE_MARKER}.
+                                </p>
+                            )}
                             {psGate?.canShowCk25 && onIsPsOnInvoice25Change && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -596,10 +614,36 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </label>
                             )}
                             {isPsOnInvoice25 && psTotals && (
-                                <p className={`text-[10px] font-bold ${psTotals.eligible ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
-                                    Đơn tối thiểu {formatCurrency(psTotals.minOrder)} · Hiện {formatCurrency(psTotals.baseSubtotal)}
-                                    {psTotals.eligible ? ` · Giảm ${formatCurrency(psTotals.discountGross)}` : ' · Chưa đủ điều kiện'}
-                                </p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-violet-900 dark:text-violet-100">
+                                        Suất còn {psTotals.suatRemaining}/{psTotals.suatMax}
+                                        {psTotals.isMultiSuat
+                                            ? ` · Đơn này: ${psTotals.suatApplied || psSuatSelected || 0} suất`
+                                            : ''}
+                                    </p>
+                                    {psTotals.isMultiSuat && onPsSuatSelectedChange && psSuatPickMax >= 1 && (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Số suất:</span>
+                                            <select
+                                                value={Math.max(1, Math.min(psSuatSelected || 1, psSuatPickMax))}
+                                                onChange={e => onPsSuatSelectedChange(Number(e.target.value))}
+                                                className="text-[10px] font-bold border border-violet-300 dark:border-violet-700 rounded px-1.5 py-0.5 bg-white dark:bg-slate-800"
+                                            >
+                                                {Array.from({ length: psSuatPickMax }, (_, i) => i + 1).map(n => (
+                                                    <option key={n} value={n}>
+                                                        {n} suất ({formatCurrency(n * psTotals.minPerSuat)})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <p className={`text-[10px] font-bold ${psTotals.eligible ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                                        Cần ≥ {formatCurrency(psTotals.minOrder)} (basePrice) · Hiện {formatCurrency(psTotals.baseSubtotal)}
+                                        {psTotals.eligible
+                                            ? ` · Giảm ${formatCurrency(psTotals.discountGross)}`
+                                            : ' · Chưa đủ điều kiện'}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     )}
@@ -831,7 +875,13 @@ const Cart: React.FC<CartProps> = (props) => {
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isPsOnInvoice25 && psDiscountGross > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
-                                    <span>- {PS_ON_INVOICE_NOTE_MARKER} ({psGate?.tierLabel}):</span>
+                                    <span>
+                                        - {PS_ON_INVOICE_NOTE_MARKER} ({psGate?.tierLabel}
+                                        {(psTotals?.suatApplied ?? 0) >= 1
+                                            ? ` ${psTotals!.suatApplied}/${psTotals!.suatMax}`
+                                            : ''}
+                                        ):
+                                    </span>
                                     <span>-{formatCurrency(psDiscountGross)}</span>
                                 </div>
                             )}
@@ -870,7 +920,9 @@ const Cart: React.FC<CartProps> = (props) => {
 
                     {psSubmitBlocked && (
                         <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 py-1">
-                            Chưa đạt đơn tối thiểu theo loại PS — không thể gửi đơn với {PS_ON_INVOICE_NOTE_MARKER}.
+                            {psTotals && psTotals.suatRemaining < 1
+                                ? `Đã hết suất PS — không thể gửi đơn với ${PS_ON_INVOICE_NOTE_MARKER}.`
+                                : `Chưa đạt điều kiện PS (tổng ≥ mức tối thiểu theo số suất) — không thể gửi đơn với ${PS_ON_INVOICE_NOTE_MARKER}.`}
                         </p>
                     )}
 

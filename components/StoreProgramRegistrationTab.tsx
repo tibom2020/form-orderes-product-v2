@@ -11,7 +11,13 @@ import {
   setGoiPs25CellInRow,
   type DangKyTbq2RowView,
 } from '../utils/displayTbq2Sheet';
-import { isGoiPs25No, isGoiPs25Yes } from '../utils/psOnInvoicePromo';
+import {
+  isGoiPs25No,
+  isGoiPs25Yes,
+  getPsMultiSuatRules,
+  getPsSuatMaxForTier,
+  getPsSuatRemaining,
+} from '../utils/psOnInvoicePromo';
 import { fetchDataFromSheet, submitUpdateGoiPs25TBQ2 } from '../services/googleSheetService';
 import GoiPs25Toggle from './GoiPs25Toggle';
 import { SHEET_DANGKYTBQ2, SHEET_REP_BUDGET_TBQ2, SHEET_DOANH_SO } from '../constants';
@@ -167,6 +173,36 @@ function findTierConfigByFinalStoreTypeQ2(cell: string): StoreTierConfig | null 
     if (normalizeFinalStoreTypeQ2Key(t.label) === key) return t;
   }
   return null;
+}
+
+function psSuatTrackingForRow(row: DangKyTbq2RowView) {
+  const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+  if (!cfg) {
+    return {
+      max: 0,
+      used: 0,
+      remaining: 0,
+      minPerSuat: 0,
+      discountPerSuat: 0,
+      isMulti: false,
+      muaTuDisplay: 0,
+      ckDisplay: 0,
+    };
+  }
+  const multi = getPsMultiSuatRules(cfg.id);
+  const max = getPsSuatMaxForTier(cfg);
+  const used = row.suatPsDaDung;
+  const remaining = getPsSuatRemaining(cfg, used);
+  return {
+    max,
+    used,
+    remaining,
+    minPerSuat: multi?.minPerSuat ?? cfg.reward * 4,
+    discountPerSuat: multi?.discountPerSuat ?? cfg.reward,
+    isMulti: multi != null,
+    muaTuDisplay: multi ? multi.minPerSuat : cfg.reward * 4,
+    ckDisplay: multi ? multi.discountPerSuat : cfg.reward,
+  };
 }
 
 /** Nền hàng bảng theo tier (cột FinalStoreTypeQ2) */
@@ -450,7 +486,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   /** Lọc KH theo trạng thái đạt/rớt chi tiêu tối thiểu tháng hiện tại */
   const [monthAchievementFilter, setMonthAchievementFilter] = useState<'achieved' | 'missed' | null>(null);
   /** Lọc theo cột sheet Gói PS 25% */
-  const [goiPs25Filter, setGoiPs25Filter] = useState<'all' | 'no' | 'yes'>('all');
+  const [goiPs25Filter, setGoiPs25Filter] = useState<'all' | 'no' | 'yes' | 'con_suat'>('all');
   /** KH được chọn để xem Thông tin doanh số */
   const [selectedSalesRecord, setSelectedSalesRecord] = useState<SalesRecord | null>(null);
   /** Mã KH đang ghi Gói PS 25% lên sheet */
@@ -593,6 +629,11 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       rows = rows.filter(r => isRegisteredRow(r) && isGoiPs25No(r.goiPs25));
     } else if (goiPs25Filter === 'yes') {
       rows = rows.filter(r => isRegisteredRow(r) && isGoiPs25Yes(r.goiPs25));
+    } else if (goiPs25Filter === 'con_suat') {
+      rows = rows.filter(r => {
+        if (!isRegisteredRow(r)) return false;
+        return psSuatTrackingForRow(r).remaining > 0;
+      });
     }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
@@ -744,7 +785,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q2 (không hiển thị Q1 / trạng thái / thao tác sheet); có thể ẩn Rep */
-  const tableColSpan = hideRepColumn ? 22 : 23;
+  const tableColSpan = hideRepColumn ? 26 : 27;
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -996,10 +1037,21 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                 >
                   Đã đặt ({goiPs25Stats.daDat})
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setGoiPs25Filter('con_suat')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                    goiPs25Filter === 'con_suat'
+                      ? 'bg-violet-600 text-white border-violet-700 shadow-sm'
+                      : 'bg-violet-50 text-violet-800 border-violet-200 hover:bg-violet-100 dark:bg-violet-950/30 dark:text-violet-200'
+                  }`}
+                >
+                  Còn suất PS
+                </button>
               </div>
               <p className="text-[10px] text-[#404945] dark:text-slate-500 mt-2">
                 Bấm thẻ tier để lọc KH đã đăng ký theo cột FinalStoreTypeQ2; bấm lại thẻ đang chọn để bỏ lọc.
-                Cột <strong>Gói PS 25%</strong>: admin gạt YES/NO (lưu sheet DANGKYTBQ2); user chỉ xem.
+                Cột <strong>Gói PS 25%</strong>: admin gạt YES/NO; <strong>Đã đặt</strong> tự cộng khi gửi đơn CK PS (có thể sửa tay trên sheet).
               </p>
             </section>
 
@@ -1107,13 +1159,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
-                          title="Mua từ = Incentives × 4 theo tier"
+                          title="Mua từ / suất (legacy: Incentives×4)"
                         >
                           Mua từ
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
-                          title="Incentives theo FinalStoreTypeQ2 (sheet tiêu chí CT trưng bày)"
+                          title="CK / suất (legacy: Incentives POSM)"
                         >
                           Incentives
                         </th>
@@ -1122,6 +1174,35 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           title="Gói PS 25% — admin gạt YES/NO"
                         >
                           Gói PS 25%
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[3.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Suất tối đa theo tier (Gold/Platinum/Flagship)"
+                        >
+                          Suất max
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[3.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Cột sheet Suất PS đã dùng — cập nhật khi gửi đơn"
+                        >
+                          Đã đặt
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[3.25rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                        >
+                          Còn
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
+                          title="Mua từ / 1 suất (Gold 3,2tr · Platinum 4,8tr · Flagship 4tr)"
+                        >
+                          Mua từ/suất
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight font-bold text-red-600 dark:text-red-400"
+                          title="CK / 1 suất trên đơn"
+                        >
+                          CK/suất
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-50/90 dark:bg-blue-950/35 border-r border-blue-200/50 dark:border-blue-900/35 leading-tight"
@@ -1254,16 +1335,14 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                 {posm(row.countertop)}
                               </td>
                               {(() => {
-                                const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
-                                const incentive = cfg?.reward ?? 0;
-                                const muaTu = incentive > 0 ? incentive * 4 : 0;
+                                const track = psSuatTrackingForRow(row);
                                 return (
                                   <>
                                     <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
-                                      {muaTu > 0 ? formatCurrency(muaTu) : '—'}
+                                      {track.muaTuDisplay > 0 ? formatCurrency(track.muaTuDisplay) : '—'}
                                     </td>
                                     <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
-                                      {incentive > 0 ? formatCurrency(incentive) : '—'}
+                                      {track.ckDisplay > 0 ? formatCurrency(track.ckDisplay) : '—'}
                                     </td>
                                   </>
                                 );
@@ -1289,6 +1368,41 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   '—'
                                 )}
                               </td>
+                              {(() => {
+                                const track = psSuatTrackingForRow(row);
+                                if (!isRegisteredRow(row)) {
+                                  return (
+                                    <>
+                                      <td className={`${base} text-center ${tc.posm} ${tc.posmHover}`}>—</td>
+                                      <td className={`${base} text-center ${tc.posm} ${tc.posmHover}`}>—</td>
+                                      <td className={`${base} text-center ${tc.posm} ${tc.posmHover}`}>—</td>
+                                      <td className={`${base} text-center ${tc.posm} ${tc.posmHover}`}>—</td>
+                                      <td className={`${base} text-center ${tc.posm} ${tc.posmHover}`}>—</td>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <td className={`${base} text-center font-bold tabular-nums ${tc.posm} ${tc.posmHover}`}>
+                                      {track.max > 0 ? track.max : '—'}
+                                    </td>
+                                    <td className={`${base} text-center font-bold tabular-nums ${tc.posm} ${tc.posmHover}`}>
+                                      {track.used}
+                                    </td>
+                                    <td
+                                      className={`${base} text-center font-black tabular-nums ${track.remaining > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'} ${tc.posm} ${tc.posmHover}`}
+                                    >
+                                      {track.max > 0 ? track.remaining : '—'}
+                                    </td>
+                                    <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
+                                      {track.minPerSuat > 0 ? formatCurrency(track.minPerSuat) : '—'}
+                                    </td>
+                                    <td className={`${base} ${tierIncentiveRedCell} ${tc.posm} ${tc.posmHover}`}>
+                                      {track.discountPerSuat > 0 ? formatCurrency(track.discountPerSuat) : '—'}
+                                    </td>
+                                  </>
+                                );
+                              })()}
                               {(() => {
                                 const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0 };
                                 return (

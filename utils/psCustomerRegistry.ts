@@ -2,6 +2,9 @@ import type { DangKyTbq2RowView } from './displayTbq2Sheet';
 import { isRegisteredRow } from './displayTbq2Sheet';
 import {
   findTierConfigByFinalStoreTypeQ2,
+  getPsMultiSuatRules,
+  getPsSuatMaxForTier,
+  getPsSuatRemaining,
   isGoiPs25No,
 } from './psOnInvoicePromo';
 import type { StoreTierConfig } from '../components/StoreProgramRegistrationTab';
@@ -13,6 +16,10 @@ export interface PsCustomerGate {
   goiPs25Raw: string;
   inPsList: boolean;
   canShowCk25: boolean;
+  suatPsDaDung: number;
+  suatMax: number;
+  suatRemaining: number;
+  isMultiSuat: boolean;
 }
 
 function registerGate(
@@ -25,7 +32,14 @@ function registerGate(
   if (!k) return;
   const goiPs25Raw = row.goiPs25;
   const inPsList = true;
-  const canShowCk25 = inPsList && isGoiPs25No(goiPs25Raw);
+  const multi = getPsMultiSuatRules(tier.id) != null;
+  const suatMax = getPsSuatMaxForTier(tier);
+  const suatPsDaDung = row.suatPsDaDung;
+  const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
+  const canShowCk25 = multi
+    ? inPsList && suatRemaining > 0
+    : inPsList && isGoiPs25No(goiPs25Raw);
+
   map.set(k, {
     customerCode: code.trim(),
     tierLabel: tier.label,
@@ -33,6 +47,10 @@ function registerGate(
     goiPs25Raw,
     inPsList,
     canShowCk25,
+    suatPsDaDung,
+    suatMax,
+    suatRemaining,
+    isMultiSuat: multi,
   });
 }
 

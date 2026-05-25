@@ -29,6 +29,8 @@ export interface DangKyTbq2RowView {
   saleQ2: string;
   /** Cột sheet Gói PS 25% — YES/NO (gạt tay trên DANGKYTBQ2) */
   goiPs25: string;
+  /** Số suất PS 25% đã dùng (cột sheet — cập nhật khi gửi đơn) */
+  suatPsDaDung: number;
   note: string;
   trangThai: string;
   pheDuyet: string;
@@ -37,6 +39,19 @@ export interface DangKyTbq2RowView {
 }
 
 /** Header cột Gói PS 25% trên DANGKYTBQ2 */
+export const SUAT_PS_DA_DUNG_HEADER_ALIASES = [
+  'Suất PS đã dùng',
+  'Suat PS da dung',
+  'SL suất PS',
+  'SL suat PS',
+  'SuatPSDaDung',
+] as const;
+
+export function parseSuatPsDaDung(raw: string): number {
+  const n = Math.floor(Number(String(raw ?? '').replace(/[^\d.-]/g, '')) || 0);
+  return Math.max(0, n);
+}
+
 export const GOI_PS25_HEADER_ALIASES = [
   'Gói PS 25%',
   'Goi PS 25%',
@@ -132,6 +147,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
     saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
     saleQ2: pickCell(row, ['Sale Q2', 'SaleQ2', 'Q2 Sale', 'Q2Sale', 'Q2_Sale']),
     goiPs25: pickCell(row, GOI_PS25_HEADER_ALIASES),
+    suatPsDaDung: parseSuatPsDaDung(pickCell(row, SUAT_PS_DA_DUNG_HEADER_ALIASES)),
     note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
     trangThai: pickCell(row, ['TrangThai', 'Trạng thái', 'Status']),
     pheDuyet: pickCell(row, ['PheDuyet', 'Phê duyệt', 'Phe duyet']),

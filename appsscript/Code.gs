@@ -304,10 +304,66 @@ function handleOrder(data, ss, output) {
       }
     }
 
+    // --- PS 25% On Invoice: cộng suất đã dùng trên DANGKYTBQ2 ---
+    var isPs25 = String(data.isPsOnInvoice25 || "").toLowerCase() === "true" || data.isPsOnInvoice25 === true;
+    var psSuatApplied = Math.max(0, Math.floor(Number(data.psSuatApplied) || 0));
+    if (isPs25 && psSuatApplied > 0) {
+      var psMaxSuat = Math.max(1, Math.floor(Number(data.psSuatMax) || 1));
+      incrementPsSuatOnDangKyTBQ2_(ss, String(data.customerCode || "").trim(), psSuatApplied, psMaxSuat);
+    }
+
     sendTelegramNotification(data);
   }
 
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+/**
+ * Cộng suất PS đã dùng trên DANGKYTBQ2; set Gói PS 25% = YES khi đủ suất tối đa.
+ */
+function incrementPsSuatOnDangKyTBQ2_(ss, customerCode, deltaSuat, maxSuat) {
+  if (!customerCode || deltaSuat <= 0) return;
+  var sheet = ss.getSheetByName("DANGKYTBQ2");
+  if (!sheet) return;
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return;
+  var headers = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = colIndexTBQ2_(headers, ["CustomerCode", "MaKH", "Mã KH", "Code", "customerCode"]);
+  if (codeCol < 0) return;
+  var suatCol = colIndexTBQ2_(headers, [
+    "Suất PS đã dùng",
+    "Suat PS da dung",
+    "SL suất PS",
+    "SL suat PS",
+    "SuatPSDaDung"
+  ]);
+  if (suatCol < 0) {
+    suatCol = headers.length;
+    sheet.getRange(1, suatCol + 1).setValue("Suất PS đã dùng");
+    headers.push("Suất PS đã dùng");
+  }
+  var goiCol = colIndexTBQ2_(headers, [
+    "Gói PS 25%",
+    "Goi PS 25%",
+    "GOI PS 25%",
+    "Gói PS25",
+    "DaDatGoiPS",
+    "On invoice PS"
+  ]);
+  var rowIndex = -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() === customerCode) {
+      rowIndex = r + 1;
+      break;
+    }
+  }
+  if (rowIndex < 0) return;
+  var cur = Math.max(0, Math.floor(Number(values[rowIndex - 1][suatCol]) || 0));
+  var next = cur + deltaSuat;
+  sheet.getRange(rowIndex, suatCol + 1).setValue(next);
+  if (goiCol >= 0 && next >= maxSuat) {
+    sheet.getRange(rowIndex, goiCol + 1).setValue("YES");
+  }
 }
 
 function handleForecast(data, ss, output) {

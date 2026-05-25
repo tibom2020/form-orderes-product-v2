@@ -234,6 +234,9 @@ export interface Order {
   isCalciPlusPack476?: boolean; // CORBIERE CALCIUM PLUS: mỗi gói 21 hộp giảm 4.76%
   /** CTKM Perfect Store On Invoice 25% — basePrice, giảm cố định theo tier */
   isPsOnInvoice25?: boolean;
+  /** Số suất PS 25% áp dụng trên đơn này (Gold/Platinum/Flagship) */
+  psSuatApplied?: number;
+  psTierLabel?: string;
   appliedRebates?: string[];
   createdAt: number;
   status: 'draft' | 'sent';

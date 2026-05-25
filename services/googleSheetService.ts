@@ -38,6 +38,10 @@ interface OrderPayload {
   ostelin60VAmount?: number;
   ostelin60VQuantity?: number;
   ostelin60VDot2?: boolean;
+  isPsOnInvoice25?: boolean;
+  psSuatApplied?: number;
+  psSuatMax?: number;
+  psTierLabel?: string;
 }
 
 export const postOrderToGoogleSheet = async (

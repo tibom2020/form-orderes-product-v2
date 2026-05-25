@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, ACEMUC_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, ACEMUC_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -41,6 +41,7 @@ import {
   stripPsOnInvoiceNoteLines,
   buildPsOnInvoiceNoteLine,
   cartItemForPsPricing,
+  getPsSuatMaxForTier,
 } from './utils/psOnInvoicePromo';
 import {
   computeCartGroupTotals,
@@ -116,6 +117,7 @@ const App: React.FC = () => {
   const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
   const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
   const [isPsOnInvoice25, setIsPsOnInvoice25] = useState(false);
+  const [psSuatSelected, setPsSuatSelected] = useState(0);
   const [psCustomerByCode, setPsCustomerByCode] = useState(
     () => new Map<string, import('./utils/psCustomerRegistry').PsCustomerGate>()
   );
@@ -480,9 +482,22 @@ const App: React.FC = () => {
     setIsDummyBoxImport(false);
     setIsCalciPlusPack476(false);
     setIsPsOnInvoice25(false);
+    setPsSuatSelected(0);
     setSelectedRebateIds([]);
     setActiveDraftId(null);
   }
+
+  const reloadPsCustomerFromSheet = async () => {
+    try {
+      const dangKyRows = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, SHEET_DANGKYTBQ2);
+      const normalizedDk = (dangKyRows || []).map(r =>
+        normalizeDangKyTbq2Row(r as Record<string, unknown>)
+      );
+      setPsCustomerByCode(buildPsCustomerMap(normalizedDk));
+    } catch (e) {
+      console.warn('DANGKYTBQ2 reload after PS order failed', e);
+    }
+  };
 
   const handleLogout = () => {
     setDummyBoxSheetsReady(false);
@@ -538,10 +553,30 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isPsOnInvoice25 || !psGate?.tierConfig) return;
+    const suatN = psSuatSelected > 0 ? psSuatSelected : undefined;
     setNote(prev =>
-      mergePsOnInvoiceNote(prev, buildPsOnInvoiceNoteLine(psGate.tierConfig.label))
+      mergePsOnInvoiceNote(
+        prev,
+        buildPsOnInvoiceNoteLine(psGate.tierConfig.label, suatN, psGate.suatMax)
+      )
     );
-  }, [cart, isPsOnInvoice25, psGate?.tierConfig]);
+  }, [cart, isPsOnInvoice25, psGate?.tierConfig, psGate?.suatMax, psSuatSelected]);
+
+  useEffect(() => {
+    if (!isPsOnInvoice25 || !psGate?.tierConfig) {
+      if (psSuatSelected !== 0) setPsSuatSelected(0);
+      return;
+    }
+    const preview = calcPsOrderTotals(cart, psGate.tierConfig, {
+      usedSuatFromSheet: psGate.suatPsDaDung,
+    });
+    const maxPick = Math.min(preview.suatFromCart, preview.suatRemaining);
+    setPsSuatSelected(prev => {
+      if (maxPick < 1) return 0;
+      if (prev < 1 || prev > maxPick) return maxPick;
+      return prev;
+    });
+  }, [cart, isPsOnInvoice25, psGate?.tierConfig, psGate?.suatPsDaDung, psGate?.suatRemaining]);
 
   useEffect(() => {
     if (!isPsOnInvoice25) return;
@@ -557,16 +592,26 @@ const App: React.FC = () => {
     setIsPsOnInvoice25(checked);
     if (checked) {
       setCart(prev => prev.map(cartItemForPsPricing));
+      const preview = calcPsOrderTotals(cart.map(cartItemForPsPricing), psGate.tierConfig, {
+        usedSuatFromSheet: psGate.suatPsDaDung,
+      });
+      const initialSuat = Math.min(preview.suatFromCart, preview.suatRemaining);
+      setPsSuatSelected(initialSuat >= 1 ? initialSuat : 0);
       setSelectedRebateIds([]);
       setNote(prev =>
         mergePsOnInvoiceNote(
           stripRebatePaymentFromNote(prev),
-          buildPsOnInvoiceNoteLine(psGate.tierConfig.label)
+          buildPsOnInvoiceNoteLine(
+            psGate.tierConfig.label,
+            initialSuat >= 1 ? initialSuat : undefined,
+            psGate.suatMax
+          )
         )
       );
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
     } else {
+      setPsSuatSelected(0);
       setCart(prev =>
         prev.map(item => {
           const catalog = PRODUCTS.find(p => p.id === item.id);
@@ -768,7 +813,10 @@ const App: React.FC = () => {
 
     const psTotalsForOrder =
       isPsOnInvoice25 && psGate?.tierConfig
-        ? calcPsOrderTotals(cart, psGate.tierConfig)
+        ? calcPsOrderTotals(cart, psGate.tierConfig, {
+            usedSuatFromSheet: psGate.suatPsDaDung,
+            suatToApply: psSuatSelected > 0 ? psSuatSelected : undefined,
+          })
         : null;
 
     const maxPayableFees = computeMaxPayableFees(cart, groupTotals, {
@@ -815,6 +863,8 @@ const App: React.FC = () => {
         isDummyBoxImport: effectiveDummyBoxImport,
         isCalciPlusPack476: false,
         isPsOnInvoice25: true,
+        psSuatApplied: psTotalsForOrder.suatApplied,
+        psTierLabel: psGate?.tierLabel,
         appliedRebates: selectedRebateIds,
         totalAmount: psTotalsForOrder.baseSubtotal,
         finalAmount: Math.max(0, psTotalsForOrder.finalAmount - totalRebateDiscount - dummyBoxDiscount),
@@ -911,10 +961,17 @@ const App: React.FC = () => {
   const handleSubmitOrder = async () => {
     if (!customerCode || cart.length === 0 || isLoading) return;
     if (isPsOnInvoice25 && psGate?.tierConfig) {
-      const psTotals = calcPsOrderTotals(cart, psGate.tierConfig);
+      const psTotals = calcPsOrderTotals(cart, psGate.tierConfig, {
+        usedSuatFromSheet: psGate.suatPsDaDung,
+        suatToApply: psSuatSelected > 0 ? psSuatSelected : undefined,
+      });
+      if (psTotals.suatRemaining < 1) {
+        alert(`KH ${psGate.tierLabel} đã hết suất PS 25% (${psTotals.suatUsed}/${psTotals.suatMax}).`);
+        return;
+      }
       if (!psTotals.eligible) {
         alert(
-          `Đơn chưa đạt mức tối thiểu ${psGate.tierLabel}: cần ${formatCurrency(psTotals.minOrder)} (chưa VAT, basePrice). Hiện tại: ${formatCurrency(psTotals.baseSubtotal)}.`
+          `Đơn chưa đạt điều kiện ${psGate.tierLabel}: cần ${formatCurrency(psTotals.minOrder)} (${psTotals.suatApplied || psSuatSelected} suất × ${formatCurrency(psTotals.minPerSuat)}). Hiện: ${formatCurrency(psTotals.baseSubtotal)}.`
         );
         return;
       }
@@ -938,7 +995,15 @@ const App: React.FC = () => {
       employeeCode: loggedInEmployee!.code,
       ...orderObj,
       appliedRebates: selectedRebateIds,
-      customerSummary: customerSummary // Gửi kèm tóm tắt KPI
+      customerSummary: customerSummary,
+      ...(orderObj.isPsOnInvoice25
+        ? {
+            isPsOnInvoice25: true,
+            psSuatApplied: orderObj.psSuatApplied ?? 0,
+            psSuatMax: psGate?.tierConfig ? getPsSuatMaxForTier(psGate.tierConfig) : 1,
+            psTierLabel: orderObj.psTierLabel,
+          }
+        : {}),
     });
     setIsLoading(false);
 
@@ -947,6 +1012,9 @@ const App: React.FC = () => {
       const newSent: Order = { ...orderObj, id: Date.now().toString(), createdAt: Date.now(), status: 'sent' };
       setSentOrders([newSent, ...sentOrders]);
       saveOrders('sentOrders', [newSent, ...sentOrders]);
+      if (orderObj.isPsOnInvoice25 && (orderObj.psSuatApplied ?? 0) > 0) {
+        void reloadPsCustomerFromSheet();
+      }
 
       if (activeDraftId) {
         const newDrafts = drafts.filter(d => d.id !== activeDraftId);
@@ -980,6 +1048,7 @@ const App: React.FC = () => {
     setIsDummyBoxImport(!!d.isDummyBoxImport);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
     setIsPsOnInvoice25(psDraft);
+    setPsSuatSelected(psDraft ? Math.max(0, d.psSuatApplied ?? 0) : 0);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
       setIsDummyBoxLocal(true);
     }
@@ -1531,6 +1600,8 @@ const App: React.FC = () => {
                     psGate={psGate}
                     isPsOnInvoice25={isPsOnInvoice25}
                     onIsPsOnInvoice25Change={handlePsOnInvoice25Toggle}
+                    psSuatSelected={psSuatSelected}
+                    onPsSuatSelectedChange={setPsSuatSelected}
                   />
                 </div>
               </div>

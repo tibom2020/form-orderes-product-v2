@@ -481,6 +481,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   } | null>(null);
   const [repBudgetChartOpen, setRepBudgetChartOpen] = useState(false);
   const [repTierStatsOpen, setRepTierStatsOpen] = useState(false);
+  const [ps25RepStatsOpen, setPs25RepStatsOpen] = useState(false);
   /** Bấm thẻ tier: lọc KH đã đăng ký theo giá trị cột FinalStoreTypeQ2 */
   const [tierRegisteredFilter, setTierRegisteredFilter] = useState<StoreTierId | null>(null);
   /** Lọc KH theo trạng thái đạt/rớt chi tiêu tối thiểu tháng hiện tại */
@@ -558,9 +559,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [currentMonthKey]);
 
   const statsByTier = useMemo(() => {
-    const m: Record<string, { count: number; saleQ2Sum: number; achievedMonth: number }> = {};
+    const m: Record<
+      string,
+      { count: number; saleQ2Sum: number; achievedMonth: number; ps25DaDat: number; ps25ChuaDat: number }
+    > = {};
     STORE_TIER_CONFIGS.forEach(t => {
-      m[t.label] = { count: 0, saleQ2Sum: 0, achievedMonth: 0 };
+      m[t.label] = { count: 0, saleQ2Sum: 0, achievedMonth: 0, ps25DaDat: 0, ps25ChuaDat: 0 };
     });
     myRows.forEach(r => {
       if (!isRegisteredRow(r)) return;
@@ -573,12 +577,75 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       if (monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
         m[cfg.label].achievedMonth += 1;
       }
+      if (isGoiPs25Yes(r.goiPs25)) m[cfg.label].ps25DaDat += 1;
+      else if (isGoiPs25No(r.goiPs25)) m[cfg.label].ps25ChuaDat += 1;
     });
     return m;
   }, [myRows, currentMonthKey]);
 
   /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
   const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
+
+  /** Thống kê PS 25% theo Rep × Tier: đã đặt / chưa đặt gói */
+  const ps25RepTierStats = useMemo(() => {
+    const acc = new Map<
+      string,
+      Record<StoreTierId, { daDat: number; chuaDat: number }>
+    >();
+
+    const emptyTierStats = (): Record<StoreTierId, { daDat: number; chuaDat: number }> => {
+      const o = {} as Record<StoreTierId, { daDat: number; chuaDat: number }>;
+      STORE_TIER_CONFIGS.forEach(t => {
+        o[t.id] = { daDat: 0, chuaDat: 0 };
+      });
+      return o;
+    };
+
+    for (const r of myRows) {
+      if (!isRegisteredRow(r)) continue;
+      const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
+      if (!cfg) continue;
+      const repLabel = r.rep.trim() || '— (Chưa gán Rep)';
+      if (!acc.has(repLabel)) acc.set(repLabel, emptyTierStats());
+      const bucket = acc.get(repLabel)!;
+      const cell = bucket[cfg.id];
+      if (isGoiPs25Yes(r.goiPs25)) cell.daDat += 1;
+      else if (isGoiPs25No(r.goiPs25)) cell.chuaDat += 1;
+    }
+
+    return [...acc.entries()]
+      .map(([repLabel, byTier]) => ({
+        repLabel,
+        byTier,
+        totalDaDat: STORE_TIER_CONFIGS.reduce((s, t) => s + byTier[t.id].daDat, 0),
+        totalChuaDat: STORE_TIER_CONFIGS.reduce((s, t) => s + byTier[t.id].chuaDat, 0),
+      }))
+      .filter(x => x.totalDaDat + x.totalChuaDat > 0)
+      .sort(
+        (a, b) =>
+          b.totalDaDat - a.totalDaDat ||
+          b.totalChuaDat - a.totalChuaDat ||
+          a.repLabel.localeCompare(b.repLabel, 'vi')
+      );
+  }, [myRows]);
+
+  const ps25RepTotals = useMemo(() => {
+    const byTier: Record<StoreTierId, { daDat: number; chuaDat: number }> = {} as any;
+    STORE_TIER_CONFIGS.forEach(t => {
+      byTier[t.id] = { daDat: 0, chuaDat: 0 };
+    });
+    let grandDa = 0;
+    let grandChua = 0;
+    for (const row of ps25RepTierStats) {
+      grandDa += row.totalDaDat;
+      grandChua += row.totalChuaDat;
+      for (const t of STORE_TIER_CONFIGS) {
+        byTier[t.id].daDat += row.byTier[t.id].daDat;
+        byTier[t.id].chuaDat += row.byTier[t.id].chuaDat;
+      }
+    }
+    return { byTier, grandDa, grandChua };
+  }, [ps25RepTierStats]);
 
   const goiPs25Stats = useMemo(() => {
     let daDat = 0;
@@ -776,6 +843,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [repTierStatsOpen]);
 
   useEffect(() => {
+    if (!ps25RepStatsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPs25RepStatsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [ps25RepStatsOpen]);
+
+  useEffect(() => {
     if (!selectedSalesRecord) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedSalesRecord(null);
@@ -823,16 +899,15 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           >
             Bảng theo Rep
           </button>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setRepBudgetChartOpen(true)}
-              className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-violet-600/90 text-white dark:bg-violet-500/90 dark:text-white border border-violet-700/30 dark:border-violet-400/30 hover:bg-violet-700 dark:hover:bg-violet-500 active:scale-[0.98] transition-all"
-              title="Biểu đồ % ngân sách đã sử dụng theo từng Rep (chỉ admin)"
-            >
-              Biểu đồ NS
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setPs25RepStatsOpen(true)}
+            disabled={loading}
+            className="px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold bg-rose-600/95 text-white dark:bg-rose-500/95 border border-rose-700/40 dark:border-rose-400/40 hover:bg-rose-700 dark:hover:bg-rose-500 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-all"
+            title="Thống kê KH đã/ chưa đặt gói PS 25% theo Rep và Tier"
+          >
+            Bảng PS 25% theo Rep
+          </button>
           <button
             type="button"
             onClick={() =>
@@ -906,7 +981,14 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
               <div className="flex gap-3">
                 {STORE_TIER_CONFIGS.map(t => {
-                  const s = statsByTier[t.label] || { count: 0, saleQ2Sum: 0, achievedMonth: 0 };
+                  const s =
+                    statsByTier[t.label] || {
+                      count: 0,
+                      saleQ2Sum: 0,
+                      achievedMonth: 0,
+                      ps25DaDat: 0,
+                      ps25ChuaDat: 0,
+                    };
                   const selected = tierRegisteredFilter === t.id;
                   return (
                     <div
@@ -953,6 +1035,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         <span className="font-extrabold text-2xl block">{String(s.count).padStart(2, '0')}</span>
                         <span className="text-[10px] opacity-70 font-medium tabular-nums leading-tight block">
                           Tổng Sale Q2: {formatVndDong(s.saleQ2Sum)}
+                        </span>
+                        <span className="text-[11px] opacity-90 font-bold tabular-nums leading-tight block mt-0.5">
+                          Gói PS 25%: {s.ps25DaDat}/{s.ps25DaDat + s.ps25ChuaDat}
                         </span>
                       </div>
                     </div>
@@ -1570,6 +1655,135 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                       ))}
                       <td className="py-2.5 pl-2 text-center font-black tabular-nums text-emerald-800 dark:text-emerald-300">
                         {repTierColumnTotals.grand}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ps25RepStatsOpen && (
+        <div
+          className="fixed inset-0 z-[103] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thống kê gói PS 25% theo Rep và Tier"
+          onClick={() => setPs25RepStatsOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-[min(100%,80rem)] max-h-[90vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-rose-200/60 dark:border-rose-900/60 bg-[#f9f9f8] dark:bg-slate-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-[#c0c9c3]/25 dark:border-slate-600 shrink-0">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-rose-800 dark:text-rose-200">
+                  Thống kê gói PS 25% theo Rep × Tier
+                </p>
+                <p className="text-[10px] text-[#404945] dark:text-slate-500 mt-1">
+                  Mỗi ô hiển thị <strong>Đã đặt / Chưa đặt</strong> gói PS 25% (chỉ KH đã đăng ký và có Tier).
+                  {isAdmin ? ' Toàn bộ Rep.' : ' Phạm vi Rep của bạn.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPs25RepStatsOpen(false)}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white dark:bg-rose-500"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="overflow-x-auto tbq2-scroll-xy flex-1 p-4 sm:p-5">
+              {ps25RepTierStats.length === 0 ? (
+                <p className="text-sm text-center text-slate-500 py-10">
+                  Chưa có khách hàng nào trong phạm vi dữ liệu hiện tại có Tier và cột Gói PS 25%.
+                </p>
+              ) : (
+                <table className="w-full min-w-[720px] text-left border-collapse text-[11px] sm:text-xs">
+                  <thead>
+                    <tr className="border-b border-[#c0c9c3]/40 dark:border-slate-600">
+                      <th className="sticky left-0 z-[1] bg-[#f9f9f8] dark:bg-slate-900 py-2 pr-3 font-black text-rose-900 dark:text-rose-200 whitespace-nowrap">
+                        Rep
+                      </th>
+                      {STORE_TIER_CONFIGS.map(t => (
+                        <th
+                          key={t.id}
+                          className="py-2 px-1.5 sm:px-2 text-center font-bold text-[#404945] dark:text-slate-400 whitespace-nowrap"
+                          title={t.label}
+                        >
+                          {TIER_TABLE_SHORT[t.id]}
+                        </th>
+                      ))}
+                      <th className="py-2 pl-2 text-center font-black text-rose-900 dark:text-rose-200 whitespace-nowrap">
+                        Tổng Đã / Chưa
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ps25RepTierStats.map(row => (
+                      <tr
+                        key={row.repLabel}
+                        className="border-b border-[#c0c9c3]/20 dark:border-slate-700/80 hover:bg-[#edeeed]/80 dark:hover:bg-slate-800/60"
+                      >
+                        <td className="sticky left-0 z-[1] bg-[#f9f9f8]/95 dark:bg-slate-900/95 backdrop-blur py-2 pr-3 font-semibold text-[#191c1c] dark:text-slate-100 max-w-[14rem]">
+                          <span className="line-clamp-2 break-words">{row.repLabel}</span>
+                        </td>
+                        {STORE_TIER_CONFIGS.map(t => {
+                          const cell = row.byTier[t.id];
+                          const hasAny = cell.daDat + cell.chuaDat > 0;
+                          return (
+                            <td
+                              key={t.id}
+                              className={`py-2 px-1.5 sm:px-2 text-center tabular-nums ${
+                                cell.daDat > 0
+                                  ? 'text-emerald-800 dark:text-emerald-300'
+                                  : 'text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              {hasAny ? (
+                                <span>
+                                  <span className="font-bold">{cell.daDat}</span>
+                                  <span className="opacity-70">/{cell.chuaDat}</span>
+                                </span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="py-2 pl-2 text-center font-black tabular-nums text-rose-800 dark:text-rose-300">
+                          {row.totalDaDat}/{row.totalChuaDat}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-rose-500/35 dark:border-rose-400/40 bg-rose-50/80 dark:bg-rose-950/40">
+                      <td className="sticky left-0 z-[1] py-2.5 pr-3 font-black text-rose-900 dark:text-rose-100">
+                        Tổng cộng
+                      </td>
+                      {STORE_TIER_CONFIGS.map(t => {
+                        const cell = ps25RepTotals.byTier[t.id];
+                        const hasAny = cell.daDat + cell.chuaDat > 0;
+                        return (
+                          <td
+                            key={t.id}
+                            className="py-2.5 px-1.5 sm:px-2 text-center font-bold tabular-nums text-rose-900 dark:text-rose-100"
+                          >
+                            {hasAny ? (
+                              <span>
+                                {cell.daDat}/{cell.chuaDat}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="py-2.5 pl-2 text-center font-black tabular-nums text-emerald-900 dark:text-emerald-200">
+                        {ps25RepTotals.grandDa}/{ps25RepTotals.grandChua}
                       </td>
                     </tr>
                   </tfoot>

@@ -66,6 +66,11 @@ export interface StoreTierConfig {
   minMonthlySales: number;
   minQuarterlySales: number;
   reward: number;
+  /**
+   * Ngưỡng đơn CK PS theo tổng basePrice khi khác `reward × 4`
+   * (Bronze 1.2tr / Silver 4.8tr — CK gross vẫn theo `reward`).
+   */
+  psMinOrderBase?: number;
   mandatoryPosm: PosmLabel[];
   choicePool: PosmLabel[] | null;
   choiceMode: ChoiceMode;
@@ -134,7 +139,8 @@ export const STORE_TIER_CONFIGS: StoreTierConfig[] = [
     label: 'Silver',
     minMonthlySales: 6_000_000,
     minQuarterlySales: 18_000_000,
-    reward: 1_200_000,
+    reward: 1_182_000,
+    psMinOrderBase: 4_800_000,
     mandatoryPosm: [POSM.FRONT_COUNTER],
     choicePool: [POSM.TOPBOARD, POSM.COUNTERTOP_CDU],
     choiceMode: 'single',
@@ -147,7 +153,8 @@ export const STORE_TIER_CONFIGS: StoreTierConfig[] = [
     label: 'Bronze',
     minMonthlySales: 3_000_000,
     minQuarterlySales: 9_000_000,
-    reward: 300_000,
+    reward: 295_500,
+    psMinOrderBase: 1_200_000,
     mandatoryPosm: [],
     choicePool: [POSM.TOPBOARD, POSM.FRONT_COUNTER, POSM.COUNTERTOP_CDU],
     choiceMode: 'single',
@@ -197,10 +204,10 @@ function psSuatTrackingForRow(row: DangKyTbq2RowView) {
     max,
     used,
     remaining,
-    minPerSuat: multi?.minPerSuat ?? cfg.reward * 4,
+    minPerSuat: multi?.minPerSuat ?? (cfg.psMinOrderBase ?? cfg.reward * 4),
     discountPerSuat: multi?.discountPerSuat ?? cfg.reward,
     isMulti: multi != null,
-    muaTuDisplay: multi ? multi.minPerSuat : cfg.reward * 4,
+    muaTuDisplay: multi ? multi.minPerSuat : (cfg.psMinOrderBase ?? cfg.reward * 4),
     ckDisplay: multi ? multi.discountPerSuat : cfg.reward,
   };
 }

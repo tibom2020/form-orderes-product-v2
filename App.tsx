@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, DUMMY_BOX_DISCOUNT, TELFAST_GROUP_IDS, OSTELIN_GROUP_IDS, ACEMUC_GROUP_IDS, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -26,11 +26,16 @@ import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
-import { calculateLineTotal, getDiscountPercent } from './utils/calculations';
+import { getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
-import { getDummyBoxAmountEligibility } from './utils/dummyBoxEligibility';
+import { getDummyBoxAmountEligibility, getDummyBoxEligibilityTotals } from './utils/dummyBoxEligibility';
+import {
+  computeCartFinalAmountWithVat,
+  computeCartVatTotals,
+  getCartLineExVatAfterDiscount,
+} from './utils/cartVatTotals';
 import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate, normalizeCustomerCodeKey } from './utils/dummyBoxGate';
 import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
@@ -809,7 +814,6 @@ const App: React.FC = () => {
     const totalSales = cart.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
 
     const groupTotals = computeCartGroupTotals(cart);
-    const { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal } = groupTotals;
 
     const psTotalsForOrder =
       isPsOnInvoice25 && psGate?.tierConfig
@@ -827,7 +831,10 @@ const App: React.FC = () => {
       excludeMonthlyFromCap: !!psTotalsForOrder,
     });
 
-    const { rebateDiscount: totalRebateDiscount } = computeAppliedRebates(
+    const {
+      rebateDiscountLocalApplied,
+      rebateDiscountImportApplied,
+    } = computeAppliedRebates(
       currentCustomerRebates,
       selectedRebateIds,
       maxPayableFees
@@ -846,9 +853,43 @@ const App: React.FC = () => {
       eligibleDummyBoxImport &&
       !dummyBoxListGate.goiImportRegistered &&
       isDummyBoxImport;
-    const dummyBoxDiscount =
-      (effectiveDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
-      (effectiveDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
+    const { localTotalAfterDiscount, importTotalAfterDiscount } = getDummyBoxEligibilityTotals(cart);
+
+    const cartVatInput = {
+      items: cart,
+      groupTotals,
+      psTotals: psTotalsForOrder ?? undefined,
+      applyDummyBoxLocal: effectiveDummyBoxLocal,
+      applyDummyBoxImport: effectiveDummyBoxImport,
+      dummyBoxLocalPoolExVat: localTotalAfterDiscount,
+      dummyBoxImportPoolExVat: importTotalAfterDiscount,
+    };
+
+    const { subtotalExVat: totalAmount } = computeCartVatTotals(cartVatInput);
+
+    const onTopLiXiDiscount = psTotalsForOrder ? 0 : isOnTopLiXi ? 250000 : 0;
+    const calciPlusPack476Discount = psTotalsForOrder
+      ? 0
+      : isCalciPlusPack476
+      ? cart
+          .filter((i) => PACK_476_PRODUCT_IDS.includes(i.id))
+          .reduce((sum, item) => {
+            const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
+            if (eligibleQty <= 0) return sum;
+            const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity, item.id);
+            return sum + eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT;
+          }, 0)
+      : 0;
+
+    const finalAmount = computeCartFinalAmountWithVat({
+      ...cartVatInput,
+      rebateAppliedLocal: rebateDiscountLocalApplied,
+      rebateAppliedImport: rebateDiscountImportApplied,
+      onTopLiXiDiscount,
+      calciPlusPack476Discount,
+    });
+
+    const finalNote = note;
 
     if (psTotalsForOrder) {
       return {
@@ -866,45 +907,11 @@ const App: React.FC = () => {
         psSuatApplied: psTotalsForOrder.suatApplied,
         psTierLabel: psGate?.tierLabel,
         appliedRebates: selectedRebateIds,
-        totalAmount: psTotalsForOrder.baseSubtotal,
-        finalAmount: Math.max(0, psTotalsForOrder.finalAmount - totalRebateDiscount - dummyBoxDiscount),
+        totalAmount,
+        finalAmount,
         totalSales,
       };
     }
-
-    const totalAmount = cart.reduce((sum, item) => {
-      const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-      const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
-      const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
-      let compareValue = isTelfastGroup ? telfastGroupTotal
-        : isOstelinGroup ? ostelinGroupBaseTotal
-        : isAcemucGroup ? acemucGroupBaseTotal
-        : item.price * item.quantity;
-
-      return sum + calculateLineTotal(
-        item.price,
-        item.quantity,
-        item.promotion,
-        compareValue,
-        item.id
-      );
-    }, 0);
-
-    const onTopLiXiDiscount = isOnTopLiXi ? 250000 : 0;
-    const calciPlusPack476Discount = isCalciPlusPack476
-      ? cart
-          .filter((i) => PACK_476_PRODUCT_IDS.includes(i.id))
-          .reduce((sum, item) => {
-            const eligibleQty = Math.floor(item.quantity / CALCIPLUS_PROMO_PACK_SIZE) * CALCIPLUS_PROMO_PACK_SIZE;
-            if (eligibleQty <= 0) return sum;
-            const regularDiscountPercent = getDiscountPercent(item.promotion, item.quantity, item.price * item.quantity, item.id);
-            return sum + eligibleQty * item.price * (1 - regularDiscountPercent) * CALCIPLUS_PROMO_DISCOUNT_PERCENT;
-          }, 0)
-      : 0;
-
-    const finalNote = note;
-
-    const finalAmount = Math.max(0, totalAmount - onTopLiXiDiscount - totalRebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
 
     const ostelin60vItem = cart.find(i => i.id === OSTELIN_60V_PRODUCT_ID);
     let ostelin60VPackages = 0;
@@ -921,13 +928,7 @@ const App: React.FC = () => {
       ostelin60VQuantity = ostelin60vItem.quantity;
       ostelin60VDot2 = isOstelin60VDot2Order();
       ostelin60VAmount = Math.round(
-        calculateLineTotal(
-          ostelin60vItem.price,
-          ostelin60vItem.quantity,
-          ostelin60vItem.promotion,
-          ostelinGroupBaseTotal,
-          ostelin60vItem.id
-        )
+        getCartLineExVatAfterDiscount(ostelin60vItem, groupTotals)
       );
     }
 

@@ -130,6 +130,10 @@ export function computeMaxPayableFees(
 
 export interface AppliedRebatesResult {
   rebateDiscount: number;
+  /** Phần phí Local đã áp (cắt Max) — trừ trước VAT trong giỏ */
+  rebateDiscountLocalApplied: number;
+  /** Phần phí Import đã áp (cắt Max) — trừ trước VAT trong giỏ */
+  rebateDiscountImportApplied: number;
   selectedLocalRebateTotal: number;
   selectedImportRebateTotal: number;
   totalMaxPayableFeeLocal: number;
@@ -157,6 +161,8 @@ export function computeAppliedRebates(
 
   return {
     rebateDiscount: actualLocal + actualImport,
+    rebateDiscountLocalApplied: actualLocal,
+    rebateDiscountImportApplied: actualImport,
     selectedLocalRebateTotal,
     selectedImportRebateTotal,
     totalMaxPayableFeeLocal: maxFees.totalMaxPayableFeeLocal,

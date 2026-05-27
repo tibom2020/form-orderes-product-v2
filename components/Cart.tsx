@@ -9,7 +9,14 @@ import { PlusIcon, MinusIcon, TrashIcon, CartIcon, SaveIcon, SearchIcon, InfoIco
 import AnimatedSubmitOrderButton from './AnimatedSubmitOrderButton';
 import { CustomerSalesNoticeContent } from './CustomerSalesNoticeContent';
 import { formatCurrency } from '../utils/formatters';
-import { getDiscountPercent, calculateLineTotal } from '../utils/calculations';
+import { getDiscountPercent } from '../utils/calculations';
+import {
+    allocateRebateExVatPerItem,
+    computeCartFinalAmountWithVat,
+    computeCartVatTotals,
+    getCartDummyBoxPercents,
+    getCartLineAmountWithVat,
+} from '../utils/cartVatTotals';
 import { calcPsOrderTotals, getPsCartUnitPrice, PS_ON_INVOICE_NOTE_MARKER } from '../utils/psOnInvoicePromo';
 import type { PsCustomerGate } from '../utils/psCustomerRegistry';
 import { getDummyBoxEligibilityTotals } from '../utils/dummyBoxEligibility';
@@ -354,29 +361,20 @@ const Cart: React.FC<CartProps> = (props) => {
         [items]
     );
 
-    // 2. Tính Tạm tính tổng (đã trừ chiết khấu bậc/nhóm của từng dòng) — hoặc basePrice khi CK PS 25%
+    const cartGroupTotals = useMemo(
+        () => ({ telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal }),
+        [telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal]
+    );
+
+    // Tạm tính (-VAT): basePrice sau CK dòng; PS = tổng basePrice
     const totalAmount = useMemo(() => {
-        if (psTotals) return psTotals.baseSubtotal;
-        return items.reduce((sum, item) => {
-            const isTelfastGroup = TELFAST_GROUP_IDS.includes(item.id);
-            const isOstelinGroup = OSTELIN_GROUP_IDS.includes(item.id);
-            const isAcemucGroup = ACEMUC_GROUP_IDS.includes(item.id);
-
-            let compareValue = isTelfastGroup ? telfastGroupTotal
-                : isOstelinGroup ? ostelinGroupBaseTotal
-                : isAcemucGroup ? acemucGroupBaseTotal
-                : item.price * item.quantity;
-
-            const lineTotal = calculateLineTotal(
-                item.price,
-                item.quantity,
-                item.promotion,
-                compareValue,
-                item.id
-            );
-            return sum + lineTotal;
-        }, 0);
-    }, [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal, psTotals]);
+        const { subtotalExVat } = computeCartVatTotals({
+            items,
+            groupTotals: cartGroupTotals,
+            psTotals: psTotals ?? undefined,
+        });
+        return subtotalExVat;
+    }, [items, cartGroupTotals, psTotals]);
 
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isPsOnInvoice25 ? 0 : isOnTopLiXi ? 250000 : 0;
@@ -435,9 +433,23 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const calciPlusPack476Discount = 0;
 
-    const dummyBoxDiscount =
-        (canToggleDummyBoxLocal && isDummyBoxLocal ? DUMMY_BOX_DISCOUNT : 0) +
-        (canToggleDummyBoxImport && isDummyBoxImport ? DUMMY_BOX_DISCOUNT : 0);
+    const { dummyLocalPercent, dummyImportPercent } = useMemo(
+        () =>
+            getCartDummyBoxPercents({
+                applyDummyBoxLocal: canToggleDummyBoxLocal && !!isDummyBoxLocal,
+                applyDummyBoxImport: canToggleDummyBoxImport && !!isDummyBoxImport,
+                dummyBoxLocalPoolExVat: localTotalAfterDiscount,
+                dummyBoxImportPoolExVat: importTotalAfterDiscount,
+            }),
+        [
+            canToggleDummyBoxLocal,
+            isDummyBoxLocal,
+            canToggleDummyBoxImport,
+            isDummyBoxImport,
+            localTotalAfterDiscount,
+            importTotalAfterDiscount,
+        ]
+    );
 
     const psDiscountGross = psTotals?.discountGross ?? 0;
 
@@ -464,10 +476,42 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const { totalMaxPayableFeeLocal, totalMaxPayableFeeImport } = maxPayableFees;
 
-    const { rebateDiscount, selectedLocalRebateTotal, selectedImportRebateTotal } = useMemo(
+    const {
+        rebateDiscount,
+        rebateDiscountLocalApplied,
+        rebateDiscountImportApplied,
+        selectedLocalRebateTotal,
+        selectedImportRebateTotal,
+    } = useMemo(
         () => computeAppliedRebates(rebates, selectedRebateIds, maxPayableFees),
         [rebates, selectedRebateIds, maxPayableFees]
     );
+
+    const rebateAllocByItemId = useMemo(() => {
+        const lineOpts = {
+            psTotals: psTotals ?? undefined,
+            dummyLocalPercent,
+            dummyImportPercent,
+        };
+        const alloc = allocateRebateExVatPerItem(
+            items,
+            cartGroupTotals,
+            lineOpts,
+            rebateDiscountLocalApplied,
+            rebateDiscountImportApplied
+        );
+        const m = new Map<number, number>();
+        items.forEach((item, i) => m.set(item.id, alloc[i]));
+        return m;
+    }, [
+        items,
+        cartGroupTotals,
+        psTotals,
+        dummyLocalPercent,
+        dummyImportPercent,
+        rebateDiscountLocalApplied,
+        rebateDiscountImportApplied,
+    ]);
 
     // --- Submit Validation ---
     const localProductCount = items.filter(i => i.type === 'Local').length;
@@ -501,9 +545,37 @@ const Cart: React.FC<CartProps> = (props) => {
         onSubmitOrder();
     };
 
-    const finalAmount = psTotals
-        ? Math.max(0, psTotals.finalAmount - rebateDiscount - dummyBoxDiscount)
-        : Math.max(0, totalAmount - onTopLiXiDiscount - rebateDiscount - dummyBoxDiscount - calciPlusPack476Discount);
+    const finalAmount = useMemo(
+        () =>
+            computeCartFinalAmountWithVat({
+                items,
+                groupTotals: cartGroupTotals,
+                psTotals: psTotals ?? undefined,
+                applyDummyBoxLocal: canToggleDummyBoxLocal && !!isDummyBoxLocal,
+                applyDummyBoxImport: canToggleDummyBoxImport && !!isDummyBoxImport,
+                dummyBoxLocalPoolExVat: localTotalAfterDiscount,
+                dummyBoxImportPoolExVat: importTotalAfterDiscount,
+                rebateAppliedLocal: rebateDiscountLocalApplied,
+                rebateAppliedImport: rebateDiscountImportApplied,
+                onTopLiXiDiscount,
+                calciPlusPack476Discount,
+            }),
+        [
+            items,
+            cartGroupTotals,
+            psTotals,
+            canToggleDummyBoxLocal,
+            isDummyBoxLocal,
+            canToggleDummyBoxImport,
+            isDummyBoxImport,
+            localTotalAfterDiscount,
+            importTotalAfterDiscount,
+            rebateDiscountLocalApplied,
+            rebateDiscountImportApplied,
+            onTopLiXiDiscount,
+            calciPlusPack476Discount,
+        ]
+    );
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col overflow-hidden h-[calc(100vh-190px)] transition-colors duration-200">
@@ -714,16 +786,21 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <tr><td colSpan={5} className="text-center py-16 text-slate-400 text-sm italic">Chưa có sản phẩm nào</td></tr>
                             ) : (
                                 items.map(item => {
-                                    const unitPs = getPsCartUnitPrice(item);
-                                    const basePriceLine = unitPs * item.quantity;
                                     const lineCap = feeCapByItemId.get(item.id);
+                                    const lineTotalWithVat = getCartLineAmountWithVat(item, cartGroupTotals, {
+                                        psTotals: psTotals ?? undefined,
+                                        dummyLocalPercent,
+                                        dummyImportPercent,
+                                        rebateAllocExVat: rebateAllocByItemId.get(item.id) ?? 0,
+                                    });
 
                                     if (isPsOnInvoice25) {
+                                        const unitPs = getPsCartUnitPrice(item);
                                         return (
                                             <CartItemRow
                                                 key={item.id}
                                                 item={item}
-                                                lineTotal={basePriceLine}
+                                                lineTotal={lineTotalWithVat}
                                                 maxPayableFeeLine={lineCap?.maxPayableFeeLine ?? 0}
                                                 monthlyDiscountPercent={0}
                                                 hideLineDiscount
@@ -751,18 +828,11 @@ const Cart: React.FC<CartProps> = (props) => {
                                     );
                                     const maxPayableFeeLine = lineCap?.maxPayableFeeLine ?? 0;
 
-                                    const lineTotal = calculateLineTotal(
-                                        item.price,
-                                        item.quantity,
-                                        item.promotion,
-                                        compareValue,
-                                        item.id
-                                    );
                                     return (
                                         <CartItemRow
                                             key={item.id}
                                             item={item}
-                                            lineTotal={lineTotal}
+                                            lineTotal={lineTotalWithVat}
                                             maxPayableFeeLine={maxPayableFeeLine}
                                             monthlyDiscountPercent={monthlyDiscountPercent}
                                             isGrouped={isTelfastGroup || isOstelinGroup || isAcemucGroup}
@@ -784,6 +854,7 @@ const Cart: React.FC<CartProps> = (props) => {
                         <div className="flex items-baseline space-x-2">
                             <span className="text-[9px] font-bold text-slate-400 uppercase">Tạm tính:</span>
                             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(totalAmount)}</span>
+                            <span className="text-[8px] text-slate-400 uppercase font-normal">(ko VAT)</span>
                         </div>
                         <div className="flex items-baseline space-x-1.5">
                             <span className="text-[9px] font-bold text-slate-400 uppercase">Doanh số:</span>
@@ -911,7 +982,7 @@ const Cart: React.FC<CartProps> = (props) => {
                             )}
                             {rebateDiscount > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
-                                    <span>- Khấu trừ Rebate (Max):</span>
+                                    <span>- Khấu trừ Rebate (Max, trước VAT):</span>
                                     <span>-{formatCurrency(rebateDiscount)}</span>
                                 </div>
                             )}

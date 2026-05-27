@@ -10,21 +10,25 @@ export const PS_ON_INVOICE_NOTE_MARKER = 'SPECIAL_PS0526';
 /** Ghi chú đơn cũ — vẫn gỡ khi tắt CTKM / đổi KH */
 const PS_ON_INVOICE_NOTE_MARKER_LEGACY = 'CK PS On Invoice 25%';
 
+const NET_PT_1182K = Math.round(1_182_000 * 0.985);
+
 /** Giảm Net theo bảng CTKM (sau TNCN ~1.5%) — legacy reward */
 const NET_BY_REWARD: Record<number, number> = {
   4_000_000: 3_940_000,
   3_000_000: 2_955_000,
   2_400_000: 2_364_000,
   1_600_000: 1_576_000,
-  1_200_000: 1_182_000,
-  300_000: 295_500,
+  /** Silver CK gross điều chỉnh — Net đồng bộ Platinum 1.182tr/suất */
+  1_182_000: NET_PT_1182K,
+  /** Bronze CK gross điều chỉnh */
+  295_500: Math.round(295_500 * 0.985),
 };
 
 /** Giảm Net / suất — tier multi-suất (gross × ~0.985) */
 const NET_BY_DISCOUNT_PER_SUAT: Record<number, number> = {
   788_000: Math.round(788_000 * 0.985),
   985_000: Math.round(985_000 * 0.985),
-  1_182_000: Math.round(1_182_000 * 0.985),
+  1_182_000: NET_PT_1182K,
 };
 
 export interface PsMultiSuatRules {
@@ -73,7 +77,7 @@ export function findTierConfigByFinalStoreTypeQ2(cell: string): StoreTierConfig 
 export function getOnInvoiceMinOrder(tier: StoreTierConfig): number {
   const rules = getPsMultiSuatRules(tier.id);
   if (rules) return rules.minPerSuat;
-  return tier.reward * 4;
+  return tier.psMinOrderBase ?? tier.reward * 4;
 }
 
 export function getOnInvoiceDiscountGross(tier: StoreTierConfig): number {
@@ -157,7 +161,7 @@ export function calcPsOrderTotals(
   const suatRemaining = getPsSuatRemaining(tier, usedSuat);
 
   if (!rules) {
-    const minOrder = tier.reward * 4;
+    const minOrder = getOnInvoiceMinOrder(tier);
     const discountGross = tier.reward;
     const discountNet = getOnInvoiceDiscountNet(tier, discountGross);
     const eligible = baseSubtotal >= minOrder && suatRemaining > 0;

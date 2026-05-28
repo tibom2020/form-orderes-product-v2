@@ -1207,7 +1207,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
               </div>
 
               <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-[#c0c9c3]/20 min-w-0">
-                <div className="tbq2-scroll-xy max-h-[min(52vh,22rem)] sm:max-h-[280px] md:max-h-[320px]">
+                <div className="tbq2-scroll-xy max-h-[min(72vh,38rem)] sm:max-h-[520px] md:max-h-[620px]">
                   <table className="tbq2-sticky-table w-full text-left text-xs min-w-[1850px] sm:min-w-[1960px]">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-wider text-[#2d3b36] dark:text-slate-200 border-b border-[#c0c9c3]/40 dark:border-slate-600">

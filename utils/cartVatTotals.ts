@@ -39,6 +39,7 @@ const VAT_BY_PRODUCT_ID: Record<number, number> = {
   19: 0.08,
   20: 0.08,
   27: 0.08,
+  31: 0.08,
 };
 
 export function getProductVatRate(productId: number, productType: CartItem['type']): number {

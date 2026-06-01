@@ -38,6 +38,9 @@ interface OrderPayload {
   ostelin60VAmount?: number;
   ostelin60VQuantity?: number;
   ostelin60VDot2?: boolean;
+  pharmatonViPackages?: number;
+  pharmatonViAmount?: number;
+  pharmatonViQuantity?: number;
   isPsOnInvoice25?: boolean;
   psSuatApplied?: number;
   psSuatMax?: number;

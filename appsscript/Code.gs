@@ -1,6 +1,6 @@
 /**
  * Google Apps Script - Smart Orders 2026
- * Refactored doPost — theo dõi gói Ostelin 60V (5h ck 21.67%) → sheet OSTELIN_60V_GOI
+ * Refactored doPost — theo dõi gói Ostelin 60V & PHARMATON Vỉ → OSTELIN_60V_GOI / PHARMATON_VI_GOI
  */
 
 var BOT_TOKEN = "";
@@ -262,6 +262,27 @@ function handleOrder(data, ss, output) {
         ostelin60VPackages,
         ostelin60VAmount,
         dot2Label
+      ]);
+    }
+
+    // --- PHARMATON VITALITY BLISTER: Gói 5h (tick "Gói PHARMATON VỈ") ---
+    var pharmatonViPackages = Number(data.pharmatonViPackages) || 0;
+    var pharmatonViAmount = Number(data.pharmatonViAmount) || 0;
+    if (pharmatonViPackages > 0 && pharmatonViAmount >= 0) {
+      var sheetPharmatonVi = ss.getSheetByName("PHARMATON_VI_GOI");
+      if (!sheetPharmatonVi) {
+        sheetPharmatonVi = ss.insertSheet("PHARMATON_VI_GOI");
+        sheetPharmatonVi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien"]);
+        sheetPharmatonVi.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#e8daf5");
+      }
+      sheetPharmatonVi.appendRow([
+        new Date(),
+        data.employeeName || "",
+        data.customerCode || "",
+        data.customerName || "",
+        Number(data.pharmatonViQuantity) || 0,
+        pharmatonViPackages,
+        pharmatonViAmount
       ]);
     }
 

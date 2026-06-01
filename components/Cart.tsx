@@ -35,12 +35,19 @@ import {
     ACEMUC_GROUP_IDS,
     OSTELIN_60V_GOI_MIN_QTY,
     OSTELIN_60V_PRODUCT_ID,
+    PHARMATON_VI_GOI_MIN_QTY,
+    PHARMATON_VI_GOI_PRODUCT_ID,
 } from '../constants';
 import {
     OSTELIN_TANG_CAN_NOTE,
     noteHasOstelinTangCan,
     stripOstelinTangCanNoteLines,
 } from '../utils/ostelin60v';
+import {
+    noteHasPharmatonViGoi,
+    PHARMATON_VI_GOI_NOTE,
+    stripPharmatonViGoiNoteLines,
+} from '../utils/pharmatonVi';
 
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
@@ -239,6 +246,8 @@ interface CartProps {
     dummyBoxListGate?: DummyBoxListGate;
     /** Sheet OSTELIN_60V_GOI: KH đã có gói — khóa tick Ostelin */
     ostelin60VTangCanLocked?: boolean;
+    /** Sheet PHARMATON_VI_GOI: KH đã mua gói PMT Vỉ — khóa tick */
+    pharmatonViGoiLocked?: boolean;
     /** Perfect Store — CK On Invoice 25% */
     psGate?: PsCustomerGate | null;
     isPsOnInvoice25?: boolean;
@@ -262,6 +271,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onViewCustomerDetail,
         dummyBoxListGate,
         ostelin60VTangCanLocked = false,
+        pharmatonViGoiLocked = false,
         psGate = null,
         isPsOnInvoice25 = false,
         onIsPsOnInvoice25Change,
@@ -310,6 +320,7 @@ const Cart: React.FC<CartProps> = (props) => {
         [note]
     );
     const hasOstelinTangCanNote = noteHasOstelinTangCan(note);
+    const hasPharmatonViGoiNote = noteHasPharmatonViGoi(note);
 
     const ostelin60vInCart = useMemo(
         () => items.find(i => i.id === OSTELIN_60V_PRODUCT_ID),
@@ -317,6 +328,13 @@ const Cart: React.FC<CartProps> = (props) => {
     );
     const ostelin60vEligible =
         (ostelin60vInCart?.quantity ?? 0) >= OSTELIN_60V_GOI_MIN_QTY;
+
+    const pharmatonViInCart = useMemo(
+        () => items.find(i => i.id === PHARMATON_VI_GOI_PRODUCT_ID),
+        [items]
+    );
+    const pharmatonViEligible =
+        (pharmatonViInCart?.quantity ?? 0) >= PHARMATON_VI_GOI_MIN_QTY;
 
     const toggleOstelinTangCanNote = () => {
         if (ostelin60VTangCanLocked) return;
@@ -338,6 +356,27 @@ const Cart: React.FC<CartProps> = (props) => {
         if (ostelin60vEligible) return;
         onNoteChange(stripOstelinTangCanNoteLines(noteLinesTrimmed).join('\n'));
     }, [ostelin60VTangCanLocked, hasOstelinTangCanNote, ostelin60vEligible, noteLinesTrimmed, onNoteChange]);
+
+    const togglePharmatonViGoiNote = () => {
+        if (pharmatonViGoiLocked) return;
+        if (hasPharmatonViGoiNote) {
+            onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
+        } else {
+            onNoteChange(note.trim() ? `${note.trim()}\n${PHARMATON_VI_GOI_NOTE}` : PHARMATON_VI_GOI_NOTE);
+        }
+    };
+
+    useEffect(() => {
+        if (!pharmatonViGoiLocked) return;
+        if (!hasPharmatonViGoiNote) return;
+        onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
+    }, [pharmatonViGoiLocked, hasPharmatonViGoiNote, noteLinesTrimmed, onNoteChange]);
+
+    useEffect(() => {
+        if (pharmatonViGoiLocked || !hasPharmatonViGoiNote) return;
+        if (pharmatonViEligible) return;
+        onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
+    }, [pharmatonViGoiLocked, hasPharmatonViGoiNote, pharmatonViEligible, noteLinesTrimmed, onNoteChange]);
 
     const filteredCustomers = useMemo(() => {
         if (!customerName || customerName.trim() === '') return [];
@@ -937,6 +976,40 @@ const Cart: React.FC<CartProps> = (props) => {
                                 }
                             >
                                 Ostelin tặng máy đo HA{ostelin60VTangCanLocked ? ' · Đã gói Đợt 1' : ''}
+                            </label>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                            <input
+                                type="checkbox"
+                                id="pharmaton-vi-goi"
+                                checked={hasPharmatonViGoiNote}
+                                onChange={togglePharmatonViGoiNote}
+                                disabled={pharmatonViGoiLocked || !pharmatonViEligible}
+                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                    pharmatonViGoiLocked
+                                        ? 'KH đã mua gói PHARMATON VỈ (5h) — không chọn lại'
+                                        : !pharmatonViEligible
+                                            ? `Cần ≥ ${PHARMATON_VI_GOI_MIN_QTY} hộp PHARMATON VITALITY BLISTER trong giỏ`
+                                            : undefined
+                                }
+                            />
+                            <label
+                                htmlFor="pharmaton-vi-goi"
+                                className={`text-[11px] font-bold ${
+                                    pharmatonViGoiLocked || !pharmatonViEligible
+                                        ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                                        : 'cursor-pointer text-slate-600 dark:text-slate-300'
+                                }`}
+                                title={
+                                    pharmatonViGoiLocked
+                                        ? 'KH đã ghi nhận gói PMT Vỉ 5h trên sheet'
+                                        : !pharmatonViEligible
+                                            ? `Cần ≥ ${PHARMATON_VI_GOI_MIN_QTY} hộp (id ${PHARMATON_VI_GOI_PRODUCT_ID})`
+                                            : 'Gói PHARMATON VITALITY BLISTER 5h — ghi sheet khi tick và gửi đơn'
+                                }
+                            >
+                                Gói PHARMATON VỈ{pharmatonViGoiLocked ? ' · Đã gói' : ''}
                             </label>
                         </div>
                     </div>

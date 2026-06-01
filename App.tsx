@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, PHARMATON_VI_GOI_PRODUCT_ID, PHARMATON_VI_GOI_MIN_QTY, PHARMATON_VI_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -38,6 +38,7 @@ import {
 } from './utils/cartVatTotals';
 import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate, normalizeCustomerCodeKey } from './utils/dummyBoxGate';
 import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
+import { noteHasPharmatonViGoi } from './utils/pharmatonVi';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
 import {
@@ -82,7 +83,7 @@ const SHOW_OSTELIN_60V_TAB = true;
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -136,6 +137,8 @@ const App: React.FC = () => {
   const [productTargetsByEmployee, setProductTargetsByEmployee] = useState<Record<string, Record<string, number>>>({});
   /** Sheet OSTELIN_60V_GOI — khóa tick gói Ostelin nếu KH đã có SL gói > 0 */
   const [ostelin60VGoiRows, setOstelin60VGoiRows] = useState<Record<string, unknown>[]>([]);
+  /** Sheet PHARMATON_VI_GOI — khóa tick gói Pharmaton Vỉ nếu KH đã mua gói */
+  const [pharmatonViGoiRows, setPharmatonViGoiRows] = useState<Record<string, unknown>[]>([]);
 
   // State mới để điều khiển hiển thị Modal Thành Công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -287,11 +290,16 @@ const App: React.FC = () => {
         setMarketingDataBs([]);
       }
       try {
-        const ostelinGoi = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET);
+        const [ostelinGoi, pharmatonViGoi] = await Promise.all([
+          fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET),
+          fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, PHARMATON_VI_GOI_SHEET),
+        ]);
         setOstelin60VGoiRows(ostelinGoi || []);
+        setPharmatonViGoiRows(pharmatonViGoi || []);
       } catch (e) {
-        console.warn("OSTELIN_60V_GOI sheet load failed (optional sheet)", e);
+        console.warn("OSTELIN_60V_GOI / PHARMATON_VI_GOI sheet load failed (optional sheet)", e);
         setOstelin60VGoiRows([]);
+        setPharmatonViGoiRows([]);
       }
     } catch (e) {
       console.error("Critical data load failed", e);
@@ -458,7 +466,7 @@ const App: React.FC = () => {
     if (!SHOW_SALE_KH_PS_TAB && viewMode === 'saleKhPs') setViewMode('order');
     if (!SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking') setViewMode('order');
     if (!SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus') setViewMode('order');
-    if (!SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v') setViewMode('order');
+    if (!SHOW_OSTELIN_60V_TAB && (viewMode === 'ostelin60v' || viewMode === 'pharmatonVi')) setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -762,6 +770,28 @@ const App: React.FC = () => {
     return ostelin60VGoiPurchasedCodeSet.has(code);
   }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
 
+  const pharmatonViGoiPurchasedCodeSet = useMemo(() => {
+    const purchased = new Set<string>();
+    pharmatonViGoiRows.forEach((row) => {
+      const code = String(row['CustomerCode'] ?? '').trim();
+      if (!code) return;
+      const slGoi = Number(row['SL_goi'] ?? row['SL gói'] ?? 0) || 0;
+      if (slGoi > 0) purchased.add(code);
+    });
+    sentOrders.forEach((o) => {
+      const code = String(o.customerCode ?? '').trim();
+      if (!code) return;
+      if ((o.pharmatonViPackages ?? 0) > 0) purchased.add(code);
+    });
+    return purchased;
+  }, [pharmatonViGoiRows, sentOrders]);
+
+  const pharmatonViGoiLocked = useMemo(() => {
+    const code = String(customerCode ?? '').trim();
+    if (!code) return false;
+    return pharmatonViGoiPurchasedCodeSet.has(code);
+  }, [customerCode, pharmatonViGoiPurchasedCodeSet]);
+
   const handleToggleRebate = (rebateId: string) => {
     if (isPsOnInvoice25) return;
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
@@ -932,6 +962,23 @@ const App: React.FC = () => {
       );
     }
 
+    const pharmatonViItem = cart.find(i => i.id === PHARMATON_VI_GOI_PRODUCT_ID);
+    let pharmatonViPackages = 0;
+    let pharmatonViAmount = 0;
+    let pharmatonViQuantity: number | undefined;
+    const canRecordPharmatonViGoi =
+      !pharmatonViGoiLocked &&
+      noteHasPharmatonViGoi(note) &&
+      !!pharmatonViItem &&
+      pharmatonViItem.quantity >= PHARMATON_VI_GOI_MIN_QTY;
+    if (canRecordPharmatonViGoi && pharmatonViItem) {
+      pharmatonViPackages = 1;
+      pharmatonViQuantity = pharmatonViItem.quantity;
+      pharmatonViAmount = Math.round(
+        getCartLineExVatAfterDiscount(pharmatonViItem, groupTotals)
+      );
+    }
+
     return {
       customerCode, customerName, customerAddress, note: finalNote, items: cart, isOnTopLiXi,
       isDummyBox: effectiveDummyBoxLocal || effectiveDummyBoxImport,
@@ -945,6 +992,9 @@ const App: React.FC = () => {
       ostelin60VAmount: ostelin60VPackages > 0 ? ostelin60VAmount : undefined,
       ostelin60VQuantity: ostelin60VQuantity,
       ostelin60VDot2: ostelin60VDot2 || undefined,
+      pharmatonViPackages: pharmatonViPackages > 0 ? pharmatonViPackages : undefined,
+      pharmatonViAmount: pharmatonViPackages > 0 ? pharmatonViAmount : undefined,
+      pharmatonViQuantity,
     };
   };
 
@@ -1455,6 +1505,20 @@ const App: React.FC = () => {
               <span className="sm:hidden">Ostelin</span>
             </button>
           )}
+          {SHOW_OSTELIN_60V_TAB && (
+            <button
+              onClick={() => setViewMode('pharmatonVi')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+                viewMode === 'pharmatonVi'
+                  ? 'text-violet-900 border-violet-600 bg-violet-100 dark:bg-violet-950/55 dark:text-violet-50 dark:border-violet-400'
+                  : 'text-violet-800/90 border-transparent bg-violet-50/70 dark:bg-violet-950/30 dark:text-violet-200/90 hover:bg-violet-100/90 dark:hover:bg-violet-900/45'
+              }`}
+            >
+              <CubeIcon />
+              <span className="hidden sm:inline">Gói PHARMATON VỈ</span>
+              <span className="sm:hidden">PMT Vỉ</span>
+            </button>
+          )}
           {SHOW_CALCI_PLUS_TAB && (
             <button
               onClick={() => setViewMode('calciPlus')}
@@ -1556,7 +1620,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'pharmatonVi', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -1598,6 +1662,7 @@ const App: React.FC = () => {
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
                     ostelin60VTangCanLocked={ostelin60VTangCanLocked}
+                    pharmatonViGoiLocked={pharmatonViGoiLocked}
                     psGate={psGate}
                     isPsOnInvoice25={isPsOnInvoice25}
                     onIsPsOnInvoice25Change={handlePsOnInvoice25Toggle}
@@ -1759,8 +1824,12 @@ const App: React.FC = () => {
           />
         )}
 
-        {SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v' && (
-          <Ostelin60VTab currentEmployee={loggedInEmployee!} />
+        {SHOW_OSTELIN_60V_TAB && (viewMode === 'ostelin60v' || viewMode === 'pharmatonVi') && (
+          <Ostelin60VTab
+            currentEmployee={loggedInEmployee!}
+            programTab={viewMode === 'pharmatonVi' ? 'pharmaton' : 'ostelin'}
+            onProgramTabChange={(tab) => setViewMode(tab === 'pharmaton' ? 'pharmatonVi' : 'ostelin60v')}
+          />
         )}
         {viewMode === 'repActiveAcemucOstelin' && (
           <RepActiveAcemucOstelinTab

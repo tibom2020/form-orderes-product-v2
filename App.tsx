@@ -1446,8 +1446,8 @@ const App: React.FC = () => {
             }`}
           >
             <StarIcon />
-            <span className="hidden sm:inline">DummyBox - Bs T3+T4</span>
-            <span className="sm:hidden">T3+T4</span>
+            <span className="hidden sm:inline">DummyBox - Bs T3+T4+T5</span>
+            <span className="sm:hidden">T3+T4+T5</span>
           </button>
           {SHOW_AO_TRACKING_TAB && (
             <button

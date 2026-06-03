@@ -658,6 +658,63 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
         }
     };
 
+    const openExportNoticeForGppRow = (row: GppNoticeRow) => {
+        const items = mergedData.filter(i => String(i.code) === String(row.code));
+        if (items.length === 0) {
+            alert('Không có dữ liệu phí trả thưởng cho KH này.');
+            return;
+        }
+        const group: RebateGroup = {
+            code: row.code,
+            name: row.name,
+            items,
+            total: items.reduce((s, i) => s + i.amount, 0),
+        };
+        setSelectedGroupForExport(group);
+        setIncludeBmInCustomerNotice(true);
+        setShowExportNoticeModal(true);
+    };
+
+    const renderGppRowActions = (row: GppNoticeRow, variant: 'warning' | 'expired') => {
+        const totalAmount = row.programDetails.reduce((s, p) => s + p.remainAmount, 0);
+        const borderClass =
+            variant === 'expired'
+                ? 'border-red-200 dark:border-red-800'
+                : 'border-slate-200 dark:border-slate-600';
+        return (
+            <div className={`mt-2 pt-2 border-t ${borderClass} space-y-1.5`}>
+                <button
+                    type="button"
+                    onClick={() => openExportNoticeForGppRow(row)}
+                    className={`w-full px-2 py-1 rounded text-[10px] font-bold transition-colors ${
+                        variant === 'expired'
+                            ? 'bg-red-200 dark:bg-red-900/60 text-red-900 dark:text-red-100 hover:bg-red-300 dark:hover:bg-red-800/80'
+                            : 'bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 hover:bg-amber-300 dark:hover:bg-amber-700'
+                    }`}
+                >
+                    Xuất thông báo
+                </button>
+                <select
+                    value={gppCommentByCode[row.code] || ''}
+                    onChange={(e) => setGppCommentByCode(prev => ({ ...prev, [row.code]: e.target.value }))}
+                    className="w-full text-[10px] px-2 py-1.5 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-opella-green outline-none cursor-pointer"
+                >
+                    {GPP_COMMENT_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </select>
+                <button
+                    type="button"
+                    onClick={() => handleSubmitGppComment(row, totalAmount)}
+                    disabled={submittingGppCommentCode === row.code || !gppCommentByCode[row.code]}
+                    className="w-full px-2 py-1 rounded text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {submittingGppCommentCode === row.code ? 'Đang lưu...' : 'Submit'}
+                </button>
+            </div>
+        );
+    };
+
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 min-h-[600px] flex flex-col">
             {/* Header */}
@@ -869,25 +926,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                                                 <div className="font-bold text-opella-green dark:text-opella-green pt-0.5 border-t border-slate-200 dark:border-slate-600 mt-0.5">
                                                     Tổng phí: {formatCurrency(row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
                                                 </div>
-                                                <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600 space-y-1.5">
-                                                    <select
-                                                        value={gppCommentByCode[row.code] || ''}
-                                                        onChange={(e) => setGppCommentByCode(prev => ({ ...prev, [row.code]: e.target.value }))}
-                                                        className="w-full text-[10px] px-2 py-1.5 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-opella-green outline-none cursor-pointer"
-                                                    >
-                                                        {GPP_COMMENT_OPTIONS.map(opt => (
-                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                        ))}
-                                                    </select>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleSubmitGppComment(row, row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
-                                                        disabled={submittingGppCommentCode === row.code || !gppCommentByCode[row.code]}
-                                                        className="w-full px-2 py-1 rounded text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {submittingGppCommentCode === row.code ? 'Đang lưu...' : 'Submit'}
-                                                    </button>
-                                                </div>
+                                                {renderGppRowActions(row, 'warning')}
                                             </div>
                                             </div>
                                         </li>
@@ -928,25 +967,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                                             <div className="font-bold text-opella-green dark:text-opella-green pt-0.5 border-t border-slate-200 dark:border-slate-600 mt-0.5">
                                                 Tổng phí: {formatCurrency(row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
                                             </div>
-                                            <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800 space-y-1.5">
-                                                <select
-                                                    value={gppCommentByCode[row.code] || ''}
-                                                    onChange={(e) => setGppCommentByCode(prev => ({ ...prev, [row.code]: e.target.value }))}
-                                                    className="w-full text-[10px] px-2 py-1.5 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-opella-green outline-none cursor-pointer"
-                                                >
-                                                    {GPP_COMMENT_OPTIONS.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSubmitGppComment(row, row.programDetails.reduce((s, p) => s + p.remainAmount, 0))}
-                                                    disabled={submittingGppCommentCode === row.code || !gppCommentByCode[row.code]}
-                                                    className="w-full px-2 py-1 rounded text-[10px] font-bold bg-opella-green text-white hover:bg-opella-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {submittingGppCommentCode === row.code ? 'Đang lưu...' : 'Submit'}
-                                                </button>
-                                            </div>
+                                            {renderGppRowActions(row, 'expired')}
                                         </div>
                                     </div>
                                 </li>

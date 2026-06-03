@@ -61,7 +61,7 @@ export const PRODUCTS: Product[] = [
   { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
   { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
   { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.05.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 5h ck 21.76% (đến 30.05.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 17.73%, 4h ck 19.7%, 5h ck 21.76% (đến 30.06.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 /**

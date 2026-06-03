@@ -328,7 +328,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return columns;
     }, [filteredCustomers]);
 
-    /** Thống kê SL KH (Todo + PROCESSING_1) theo Rep — tab Bs T3+T4 */
+    /** Thống kê SL KH (Todo + PROCESSING_1) theo Rep — tab Bs T3+T4+T5 */
     const repTodoProcessingStats = useMemo(() => {
         const bucket = new Map<string, { todo: number; processing1: number }>();
         uniqueMarketingData.forEach((record) => {

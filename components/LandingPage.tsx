@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { submitMarketingData } from '../services/googleSheetService';
+import { registerDummyBoxPackage } from '../utils/dummyBoxPackage';
 
 import { GOOGLE_SCRIPT_URL } from '../constants';
 import { removeVietnameseTones, formatCurrency } from '../utils/formatters';
@@ -513,13 +514,12 @@ const LandingPage: React.FC<LandingPageProps> = ({
         onUpdateRecord(selectedCustomer.CustomerCode, { [type]: statusValue });
 
         try {
-            await submitMarketingData(GOOGLE_SCRIPT_URL, {
-                action: 'registerPackage',
-                sheetName,
-                customerCode: selectedCustomer.CustomerCode,
-                packageType: type,
-                value: statusValue
-            });
+            await registerDummyBoxPackage(
+                selectedCustomer.CustomerCode,
+                sheetName as 'DummyBoxRecord' | 'DummyBoxRecordBs',
+                type,
+                statusValue as 'YES' | 'NO'
+            );
         } catch (e) {
             console.error('Lỗi khi cập nhật gói:', e);
         } finally {

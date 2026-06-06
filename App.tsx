@@ -37,6 +37,7 @@ import {
   getCartLineExVatAfterDiscount,
 } from './utils/cartVatTotals';
 import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate, normalizeCustomerCodeKey } from './utils/dummyBoxGate';
+import { autoRegisterDummyBoxPackagesFromOrder } from './utils/dummyBoxPackage';
 import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
 import { noteHasPharmatonViGoi } from './utils/pharmatonVi';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
@@ -1063,6 +1064,17 @@ const App: React.FC = () => {
       const newSent: Order = { ...orderObj, id: Date.now().toString(), createdAt: Date.now(), status: 'sent' };
       setSentOrders([newSent, ...sentOrders]);
       saveOrders('sentOrders', [newSent, ...sentOrders]);
+
+      if (orderObj.isDummyBoxLocal || orderObj.isDummyBoxImport) {
+        void autoRegisterDummyBoxPackagesFromOrder({
+          order: orderObj,
+          marketingData,
+          marketingDataBs,
+          onUpdateMarketingRecord: handleUpdateMarketingRecord,
+          onUpdateMarketingRecordBs: handleUpdateMarketingRecordBs,
+        });
+      }
+
       if (orderObj.isPsOnInvoice25 && (orderObj.psSuatApplied ?? 0) > 0) {
         void reloadPsCustomerFromSheet();
       }

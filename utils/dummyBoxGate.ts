@@ -99,18 +99,24 @@ export function buildDummyBoxListGate(
     };
   }
   if (options?.pending) {
-    const goiLocalRegistered = !!options.orderHadDummyBoxLocal;
-    const goiImportRegistered = !!options.orderHadDummyBoxImport;
     return {
       inList: false,
-      goiLocalRegistered,
-      goiImportRegistered,
+      goiLocalRegistered: false,
+      goiImportRegistered: false,
       pending: true,
     };
   }
   const rec = map.get(code);
-  const goiLocalRegistered = isGoiYes(rec?.GoiLocal) || !!options?.orderHadDummyBoxLocal;
-  const goiImportRegistered = isGoiYes(rec?.GoiImport) || !!options?.orderHadDummyBoxImport;
+  /**
+   * KH trong DS DummyBox: sheet GoiLocal/GoiImport là nguồn đúng (YES = đã đặt).
+   * sentOrders localStorage chỉ khóa khi KH không còn trên DS (tránh lạm dụng CK).
+   */
+  const goiLocalRegistered = rec
+    ? isGoiYes(rec.GoiLocal)
+    : !!options?.orderHadDummyBoxLocal;
+  const goiImportRegistered = rec
+    ? isGoiYes(rec.GoiImport)
+    : !!options?.orderHadDummyBoxImport;
   return {
     inList: !!rec,
     goiLocalRegistered,

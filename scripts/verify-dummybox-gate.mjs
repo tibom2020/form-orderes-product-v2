@@ -53,16 +53,22 @@ function buildDummyBoxListGate(customerCode, map, options = {}) {
   if (options.pending) {
     return {
       inList: false,
-      goiLocalRegistered: !!options.orderHadDummyBoxLocal,
-      goiImportRegistered: !!options.orderHadDummyBoxImport,
+      goiLocalRegistered: false,
+      goiImportRegistered: false,
       pending: true,
     };
   }
   const rec = map.get(code);
+  const goiLocalRegistered = rec
+    ? isGoiYes(rec.GoiLocal)
+    : !!options.orderHadDummyBoxLocal;
+  const goiImportRegistered = rec
+    ? isGoiYes(rec.GoiImport)
+    : !!options.orderHadDummyBoxImport;
   return {
     inList: !!rec,
-    goiLocalRegistered: isGoiYes(rec?.GoiLocal) || !!options.orderHadDummyBoxLocal,
-    goiImportRegistered: isGoiYes(rec?.GoiImport) || !!options.orderHadDummyBoxImport,
+    goiLocalRegistered,
+    goiImportRegistered,
     pending: false,
   };
 }
@@ -126,11 +132,22 @@ assert(
 // 4. Đủ điều kiện
 assert('4. can toggle', getDummyBoxToggleState(inListGate, 'local', true).canToggle === true);
 
-// 5. Đã đặt gói
+// 5. Đã đặt gói (sheet YES)
 const registeredGate = buildDummyBoxListGate('67890', map, { pending: false });
 assert(
   '5. registered',
   getDummyBoxToggleState(registeredGate, 'local', true).lockReason === 'registered_local'
+);
+
+// 6. Trong DS, sheet trống nhưng sentOrders cũ → vẫn được tick
+const staleSentGate = buildDummyBoxListGate('12345', map, {
+  pending: false,
+  orderHadDummyBoxLocal: true,
+});
+assert('6. sheet empty ignores stale sentOrders', staleSentGate.goiLocalRegistered === false);
+assert(
+  '6. can toggle after stale sent',
+  getDummyBoxToggleState(staleSentGate, 'local', true).canToggle === true
 );
 
 assert('normalize number key', normalizeCustomerCodeKey(12345) === '12345');

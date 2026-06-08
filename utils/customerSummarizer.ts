@@ -1,5 +1,5 @@
 
-import type { SalesRecord, ForecastItem, CustomerSalesNoticePayload } from '../types';
+import type { SalesRecord, CustomerSalesNoticePayload } from '../types';
 import { formatCurrency, removeVietnameseTones } from './formatters';
 
 const REBATE_TIERS = [
@@ -20,10 +20,7 @@ const getRebateLevel = (amount: number) => {
     return null;
 };
 
-export const generateCustomerSummary = (
-    record: SalesRecord | undefined,
-    forecast: ForecastItem | undefined
-): string => {
+export const generateCustomerSummary = (record: SalesRecord | undefined): string => {
     if (!record) return 'Không có dữ liệu khách hàng.';
 
     const actualImport = Number(record.ActualImport) || 0;
@@ -64,14 +61,6 @@ export const generateCustomerSummary = (
     if (hasCheck) {
         summary += `📑 TRẠNG THÁI:\n`;
         summary += `+ Điều kiện TB: ${record.Check}\n`;
-    }
-// Dự báo T3 - chỉ hiện khi có dữ liệu
-    const hasImportLevel = forecast && forecast.ImportLevel != null && String(forecast.ImportLevel).trim() !== '';
-    const hasLocalLevel = forecast && forecast.LocalLevel != null && String(forecast.LocalLevel).trim() !== '';
-    if (hasImportLevel || hasLocalLevel) {
-        summary += `\n📈 FORECAST T3:\n`;
-        if (hasImportLevel) summary += `+ Import: ${forecast!.ImportLevel}\n`;
-        if (hasLocalLevel) summary += `+ Local: ${forecast!.LocalLevel}\n`;
     }
     summary += `\nNote : Doanh số chưa bao gồm đơn đã đặt\n`;
     return summary;

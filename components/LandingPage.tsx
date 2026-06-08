@@ -432,12 +432,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             let customerSummary = "";
             if (activeSlot === 1) {
                 const record = salesRecords.find(r => String(r.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
-                const forecast = forecastData.find(f => String(f.CustomerCode).trim() === String(selectedCustomer.CustomerCode).trim());
-
-                customerSummary = generateCustomerSummary(
-                    record,
-                    forecast
-                );
+                customerSummary = generateCustomerSummary(record);
             }
 
             const response = await submitMarketingData(GOOGLE_SCRIPT_URL, {

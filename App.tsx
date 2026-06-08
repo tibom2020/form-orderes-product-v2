@@ -1034,13 +1034,7 @@ const App: React.FC = () => {
     // Tạo tóm tắt thông tin khách hàng
     const currentSalesRecord = allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim());
 
-    const currentForecast = forecastData.find(f => String(f.CustomerCode).trim() === String(customerCode).trim());
-
-
-    const customerSummary = generateCustomerSummary(
-      currentSalesRecord,
-      currentForecast
-    );
+    const customerSummary = generateCustomerSummary(currentSalesRecord);
 
     const result = await postOrderToGoogleSheet(GOOGLE_SCRIPT_URL, {
       employeeName: loggedInEmployee!.name,

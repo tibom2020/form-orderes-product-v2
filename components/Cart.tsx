@@ -61,7 +61,7 @@ const formatRebateDate = (r: any): string => {
 interface CartItemRowProps {
     item: CartItem;
     lineTotal: number;
-    maxPayableFeeLine: number;
+    boxPrice: number;
     monthlyDiscountPercent: number;
     isGrouped: boolean;
     /** CK PS 25% — không hiện % CK tháng/combo trên dòng */
@@ -76,7 +76,7 @@ interface CartItemRowProps {
 const CartItemRow: React.FC<CartItemRowProps> = ({
     item,
     lineTotal,
-    maxPayableFeeLine,
+    boxPrice,
     monthlyDiscountPercent,
     isGrouped,
     hideLineDiscount = false,
@@ -174,7 +174,7 @@ const CartItemRow: React.FC<CartItemRowProps> = ({
                     </p>
                 )}
             </td>
-            <td className="px-2 py-2.5 text-right font-bold text-green-600 dark:text-green-400 text-[11px]">{formatCurrency(maxPayableFeeLine)}</td>
+            <td className="px-2 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200 text-[11px]">{formatCurrency(boxPrice)}</td>
             <td className="px-3 py-2.5 text-right"><button onClick={() => onRemoveItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><TrashIcon /></button></td>
             {showBmModal && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50" onClick={() => setShowBmModal(false)}>
@@ -816,7 +816,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <th className="px-3 py-2 w-[35%]">Sản phẩm</th>
                                 <th className="px-2 py-2 text-center w-[15%]">SL</th>
                                 <th className="px-2 py-2 text-right w-[20%]">Thành tiền</th>
-                                <th className="px-2 py-2 text-right text-green-700 dark:text-green-400 w-[20%]">Phí Trả Max</th>
+                                <th className="px-2 py-2 text-right w-[20%]">Giá hộp</th>
                                 <th className="px-3 py-2 w-[10%]"></th>
                             </tr>
                         </thead>
@@ -833,6 +833,8 @@ const Cart: React.FC<CartProps> = (props) => {
                                         rebateAllocExVat: rebateAllocByItemId.get(item.id) ?? 0,
                                     });
 
+                                    const boxPrice = item.quantity > 0 ? lineTotalWithVat / item.quantity : 0;
+
                                     if (isPsOnInvoice25) {
                                         const unitPs = getPsCartUnitPrice(item);
                                         return (
@@ -840,7 +842,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                 key={item.id}
                                                 item={item}
                                                 lineTotal={lineTotalWithVat}
-                                                maxPayableFeeLine={lineCap?.maxPayableFeeLine ?? 0}
+                                                boxPrice={boxPrice}
                                                 monthlyDiscountPercent={0}
                                                 hideLineDiscount
                                                 unitPrice={unitPs}
@@ -865,14 +867,13 @@ const Cart: React.FC<CartProps> = (props) => {
                                         item.quantity,
                                         compareValue
                                     );
-                                    const maxPayableFeeLine = lineCap?.maxPayableFeeLine ?? 0;
 
                                     return (
                                         <CartItemRow
                                             key={item.id}
                                             item={item}
                                             lineTotal={lineTotalWithVat}
-                                            maxPayableFeeLine={maxPayableFeeLine}
+                                            boxPrice={boxPrice}
                                             monthlyDiscountPercent={monthlyDiscountPercent}
                                             isGrouped={isTelfastGroup || isOstelinGroup || isAcemucGroup}
                                             onUpdateQuantity={onUpdateQuantity}

@@ -34,8 +34,8 @@ export const CUSTOMERS: Customer[] = [];
 
 export const PRODUCTS: Product[] = [
   { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.9% (đến 30.05.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
-  { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/0yNdx6NP/1814866887484728087.webp' },
-  { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167426, type: 'Local', basePrice: 159454, image: 'https://i.postimg.cc/43JTm62S/calci-5.webp' },
+  { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, promotion: 'Mua 20h ck 1.97% (đến 30.06.2026)', requireApproval: true, image: 'https://i.postimg.cc/0yNdx6NP/1814866887484728087.webp' },
+  { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167426, type: 'Local', basePrice: 159454, promotion: 'Mua 10h ck 1.97% (đến 30.06.2026)', image: 'https://i.postimg.cc/43JTm62S/calci-5.webp' },
   { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, promotion: 'Mua đơn >= 300k ck 2.46%, 450k ck 2.96% (đến 30.05.2026)', image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
   { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, promotion: 'Mua đơn >= 300k ck 2.46%, 450k ck 2.96% (đến 30.05.2026)', image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
   { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, promotion: 'Mua đơn >= 300k ck 2.46%, 450k ck 2.96% (đến 30.05.2026)', image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },

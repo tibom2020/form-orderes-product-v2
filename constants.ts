@@ -1020,6 +1020,20 @@ export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
 // CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
 export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [18, 20, 27, 12, 30] as const; // Essent, Fizzi, Vitality + Enterogermina (GUT 4B, 2B/20)
 export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
+
+/** Mục tiêu số KH đã mua gói DummyBox / Rep (cả chương trình T3–T5) */
+export const DUMMYBOX_TARGET_PER_REP = 30;
+export const DUMMYBOX_CAMPAIGN_START_MS = new Date('2026-03-01T00:00:00+07:00').getTime();
+export const DUMMYBOX_CAMPAIGN_END_MS = new Date('2026-05-31T23:59:59+07:00').getTime();
+
+/** Target KH/Rep theo tiến độ thời gian chương trình (T3→T5), làm tròn lên */
+export function getDummyBoxTargetByProgress(nowMs: number = Date.now()): number {
+    if (nowMs <= DUMMYBOX_CAMPAIGN_START_MS) return 0;
+    if (nowMs >= DUMMYBOX_CAMPAIGN_END_MS) return DUMMYBOX_TARGET_PER_REP;
+    const progress =
+        (nowMs - DUMMYBOX_CAMPAIGN_START_MS) / (DUMMYBOX_CAMPAIGN_END_MS - DUMMYBOX_CAMPAIGN_START_MS);
+    return Math.ceil(DUMMYBOX_TARGET_PER_REP * progress);
+}
 export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;

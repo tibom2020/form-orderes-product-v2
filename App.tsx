@@ -38,7 +38,11 @@ import {
 } from './utils/cartVatTotals';
 import { mergeDummyBoxMarketingByCode, buildDummyBoxListGate, normalizeCustomerCodeKey } from './utils/dummyBoxGate';
 import { autoRegisterDummyBoxPackagesFromOrder } from './utils/dummyBoxPackage';
-import { isOstelin60VDot2Order, noteHasOstelinTangCan } from './utils/ostelin60v';
+import {
+  buildOstelin60VDot2PurchasedCodeSet,
+  isOstelin60VDot2Order,
+  noteHasOstelinTangCan,
+} from './utils/ostelin60v';
 import { noteHasPharmatonViGoi } from './utils/pharmatonVi';
 import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
@@ -747,29 +751,17 @@ const App: React.FC = () => {
     });
   }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders, dummyBoxSheetsReady]);
 
-  /** KH đã có gói Ostelin 60V (Đợt 1) — không tick tặng máy đo HA / ghi sheet Đợt 2; vẫn CK 5h 21.67% */
-  const ostelin60VGoiPurchasedCodeSet = useMemo(() => {
-    const purchased = new Set<string>();
-    ostelin60VGoiRows.forEach((row) => {
-      const code = String(row['CustomerCode'] ?? '').trim();
-      if (!code) return;
-      const slGoi =
-        Number(row['SL_goi'] ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
-      if (slGoi > 0) purchased.add(code);
-    });
-    sentOrders.forEach((o) => {
-      const code = String(o.customerCode ?? '').trim();
-      if (!code) return;
-      if ((o.ostelin60VPackages ?? 0) > 0) purchased.add(code);
-    });
-    return purchased;
-  }, [ostelin60VGoiRows, sentOrders]);
+  /** KH đã gói Ostelin Đợt 2 — khóa tick tặng máy đo HA; KH chỉ Đợt 1 vẫn được tick Đợt 2 */
+  const ostelin60VDot2PurchasedCodeSet = useMemo(
+    () => buildOstelin60VDot2PurchasedCodeSet(ostelin60VGoiRows, sentOrders),
+    [ostelin60VGoiRows, sentOrders]
+  );
 
   const ostelin60VTangCanLocked = useMemo(() => {
     const code = String(customerCode ?? '').trim();
     if (!code) return false;
-    return ostelin60VGoiPurchasedCodeSet.has(code);
-  }, [customerCode, ostelin60VGoiPurchasedCodeSet]);
+    return ostelin60VDot2PurchasedCodeSet.has(code);
+  }, [customerCode, ostelin60VDot2PurchasedCodeSet]);
 
   const pharmatonViGoiPurchasedCodeSet = useMemo(() => {
     const purchased = new Set<string>();

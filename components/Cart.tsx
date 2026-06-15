@@ -244,7 +244,7 @@ interface CartProps {
     onViewCustomerDetail?: (code: string) => void;
     /** Tra từ DummyBoxRecord (+ BsT3): trong danh sách & trạng thái GoiLocal/GoiImport */
     dummyBoxListGate?: DummyBoxListGate;
-    /** Sheet OSTELIN_60V_GOI: KH đã có gói — khóa tick Ostelin */
+    /** Sheet OSTELIN_60V_GOI: KH đã gói Đợt 2 — khóa tick tặng máy đo HA */
     ostelin60VTangCanLocked?: boolean;
     /** Sheet PHARMATON_VI_GOI: KH đã mua gói PMT Vỉ — khóa tick */
     pharmatonViGoiLocked?: boolean;
@@ -955,7 +955,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
                                     ostelin60VTangCanLocked
-                                        ? 'KH đã mua gói Đợt 1 — vẫn CK 5h 21.67%, không tặng máy đo HA / không ghi sheet'
+                                        ? 'KH đã mua gói Ostelin Đợt 2 (tặng máy đo HA) — không chọn lại'
                                         : !ostelin60vEligible
                                             ? `Cần ≥ ${OSTELIN_60V_GOI_MIN_QTY} hộp Ostelin 60V trong giỏ`
                                             : undefined
@@ -970,13 +970,13 @@ const Cart: React.FC<CartProps> = (props) => {
                                 }`}
                                 title={
                                     ostelin60VTangCanLocked
-                                        ? 'KH đã mua gói Đợt 1 — vẫn được CK 5h 21.67%, không tick tặng máy đo HA Đợt 2'
+                                        ? 'KH đã mua gói Ostelin Đợt 2 (tặng máy đo HA) — không chọn lại'
                                         : !ostelin60vEligible
                                             ? `Cần ≥ ${OSTELIN_60V_GOI_MIN_QTY} hộp Ostelin 60V (id ${OSTELIN_60V_PRODUCT_ID})`
-                                            : 'Mua 5h ck 21.67% + tặng máy đo HA Đợt 2 — ghi sheet khi tick và gửi đơn'
+                                            : 'Mua 5h ck 21.67% + tặng máy đo HA — ghi sheet khi tick và gửi đơn (KH Đợt 1 được tick Đợt 2)'
                                 }
                             >
-                                Ostelin tặng máy đo HA{ostelin60VTangCanLocked ? ' · Đã gói Đợt 1' : ''}
+                                Ostelin tặng máy đo HA{ostelin60VTangCanLocked ? ' · Đã gói Đợt 2' : ''}
                             </label>
                         </div>
                         <div className="flex items-center space-x-1.5">

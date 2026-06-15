@@ -51,3 +51,31 @@ export function noteHasOstelinTangCan(note: string): boolean {
 export function stripOstelinTangCanNoteLines(lines: string[]): string[] {
   return lines.filter(l => !OSTELIN_TANG_CAN_ALL_NOTES.includes(l));
 }
+
+type OstelinGoiOrderRef = {
+  customerCode?: string;
+  ostelin60VPackages?: number;
+  ostelin60VDot2?: boolean;
+};
+
+/** Mã KH đã ghi gói Ostelin Đợt 2 (sheet Dot_2 hoặc đơn đã gửi) — khóa tick tặng máy đo HA lần 2 */
+export function buildOstelin60VDot2PurchasedCodeSet(
+  rows: Record<string, unknown>[],
+  sentOrders: OstelinGoiOrderRef[]
+): Set<string> {
+  const purchased = new Set<string>();
+  rows.forEach((row) => {
+    const code = String(row['CustomerCode'] ?? '').trim();
+    if (!code) return;
+    const slGoi =
+      Number(row['SL_goi'] ?? row['SL gói 21.67%'] ?? row['SL gói 21.97%'] ?? 0) || 0;
+    if (slGoi <= 0) return;
+    if (isOstelin60VRowDot2(row, row.Timestamp ?? row.timestamp)) purchased.add(code);
+  });
+  sentOrders.forEach((o) => {
+    const code = String(o.customerCode ?? '').trim();
+    if (!code) return;
+    if ((o.ostelin60VPackages ?? 0) > 0 && o.ostelin60VDot2) purchased.add(code);
+  });
+  return purchased;
+}

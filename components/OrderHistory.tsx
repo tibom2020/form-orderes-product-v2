@@ -125,6 +125,12 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
             {order.isOnTopLiXi && <div className="flex justify-between text-rose-500 font-medium"><span>Đơn Ontop lì xì:</span> <span>- {formatCurrency(250000)}</span></div>}
             {order.isDummyBoxLocal && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Local:</span> <span>- {formatCurrency(150000)}</span></div>}
             {order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox Import:</span> <span>- {formatCurrency(150000)}</span></div>}
+            {order.isChc2606Ontop && (
+              <div className="flex justify-between text-rose-500 font-medium">
+                <span>Gói ONTOP (CHC2606):</span>
+                <span>đã áp CK 2.96%/3.94%</span>
+              </div>
+            )}
             {order.isDummyBox && !order.isDummyBoxLocal && !order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox:</span> <span>- {formatCurrency(150000)}</span></div>}
             <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 text-opella-green dark:text-opella-green"><span>Tổng thanh toán:</span> <span>{formatCurrency(order.finalAmount)}</span></div>
           </div>

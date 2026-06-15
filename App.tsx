@@ -32,6 +32,12 @@ import { getInitials, formatCurrency } from './utils/formatters';
 import { buildProductTargetsFromSheet } from './components/dashboard/DashboardUtils';
 import { getDummyBoxAmountEligibility, getDummyBoxEligibilityTotals } from './utils/dummyBoxEligibility';
 import {
+  calcChc2606OntopTotals,
+  isChc2606OntopPromoActive,
+  mergeChc2606OntopNoteLines,
+  stripChc2606OntopNoteLines,
+} from './utils/chc2606OntopPromo';
+import {
   computeCartFinalAmountWithVat,
   computeCartVatTotals,
   getCartLineExVatAfterDiscount,
@@ -127,6 +133,7 @@ const App: React.FC = () => {
   const [isDummyBoxLocal, setIsDummyBoxLocal] = useState(false);
   const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
   const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
+  const [isChc2606Ontop, setIsChc2606Ontop] = useState(false);
   const [isPsOnInvoice25, setIsPsOnInvoice25] = useState(false);
   const [psSuatSelected, setPsSuatSelected] = useState(0);
   const [psCustomerByCode, setPsCustomerByCode] = useState(
@@ -499,6 +506,7 @@ const App: React.FC = () => {
     setIsDummyBoxLocal(false);
     setIsDummyBoxImport(false);
     setIsCalciPlusPack476(false);
+    setIsChc2606Ontop(false);
     setIsPsOnInvoice25(false);
     setPsSuatSelected(0);
     setSelectedRebateIds([]);
@@ -556,6 +564,35 @@ const App: React.FC = () => {
     setIsDummyBoxImport(checked);
     toggleNoteLine('DummyBox Import -150k', checked);
   };
+
+  const handleChc2606OntopToggle = (checked: boolean) => {
+    setIsChc2606Ontop(checked);
+    if (!checked) {
+      setNote(prev => stripChc2606OntopNoteLines(prev));
+      return;
+    }
+    const groupTotals = computeCartGroupTotals(cart);
+    const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+    setNote(prev => mergeChc2606OntopNoteLines(prev, preview.localPercent, preview.importPercent));
+  };
+
+  useEffect(() => {
+    if (!isChc2606Ontop || isPsOnInvoice25 || !isChc2606OntopPromoActive()) return;
+    const groupTotals = computeCartGroupTotals(cart);
+    const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+    if (!preview.eligible) {
+      setIsChc2606Ontop(false);
+      setNote(prev => stripChc2606OntopNoteLines(prev));
+      return;
+    }
+    setNote(prev => mergeChc2606OntopNoteLines(prev, preview.localPercent, preview.importPercent));
+  }, [cart, isChc2606Ontop, isPsOnInvoice25]);
+
+  useEffect(() => {
+    if (!isPsOnInvoice25) return;
+    setIsChc2606Ontop(false);
+    setNote(prev => stripChc2606OntopNoteLines(prev));
+  }, [isPsOnInvoice25]);
   const psGate = useMemo(
     () => lookupPsCustomerGate(psCustomerByCode, customerCode),
     [psCustomerByCode, customerCode]
@@ -628,6 +665,8 @@ const App: React.FC = () => {
       );
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
+      setIsChc2606Ontop(false);
+      setNote(prev => stripChc2606OntopNoteLines(prev));
     } else {
       setPsSuatSelected(0);
       setCart(prev =>
@@ -878,6 +917,15 @@ const App: React.FC = () => {
       isDummyBoxImport;
     const { localTotalAfterDiscount, importTotalAfterDiscount } = getDummyBoxEligibilityTotals(cart);
 
+    const ontopPreviewForOrder = calcChc2606OntopTotals(cart, groupTotals, false);
+    const effectiveChc2606Ontop =
+      !psTotalsForOrder &&
+      isChc2606OntopPromoActive() &&
+      isChc2606Ontop &&
+      ontopPreviewForOrder.eligible;
+    const ontopLocalPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.localPercent : 0;
+    const ontopImportPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.importPercent : 0;
+
     const cartVatInput = {
       items: cart,
       groupTotals,
@@ -886,6 +934,8 @@ const App: React.FC = () => {
       applyDummyBoxImport: effectiveDummyBoxImport,
       dummyBoxLocalPoolExVat: localTotalAfterDiscount,
       dummyBoxImportPoolExVat: importTotalAfterDiscount,
+      ontopLocalPercent,
+      ontopImportPercent,
     };
 
     const { subtotalExVat: totalAmount } = computeCartVatTotals(cartVatInput);
@@ -926,6 +976,7 @@ const App: React.FC = () => {
         isDummyBoxLocal: effectiveDummyBoxLocal,
         isDummyBoxImport: effectiveDummyBoxImport,
         isCalciPlusPack476: false,
+        isChc2606Ontop: false,
         isPsOnInvoice25: true,
         psSuatApplied: psTotalsForOrder.suatApplied,
         psTierLabel: psGate?.tierLabel,
@@ -978,6 +1029,7 @@ const App: React.FC = () => {
       isDummyBoxLocal: effectiveDummyBoxLocal,
       isDummyBoxImport: effectiveDummyBoxImport,
       isCalciPlusPack476,
+      isChc2606Ontop: effectiveChc2606Ontop,
       isPsOnInvoice25: false,
       appliedRebates: selectedRebateIds,
       totalAmount, finalAmount, totalSales,
@@ -1096,6 +1148,7 @@ const App: React.FC = () => {
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
+    setIsChc2606Ontop(!!d.isChc2606Ontop);
     setIsPsOnInvoice25(psDraft);
     setPsSuatSelected(psDraft ? Math.max(0, d.psSuatApplied ?? 0) : 0);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
@@ -1650,6 +1703,7 @@ const App: React.FC = () => {
                     isDummyBoxLocal={isDummyBoxLocal} onIsDummyBoxLocalChange={handleDummyBoxLocalToggle}
                     isDummyBoxImport={isDummyBoxImport} onIsDummyBoxImportChange={handleDummyBoxImportToggle}
                     isCalciPlusPack476={isCalciPlusPack476} onIsCalciPlusPack476Change={handleCalciPlusPack476Toggle}
+                    isChc2606Ontop={isChc2606Ontop} onIsChc2606OntopChange={handleChc2606OntopToggle}
                     activeDraftId={activeDraftId}
                     rebates={currentCustomerRebates}
                     selectedRebateIds={selectedRebateIds}

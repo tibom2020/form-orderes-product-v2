@@ -39,8 +39,8 @@ export const DISPLAY_TBQ2_CRITERIA_IMAGE_URL = 'https://i.postimg.cc/Cxs6WRtg/ti
 /** Nhãn tab trên thanh điều hướng (App.tsx) */
 export const STORE_PROGRAM_TAB_LABEL = 'PS 2026';
 
-/** Ẩn tạm cột PS trong bảng — bật lại khi cần dùng */
-const SHOW_PS_TABLE_COLUMNS = false;
+/** Cột PS trong bảng (Gói PS 25%, suất đã đặt/còn, …) */
+const SHOW_PS_TABLE_COLUMNS = true;
 
 export const POSM = {
   FRAME_OTC: 'Frame OTC',

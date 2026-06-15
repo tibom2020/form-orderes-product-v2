@@ -5,7 +5,6 @@ import {
   getPsMultiSuatRules,
   getPsSuatMaxForTier,
   getPsSuatRemaining,
-  isGoiPs25No,
 } from './psOnInvoicePromo';
 import type { StoreTierConfig } from '../components/StoreProgramRegistrationTab';
 
@@ -36,9 +35,8 @@ function registerGate(
   const suatMax = getPsSuatMaxForTier(tier);
   const suatPsDaDung = row.suatPsDaDung;
   const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
-  const canShowCk25 = multi
-    ? inPsList && suatRemaining > 0
-    : inPsList && isGoiPs25No(goiPs25Raw);
+  /** Còn suất PS → được tick SPECIAL_PS0526 (không chặn riêng theo cột Gói PS 25% = YES) */
+  const canShowCk25 = inPsList && suatRemaining > 0;
 
   map.set(k, {
     customerCode: code.trim(),

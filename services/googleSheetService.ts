@@ -42,6 +42,7 @@ interface OrderPayload {
   pharmatonViAmount?: number;
   pharmatonViQuantity?: number;
   isPsOnInvoice25?: boolean;
+  isChc2606Ontop?: boolean;
   psSuatApplied?: number;
   psSuatMax?: number;
   psTierLabel?: string;

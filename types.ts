@@ -232,6 +232,8 @@ export interface Order {
   isDummyBoxLocal?: boolean;  // CTKM OPELLA: DummyBox Local -150k (đủ điều kiện mới chọn)
   isDummyBoxImport?: boolean; // CTKM OPELLA: DummyBox Import -150k (đủ điều kiện mới chọn)
   isCalciPlusPack476?: boolean; // CORBIERE CALCIUM PLUS: mỗi gói 21 hộp giảm 4.76%
+  /** CTKM CHC2606-ONTOP — CK thêm 2.96%/3.94% theo pool Local/Import */
+  isChc2606Ontop?: boolean;
   /** CTKM Perfect Store On Invoice 25% — basePrice, giảm cố định theo tier */
   isPsOnInvoice25?: boolean;
   /** Số suất PS 25% áp dụng trên đơn này (Gold/Platinum/Flagship) */

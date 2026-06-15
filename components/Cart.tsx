@@ -21,6 +21,11 @@ import { calcPsOrderTotals, getPsCartUnitPrice, PS_ON_INVOICE_NOTE_MARKER } from
 import type { PsCustomerGate } from '../utils/psCustomerRegistry';
 import { getDummyBoxEligibilityTotals } from '../utils/dummyBoxEligibility';
 import {
+    calcChc2606OntopTotals,
+    formatChc2606OntopPercent,
+    isChc2606OntopPromoActive,
+} from '../utils/chc2606OntopPromo';
+import {
     computeCartGroupTotals,
     computeMaxPayableFees,
     computeAppliedRebates,
@@ -48,6 +53,9 @@ import {
     PHARMATON_VI_GOI_NOTE,
     stripPharmatonViGoiNoteLines,
 } from '../utils/pharmatonVi';
+
+/** Bật đặt gói CK PS 25% (SPECIAL_PS0526) trên giỏ — đặt false để tạm ẩn */
+const ENABLE_PS_25_ORDER_IN_CART = true;
 
 const formatRebateDate = (r: any): string => {
     const dateValue = r.Endate || r.EndDate || r['End Date'] || r['Hạn dùng'] || r['Hạn'] || r.endDate;
@@ -234,6 +242,8 @@ interface CartProps {
     onIsDummyBoxImportChange?: (isChecked: boolean) => void;
     isCalciPlusPack476?: boolean;
     onIsCalciPlusPack476Change?: (isChecked: boolean) => void;
+    isChc2606Ontop?: boolean;
+    onIsChc2606OntopChange?: (isChecked: boolean) => void;
     activeDraftId: string | null;
     rebates: Rebate[];
     selectedRebateIds: string[];
@@ -264,6 +274,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
         isOnTopLiXi, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
         isCalciPlusPack476, onIsCalciPlusPack476Change,
+        isChc2606Ontop, onIsChc2606OntopChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [],
         currentSalesRecord,
@@ -470,6 +481,26 @@ const Cart: React.FC<CartProps> = (props) => {
         onIsCalciPlusPack476Change(false);
     }, [isCalciPlusPack476, onIsCalciPlusPack476Change]);
 
+    const ontopPromoActive = isChc2606OntopPromoActive();
+    const ontopPreview = useMemo(
+        () => calcChc2606OntopTotals(items, cartGroupTotals, false),
+        [items, cartGroupTotals]
+    );
+    const canToggleChc2606Ontop =
+        ontopPromoActive && !isPsOnInvoice25 && ontopPreview.eligible;
+    const effectiveChc2606Ontop = canToggleChc2606Ontop && !!isChc2606Ontop;
+    const ontopLocalPercent = effectiveChc2606Ontop ? ontopPreview.localPercent : 0;
+    const ontopImportPercent = effectiveChc2606Ontop ? ontopPreview.importPercent : 0;
+    const ontopAppliedTotals = useMemo(
+        () => calcChc2606OntopTotals(items, cartGroupTotals, effectiveChc2606Ontop),
+        [items, cartGroupTotals, effectiveChc2606Ontop]
+    );
+
+    useEffect(() => {
+        if (!onIsChc2606OntopChange || !isChc2606Ontop) return;
+        if (!canToggleChc2606Ontop) onIsChc2606OntopChange(false);
+    }, [canToggleChc2606Ontop, isChc2606Ontop, onIsChc2606OntopChange]);
+
     const calciPlusPack476Discount = 0;
 
     const { dummyLocalPercent, dummyImportPercent } = useMemo(
@@ -531,6 +562,8 @@ const Cart: React.FC<CartProps> = (props) => {
             psTotals: psTotals ?? undefined,
             dummyLocalPercent,
             dummyImportPercent,
+            ontopLocalPercent,
+            ontopImportPercent,
         };
         const alloc = allocateRebateExVatPerItem(
             items,
@@ -548,6 +581,8 @@ const Cart: React.FC<CartProps> = (props) => {
         psTotals,
         dummyLocalPercent,
         dummyImportPercent,
+        ontopLocalPercent,
+        ontopImportPercent,
         rebateDiscountLocalApplied,
         rebateDiscountImportApplied,
     ]);
@@ -594,6 +629,8 @@ const Cart: React.FC<CartProps> = (props) => {
                 applyDummyBoxImport: canToggleDummyBoxImport && !!isDummyBoxImport,
                 dummyBoxLocalPoolExVat: localTotalAfterDiscount,
                 dummyBoxImportPoolExVat: importTotalAfterDiscount,
+                ontopLocalPercent,
+                ontopImportPercent,
                 rebateAppliedLocal: rebateDiscountLocalApplied,
                 rebateAppliedImport: rebateDiscountImportApplied,
                 onTopLiXiDiscount,
@@ -609,6 +646,8 @@ const Cart: React.FC<CartProps> = (props) => {
             isDummyBoxImport,
             localTotalAfterDiscount,
             importTotalAfterDiscount,
+            ontopLocalPercent,
+            ontopImportPercent,
             rebateDiscountLocalApplied,
             rebateDiscountImportApplied,
             onTopLiXiDiscount,
@@ -706,12 +745,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <span className="text-[10px] font-bold text-violet-900 dark:text-violet-200 uppercase">Loại PS</span>
                                 <span className="text-sm font-black text-violet-800 dark:text-violet-100">{psTierLabel}</span>
                             </div>
-                            {psGate && !psGate.canShowCk25 && psGate.inPsList && (
+                            {ENABLE_PS_25_ORDER_IN_CART && psGate && !psGate.canShowCk25 && psGate.inPsList && (
                                 <p className="text-[10px] font-bold text-amber-800 dark:text-amber-200">
                                     Đã hết suất PS ({psGate.suatPsDaDung}/{psGate.suatMax}) — không chọn {PS_ON_INVOICE_NOTE_MARKER}.
                                 </p>
                             )}
-                            {psGate?.canShowCk25 && onIsPsOnInvoice25Change && (
+                            {ENABLE_PS_25_ORDER_IN_CART && psGate?.canShowCk25 && onIsPsOnInvoice25Change && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -724,7 +763,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                     </span>
                                 </label>
                             )}
-                            {isPsOnInvoice25 && psTotals && (
+                            {ENABLE_PS_25_ORDER_IN_CART && isPsOnInvoice25 && psTotals && (
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-violet-900 dark:text-violet-100">
                                         Suất còn {psTotals.suatRemaining}/{psTotals.suatMax}
@@ -830,6 +869,8 @@ const Cart: React.FC<CartProps> = (props) => {
                                         psTotals: psTotals ?? undefined,
                                         dummyLocalPercent,
                                         dummyImportPercent,
+                                        ontopLocalPercent,
+                                        ontopImportPercent,
                                         rebateAllocExVat: rebateAllocByItemId.get(item.id) ?? 0,
                                     });
 
@@ -945,6 +986,45 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </label>
                             </div>
                         )}
+                        {ontopPromoActive && !isPsOnInvoice25 && onIsChc2606OntopChange && (
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center space-x-1.5">
+                                    <input
+                                        type="checkbox"
+                                        id="chc2606-ontop"
+                                        checked={!!isChc2606Ontop && canToggleChc2606Ontop}
+                                        onChange={e => onIsChc2606OntopChange(e.target.checked)}
+                                        disabled={!canToggleChc2606Ontop}
+                                        className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                    />
+                                    <label
+                                        htmlFor="chc2606-ontop"
+                                        className={`text-[11px] font-bold ${
+                                            canToggleChc2606Ontop
+                                                ? 'cursor-pointer text-slate-600 dark:text-slate-300'
+                                                : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                                        }`}
+                                        title="CHC2606-ONTOP: pool Local/Import ≥25M (sau CK tháng, trước VAT) → +2.96%; ≥50M → +3.94%"
+                                    >
+                                        Gói ONTOP
+                                        {effectiveChc2606Ontop && ontopAppliedTotals.discountTotal > 0
+                                            ? ` (-${formatCurrency(ontopAppliedTotals.discountTotal)})`
+                                            : ''}
+                                    </label>
+                                </div>
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400 pl-5 leading-snug">
+                                    Local: {formatCurrency(ontopPreview.localPoolExVat)}
+                                    {ontopPreview.localPercent > 0
+                                        ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
+                                        : ' · chưa đủ 25M'}
+                                    {' · '}
+                                    Import: {formatCurrency(ontopPreview.importPoolExVat)}
+                                    {ontopPreview.importPercent > 0
+                                        ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`
+                                        : ' · chưa đủ 25M'}
+                                </p>
+                            </div>
+                        )}
                         <div className="flex items-center space-x-1.5">
                             <input
                                 type="checkbox"
@@ -1016,7 +1096,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || (isDummyBoxLocal && canToggleDummyBoxLocal) || (isDummyBoxImport && canToggleDummyBoxImport) || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
+                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || (isDummyBoxLocal && canToggleDummyBoxLocal) || (isDummyBoxImport && canToggleDummyBoxImport) || effectiveChc2606Ontop || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isPsOnInvoice25 && psDiscountGross > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
@@ -1048,6 +1128,18 @@ const Cart: React.FC<CartProps> = (props) => {
                                     <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
                                 </div>
                             )}
+                            {effectiveChc2606Ontop && ontopAppliedTotals.discountLocal > 0 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- CK ONTOP Local ({formatChc2606OntopPercent(ontopPreview.localPercent)}):</span>
+                                    <span>-{formatCurrency(ontopAppliedTotals.discountLocal)}</span>
+                                </div>
+                            )}
+                            {effectiveChc2606Ontop && ontopAppliedTotals.discountImport > 0 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- CK ONTOP Import ({formatChc2606OntopPercent(ontopPreview.importPercent)}):</span>
+                                    <span>-{formatCurrency(ontopAppliedTotals.discountImport)}</span>
+                                </div>
+                            )}
                             {calciPlusPack476Discount > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- Trừ gói 4.76%:</span>
@@ -1071,7 +1163,7 @@ const Cart: React.FC<CartProps> = (props) => {
                         </p>
                     )}
 
-                    {isPsOnInvoice25 && (
+                    {ENABLE_PS_25_ORDER_IN_CART && isPsOnInvoice25 && (
                         <p className="text-[9px] text-violet-700 dark:text-violet-300 font-bold py-0.5">
                             {PS_ON_INVOICE_NOTE_MARKER}: CK tối đa 49% theo basePrice — không trả phí rebate trên đơn này.
                         </p>

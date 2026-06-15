@@ -1,6 +1,8 @@
 import type { CartItem } from '../types';
 import {
   ACEMUC_GROUP_IDS,
+  CHC2606_ONTOP_IMPORT_PRODUCT_IDS,
+  CHC2606_ONTOP_LOCAL_PRODUCT_IDS,
   DUMMY_BOX_DISCOUNT,
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
@@ -77,6 +79,8 @@ export interface CartVatTotalsInput {
   applyDummyBoxImport?: boolean;
   dummyBoxLocalPoolExVat?: number;
   dummyBoxImportPoolExVat?: number;
+  ontopLocalPercent?: number;
+  ontopImportPercent?: number;
   /** Phí rebate Local/Import đã cắt trần — trừ trên giá trước khi nhân VAT */
   rebateAppliedLocal?: number;
   rebateAppliedImport?: number;
@@ -123,9 +127,17 @@ export function getCartLineExVatBeforeVat(
     psTotals?: PsOrderTotals | null;
     dummyLocalPercent: number;
     dummyImportPercent: number;
+    ontopLocalPercent?: number;
+    ontopImportPercent?: number;
   }
 ): number {
-  const { psTotals, dummyLocalPercent, dummyImportPercent } = opts;
+  const {
+    psTotals,
+    dummyLocalPercent,
+    dummyImportPercent,
+    ontopLocalPercent = 0,
+    ontopImportPercent = 0,
+  } = opts;
   const isPs = !!psTotals;
   const psRatio =
     isPs && psTotals!.eligible && psTotals!.baseSubtotal > 0
@@ -146,6 +158,12 @@ export function getCartLineExVatBeforeVat(
   if (DUMMY_BOX_IMPORT_CALC_IDS.includes(item.id) && dummyImportPercent > 0) {
     lineExVat *= 1 - dummyImportPercent;
   }
+  if (CHC2606_ONTOP_LOCAL_PRODUCT_IDS.includes(item.id) && ontopLocalPercent > 0) {
+    lineExVat *= 1 - ontopLocalPercent;
+  }
+  if (CHC2606_ONTOP_IMPORT_PRODUCT_IDS.includes(item.id) && ontopImportPercent > 0) {
+    lineExVat *= 1 - ontopImportPercent;
+  }
 
   return lineExVat;
 }
@@ -158,6 +176,8 @@ export function allocateRebateExVatPerItem(
     psTotals?: PsOrderTotals | null;
     dummyLocalPercent: number;
     dummyImportPercent: number;
+    ontopLocalPercent?: number;
+    ontopImportPercent?: number;
   },
   rebateLocalApplied: number,
   rebateImportApplied: number
@@ -196,16 +216,20 @@ export function getCartLineAmountWithVat(
     psTotals?: PsOrderTotals | null;
     dummyLocalPercent: number;
     dummyImportPercent: number;
+    ontopLocalPercent?: number;
+    ontopImportPercent?: number;
     /** Phần phí rebate phân bổ cho dòng này (—VAT), trước khi nhân VAT */
     rebateAllocExVat?: number;
   }
 ): number {
-  const { psTotals, dummyLocalPercent, dummyImportPercent, rebateAllocExVat = 0 } = opts;
+  const { psTotals, dummyLocalPercent, dummyImportPercent, ontopLocalPercent = 0, ontopImportPercent = 0, rebateAllocExVat = 0 } = opts;
 
   let lineExVat = getCartLineExVatBeforeVat(item, groupTotals, {
     psTotals,
     dummyLocalPercent,
     dummyImportPercent,
+    ontopLocalPercent,
+    ontopImportPercent,
   });
 
   lineExVat = Math.max(0, lineExVat - rebateAllocExVat);
@@ -227,6 +251,8 @@ export function computeCartVatTotals(input: CartVatTotalsInput): CartVatTotalsRe
     applyDummyBoxImport = false,
     dummyBoxLocalPoolExVat = 0,
     dummyBoxImportPoolExVat = 0,
+    ontopLocalPercent = 0,
+    ontopImportPercent = 0,
     rebateAppliedLocal = 0,
     rebateAppliedImport = 0,
   } = input;
@@ -242,6 +268,8 @@ export function computeCartVatTotals(input: CartVatTotalsInput): CartVatTotalsRe
     psTotals,
     dummyLocalPercent,
     dummyImportPercent,
+    ontopLocalPercent,
+    ontopImportPercent,
   };
 
   const rebateAlloc = allocateRebateExVatPerItem(
@@ -259,6 +287,8 @@ export function computeCartVatTotals(input: CartVatTotalsInput): CartVatTotalsRe
       psTotals,
       dummyLocalPercent,
       dummyImportPercent,
+      ontopLocalPercent,
+      ontopImportPercent,
       rebateAllocExVat: rebateAlloc[i],
     });
   }

@@ -252,7 +252,7 @@ interface CartProps {
     currentSalesRecord?: SalesRecord | null;
     onExportSales?: (record: SalesRecord) => Promise<void>;
     onViewCustomerDetail?: (code: string) => void;
-    /** Tra từ DummyBoxRecord (+ BsT3): trong danh sách & trạng thái GoiLocal/GoiImport */
+    /** Tra DummyBoxRecord (Bs-only không mở tick); GoiLocal/GoiImport gộp cả 2 sheet */
     dummyBoxListGate?: DummyBoxListGate;
     /** Sheet OSTELIN_60V_GOI: KH đã gói Đợt 2 — khóa tick tặng máy đo HA */
     ostelin60VTangCanLocked?: boolean;

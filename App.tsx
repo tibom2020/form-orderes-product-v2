@@ -770,6 +770,11 @@ const App: React.FC = () => {
     return allRebates.filter(r => String(r.code) === codeStr);
   }, [allRebates, customerCode]);
 
+  const recordDummyBoxMarketingByCode = useMemo(
+    () => mergeDummyBoxMarketingByCode(marketingData),
+    [marketingData]
+  );
+
   const mergedDummyBoxMarketingByCode = useMemo(
     () => mergeDummyBoxMarketingByCode([...marketingData, ...marketingDataBs]),
     [marketingData, marketingDataBs]
@@ -784,11 +789,12 @@ const App: React.FC = () => {
       o => normalizeCustomerCodeKey(o.customerCode) === code && !!o.isDummyBoxImport
     );
     return buildDummyBoxListGate(code, mergedDummyBoxMarketingByCode, {
+      recordMap: recordDummyBoxMarketingByCode,
       orderHadDummyBoxLocal: orderHadLocal,
       orderHadDummyBoxImport: orderHadImport,
       pending: !dummyBoxSheetsReady,
     });
-  }, [customerCode, mergedDummyBoxMarketingByCode, sentOrders, dummyBoxSheetsReady]);
+  }, [customerCode, mergedDummyBoxMarketingByCode, recordDummyBoxMarketingByCode, sentOrders, dummyBoxSheetsReady]);
 
   /** KH đã gói Ostelin Đợt 2 — khóa tick tặng máy đo HA; KH chỉ Đợt 1 vẫn được tick Đợt 2 */
   const ostelin60VDot2PurchasedCodeSet = useMemo(

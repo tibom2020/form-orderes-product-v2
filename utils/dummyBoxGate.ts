@@ -11,7 +11,7 @@ export type DummyBoxLockReason =
   | null;
 
 export interface DummyBoxListGate {
-  /** Có dòng trên sheet DummyBoxRecord / Bs — được tick gói mới trên đơn */
+  /** Có dòng trên sheet DummyBoxRecord — được tick gói mới trên đơn (Bs alone không đủ) */
   inList: boolean;
   /** Đã đăng ký / đặt gói Local (sheet YES hoặc đơn đã gửi) */
   goiLocalRegistered: boolean;
@@ -87,6 +87,8 @@ export function buildDummyBoxListGate(
     orderHadDummyBoxLocal?: boolean;
     orderHadDummyBoxImport?: boolean;
     pending?: boolean;
+    /** Chỉ mã có trên DummyBoxRecord mới được tick gói (Bs-only không mở) */
+    recordMap?: Map<string, MarketingRecord>;
   }
 ): DummyBoxListGate {
   const code = normalizeCustomerCodeKey(customerCode);
@@ -107,6 +109,7 @@ export function buildDummyBoxListGate(
     };
   }
   const rec = map.get(code);
+  const inRecordList = options?.recordMap ? options.recordMap.has(code) : !!rec;
   /**
    * KH trong DS DummyBox: sheet GoiLocal/GoiImport là nguồn đúng (YES = đã đặt).
    * sentOrders localStorage chỉ khóa khi KH không còn trên DS (tránh lạm dụng CK).
@@ -118,7 +121,7 @@ export function buildDummyBoxListGate(
     ? isGoiYes(rec.GoiImport)
     : !!options?.orderHadDummyBoxImport;
   return {
-    inList: !!rec,
+    inList: inRecordList,
     goiLocalRegistered,
     goiImportRegistered,
     pending: false,
@@ -154,7 +157,7 @@ export function getDummyBoxToggleState(
       canToggle: false,
       lockReason: 'pending',
       labelSuffix: ' — Đang tải DS DummyBox…',
-      title: 'Đang tải danh sách DummyBox (DummyBoxRecord / BsT3)…',
+      title: 'Đang tải danh sách DummyBox (DummyBoxRecord)…',
     };
   }
 
@@ -164,7 +167,7 @@ export function getDummyBoxToggleState(
       canToggle: false,
       lockReason: 'not_in_list',
       labelSuffix: ' — Chưa trong DS',
-      title: 'Mã KH chưa có trong danh sách DummyBox (DummyBoxRecord / BsT3)',
+      title: 'Mã KH chưa có trong danh sách DummyBoxRecord',
     };
   }
 

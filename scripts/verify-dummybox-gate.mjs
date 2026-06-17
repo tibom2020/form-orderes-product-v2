@@ -59,6 +59,7 @@ function buildDummyBoxListGate(customerCode, map, options = {}) {
     };
   }
   const rec = map.get(code);
+  const inRecordList = options.recordMap ? options.recordMap.has(code) : !!rec;
   const goiLocalRegistered = rec
     ? isGoiYes(rec.GoiLocal)
     : !!options.orderHadDummyBoxLocal;
@@ -66,7 +67,7 @@ function buildDummyBoxListGate(customerCode, map, options = {}) {
     ? isGoiYes(rec.GoiImport)
     : !!options.orderHadDummyBoxImport;
   return {
-    inList: !!rec,
+    inList: inRecordList,
     goiLocalRegistered,
     goiImportRegistered,
     pending: false,
@@ -153,6 +154,30 @@ assert(
 assert('normalize number key', normalizeCustomerCodeKey(12345) === '12345');
 assert('Mã KH column merge', map.has('99 88'));
 assert('min amount constant', DUMMY_BOX_LOCAL_MIN_AMOUNT === 1_000_000);
+
+// 7. Chỉ có trên Bs (merged có, recordMap không) → không tick
+const recordOnlyMap = mergeDummyBoxMarketingByCode([{ CustomerCode: '12345' }]);
+const mergedWithBs = mergeDummyBoxMarketingByCode([
+  { CustomerCode: '12345' },
+  { CustomerCode: 'BsOnly' },
+]);
+const bsOnlyGate = buildDummyBoxListGate('BsOnly', mergedWithBs, {
+  pending: false,
+  recordMap: recordOnlyMap,
+});
+assert('7. Bs-only not inList', bsOnlyGate.inList === false);
+assert(
+  '7. Bs-only toggle blocked',
+  getDummyBoxToggleState(bsOnlyGate, 'local', true).lockReason === 'not_in_list'
+);
+
+// 8. Có trên cả Record + Bs → vẫn tick
+const bothGate = buildDummyBoxListGate('12345', mergedWithBs, {
+  pending: false,
+  recordMap: recordOnlyMap,
+});
+assert('8. Record+Bs inList', bothGate.inList === true);
+assert('8. Record+Bs can toggle', getDummyBoxToggleState(bothGate, 'local', true).canToggle === true);
 
 if (failed) {
   console.error(`\n${failed} scenario(s) failed`);

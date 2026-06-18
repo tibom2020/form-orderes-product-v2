@@ -1004,7 +1004,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                 ? 'cursor-pointer text-slate-600 dark:text-slate-300'
                                                 : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
                                         }`}
-                                        title="CHC2606-ONTOP: pool Local/Import ≥25M (sau CK tháng, trước VAT) → +2.96%; ≥50M → +3.94%"
+                                        title="CHC2606-ONTOP: pool Local/Import (sau CK tháng, trước VAT) ≥10M +2.46%; ≥25M +2.96%; ≥50M +3.94%"
                                     >
                                         Gói ONTOP
                                         {effectiveChc2606Ontop && ontopAppliedTotals.discountTotal > 0
@@ -1016,12 +1016,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                     Local: {formatCurrency(ontopPreview.localPoolExVat)}
                                     {ontopPreview.localPercent > 0
                                         ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
-                                        : ' · chưa đủ 25M'}
+                                        : ' · chưa đủ 10M'}
                                     {' · '}
                                     Import: {formatCurrency(ontopPreview.importPoolExVat)}
                                     {ontopPreview.importPercent > 0
                                         ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`
-                                        : ' · chưa đủ 25M'}
+                                        : ' · chưa đủ 10M'}
                                 </p>
                             </div>
                         )}

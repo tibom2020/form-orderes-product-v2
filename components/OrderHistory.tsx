@@ -128,7 +128,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ drafts, sent, onLoad, onDel
             {order.isChc2606Ontop && (
               <div className="flex justify-between text-rose-500 font-medium">
                 <span>Gói ONTOP (CHC2606):</span>
-                <span>đã áp CK 2.96%/3.94%</span>
+                <span>đã áp CK 2.46%/2.96%/3.94%</span>
               </div>
             )}
             {order.isDummyBox && !order.isDummyBoxLocal && !order.isDummyBoxImport && <div className="flex justify-between text-rose-500 font-medium"><span>DummyBox:</span> <span>- {formatCurrency(150000)}</span></div>}

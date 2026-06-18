@@ -6,9 +6,11 @@ import {
   CHC2606_ONTOP_LOCAL_PRODUCT_IDS,
   CHC2606_ONTOP_NOTE_IMPORT,
   CHC2606_ONTOP_NOTE_LOCAL,
+  CHC2606_ONTOP_PERCENT_BASE,
   CHC2606_ONTOP_PERCENT_HIGH,
   CHC2606_ONTOP_PERCENT_LOW,
   CHC2606_ONTOP_START_MS,
+  CHC2606_ONTOP_THRESHOLD_BASE,
   CHC2606_ONTOP_THRESHOLD_HIGH,
   CHC2606_ONTOP_THRESHOLD_LOW,
   OSTELIN_GROUP_IDS,
@@ -24,6 +26,7 @@ export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
 export function getChc2606OntopTierPercent(poolExVat: number): number {
   if (poolExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
   if (poolExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
+  if (poolExVat >= CHC2606_ONTOP_THRESHOLD_BASE) return CHC2606_ONTOP_PERCENT_BASE;
   return 0;
 }
 
@@ -106,6 +109,7 @@ export function formatChc2606OntopPercent(percent: number): string {
   if (percent <= 0) return '0%';
   if (Math.abs(percent - CHC2606_ONTOP_PERCENT_HIGH) < 0.000001) return '3.94%';
   if (Math.abs(percent - CHC2606_ONTOP_PERCENT_LOW) < 0.000001) return '2.96%';
+  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_BASE) < 0.000001) return '2.46%';
   return `${(percent * 100).toFixed(2)}%`;
 }
 

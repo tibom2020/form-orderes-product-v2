@@ -1043,7 +1043,7 @@ export const CHC2606_ONTOP_START_MS = new Date('2026-06-15T00:00:00+07:00').getT
 export const CHC2606_ONTOP_END_MS = new Date('2026-06-30T23:59:59+07:00').getTime();
 export const CHC2606_ONTOP_LOCAL_PRODUCT_IDS: readonly number[] = [1, 28, 26, 7, 6, 8, 9, 10, 2, 3, 4];
 export const CHC2606_ONTOP_IMPORT_PRODUCT_IDS: readonly number[] = [
-  30, 12, 13, 29, 16, 15, 20, 19, 27, 31, 14, 22, 23, 24, 25,
+  30, 12, 13, 29, 16, 15, 20, 19, 18, 27, 31, 14, 22, 23, 24, 25,
 ];
 export const CHC2606_ONTOP_THRESHOLD_BASE = 10_000_000;
 export const CHC2606_ONTOP_THRESHOLD_LOW = 25_000_000;

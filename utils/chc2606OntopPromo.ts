@@ -23,14 +23,19 @@ export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
   return nowMs >= CHC2606_ONTOP_START_MS && nowMs <= CHC2606_ONTOP_END_MS;
 }
 
-export function getChc2606OntopTierPercent(poolExVat: number): number {
-  if (poolExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
-  if (poolExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
-  if (poolExVat >= CHC2606_ONTOP_THRESHOLD_BASE) return CHC2606_ONTOP_PERCENT_BASE;
+/** Mốc 10tr / 25tr / 50tr: tổng basePrice × SL trong pool (chưa trừ CK tháng) */
+export function getChc2606OntopTierPercent(poolBaseExVat: number): number {
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_BASE) return CHC2606_ONTOP_PERCENT_BASE;
   return 0;
 }
 
-function getOntopLineExVatAfterDiscount(item: CartItem, groupTotals: CartGroupTotals): number {
+function getOntopLineBaseExVat(item: CartItem): number {
+  return (item.basePrice ?? item.price) * item.quantity;
+}
+
+function getOntopLineExVatAfterMonthly(item: CartItem, groupTotals: CartGroupTotals): number {
   const unitBase = item.basePrice ?? item.price;
   const isTelfast = TELFAST_GROUP_IDS.includes(item.id);
   const isOstelin = OSTELIN_GROUP_IDS.includes(item.id);
@@ -49,24 +54,38 @@ function getOntopLineExVatAfterDiscount(item: CartItem, groupTotals: CartGroupTo
 export function getChc2606OntopPoolTotals(
   items: CartItem[],
   groupTotals: CartGroupTotals
-): { localPoolExVat: number; importPoolExVat: number } {
+): {
+  localPoolBase: number;
+  importPoolBase: number;
+  localPoolExVat: number;
+  importPoolExVat: number;
+} {
+  let localPoolBase = 0;
+  let importPoolBase = 0;
   let localPoolExVat = 0;
   let importPoolExVat = 0;
 
   for (const item of items) {
-    const lineExVat = getOntopLineExVatAfterDiscount(item, groupTotals);
+    const lineBase = getOntopLineBaseExVat(item);
+    const lineAfterMonthly = getOntopLineExVatAfterMonthly(item, groupTotals);
     if (CHC2606_ONTOP_LOCAL_PRODUCT_IDS.includes(item.id)) {
-      localPoolExVat += lineExVat;
+      localPoolBase += lineBase;
+      localPoolExVat += lineAfterMonthly;
     }
     if (CHC2606_ONTOP_IMPORT_PRODUCT_IDS.includes(item.id)) {
-      importPoolExVat += lineExVat;
+      importPoolBase += lineBase;
+      importPoolExVat += lineAfterMonthly;
     }
   }
 
-  return { localPoolExVat, importPoolExVat };
+  return { localPoolBase, importPoolBase, localPoolExVat, importPoolExVat };
 }
 
 export interface Chc2606OntopTotals {
+  /** Tổng basePrice pool — dùng xét mốc 10tr/25tr/50tr */
+  localPoolBase: number;
+  importPoolBase: number;
+  /** Tổng sau CK tháng — dùng tính tiền giảm ONTOP */
   localPoolExVat: number;
   importPoolExVat: number;
   localPercent: number;
@@ -82,9 +101,10 @@ export function calcChc2606OntopTotals(
   groupTotals: CartGroupTotals,
   applyOntop: boolean
 ): Chc2606OntopTotals {
-  const { localPoolExVat, importPoolExVat } = getChc2606OntopPoolTotals(items, groupTotals);
-  const localPercent = getChc2606OntopTierPercent(localPoolExVat);
-  const importPercent = getChc2606OntopTierPercent(importPoolExVat);
+  const { localPoolBase, importPoolBase, localPoolExVat, importPoolExVat } =
+    getChc2606OntopPoolTotals(items, groupTotals);
+  const localPercent = getChc2606OntopTierPercent(localPoolBase);
+  const importPercent = getChc2606OntopTierPercent(importPoolBase);
   const eligible = localPercent > 0 || importPercent > 0;
 
   const effectiveLocalPercent = applyOntop ? localPercent : 0;
@@ -94,6 +114,8 @@ export function calcChc2606OntopTotals(
   const discountImport = importPoolExVat * effectiveImportPercent;
 
   return {
+    localPoolBase,
+    importPoolBase,
     localPoolExVat,
     importPoolExVat,
     localPercent,

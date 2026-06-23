@@ -1012,7 +1012,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                             : ''}
                                     </label>
                                 </div>
-                                <p className="text-[9px] text-slate-500 dark:text-slate-400 pl-5 leading-snug">
+                                <p className="ml-5 mr-0.5 rounded-md border border-red-300/80 dark:border-red-700/60 bg-red-50 dark:bg-red-950/45 px-2 py-1 text-[9px] font-bold leading-snug text-red-800 dark:text-red-200">
                                     Local (base): {formatCurrency(ontopPreview.localPoolBase)}
                                     {ontopPreview.localPercent > 0
                                         ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`

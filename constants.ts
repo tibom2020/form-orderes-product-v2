@@ -1022,7 +1022,7 @@ export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [18, 20, 27, 12, 30] as const; // Es
 export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
 
 /** Mục tiêu số KH đã mua gói DummyBox / Rep (cả chương trình T3–T5) */
-export const DUMMYBOX_TARGET_PER_REP = 30;
+export const DUMMYBOX_TARGET_PER_REP = 40;
 export const DUMMYBOX_CAMPAIGN_START_MS = new Date('2026-03-01T00:00:00+07:00').getTime();
 export const DUMMYBOX_CAMPAIGN_END_MS = new Date('2026-05-31T23:59:59+07:00').getTime();
 

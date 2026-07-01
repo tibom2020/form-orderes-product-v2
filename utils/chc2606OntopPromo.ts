@@ -1,6 +1,7 @@
 import type { CartItem } from '../types';
 import {
   ACEMUC_GROUP_IDS,
+  CHC2606_ONTOP_SUSPENDED,
   CHC2606_ONTOP_END_MS,
   CHC2606_ONTOP_IMPORT_PRODUCT_IDS,
   CHC2606_ONTOP_LOCAL_PRODUCT_IDS,
@@ -20,6 +21,7 @@ import { getDiscountPercent } from './calculations';
 import type { CartGroupTotals } from './orderDiscountCaps';
 
 export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
+  if (CHC2606_ONTOP_SUSPENDED) return false;
   return nowMs >= CHC2606_ONTOP_START_MS && nowMs <= CHC2606_ONTOP_END_MS;
 }
 

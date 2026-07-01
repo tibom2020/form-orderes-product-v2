@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
-import { getMaxDiscountPercent } from '../utils/calculations';
+import { getMaxDiscountPercent, isGigaMonthlyPromoSuspended } from '../utils/calculations';
 import { REBATE_TIERS } from './dashboard/DashboardUtils';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 
@@ -45,9 +45,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
         setQuantity(product.minOrderQuantity);
     };
 
+    const promoSuspended = isGigaMonthlyPromoSuspended(product.id);
+
     // Tính toán bảng tra cứu mức chiết khấu
     const tieredPromos = useMemo(() => {
-        if (!product.promotion) return [];
+        if (!product.promotion || promoSuspended) return [];
 
         // Regex hỗ trợ cả 'h' (hộp) và 'k' (nghìn đồng/giá trị đơn)
         const tieredMatches = Array.from(product.promotion.matchAll(/(\d+)\s*(h|k)\s*(?:ck|chiết khấu|discount)?\s*(\d+(?:\.\d+)?)\s*%/gi));
@@ -85,17 +87,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
         }
 
         return [];
-    }, [product.promotion, product.price]);
+    }, [product.promotion, product.price, promoSuspended]);
 
     // (đã gỡ) Rule 21h ck thêm 4.76%
 
     // Giá cuối tháng ở mức 5% (Lv5) - đã bao gồm CK + VAT
     const LEVEL_5_INDEX = 4;
     const giaCuoiThang = useMemo(() => {
-        const maxCk = getMaxDiscountPercent(product.promotion);
+        const maxCk = promoSuspended ? null : getMaxDiscountPercent(product.promotion);
         const giaHD = Math.round((product.basePrice ?? product.price) * (1 - (maxCk ?? 0) / 100));
         return Math.round(giaHD * (1 - REBATE_TIERS[LEVEL_5_INDEX].percent / 100));
-    }, [product.price, product.basePrice, product.promotion]);
+    }, [product.price, product.basePrice, product.promotion, promoSuspended]);
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">

@@ -3,6 +3,7 @@ import type { Product } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { DocumentTextIcon, TagIcon, HomeIcon, GlobeAmericasIcon } from './icons';
 import { PROMO_UPDATE_DATE } from '../constants';
+import { isGigaMonthlyPromoSuspended } from '../utils/calculations';
 import { REBATE_TIERS, formatCompact } from './dashboard/DashboardUtils';
 import { getBmTiers, BM_PRODUCT_IDS } from '../constants/bmProducts';
 
@@ -43,6 +44,7 @@ interface GigaPriceRow {
     product: Product;
     minOrder: number;
     monthlyDiscountPercent: number | null;
+    promoSuspended: boolean;
     note: string;
 }
 
@@ -88,11 +90,15 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
     const gigaPriceRows = useMemo<GigaPriceRow[]>(() => {
         const rows: GigaPriceRow[] = [];
         filteredProducts.forEach((p) => {
+            const suspended = isGigaMonthlyPromoSuspended(p.id);
             rows.push({
                 product: p,
                 minOrder: getGigaMinOrderMax(p),
-                monthlyDiscountPercent: getMaxDiscountPercent(p.promotion),
-                note: p.promotion || '-',
+                monthlyDiscountPercent: suspended ? null : getMaxDiscountPercent(p.promotion),
+                promoSuspended: suspended,
+                note: suspended && p.promotion
+                    ? `(tạm ngưng) ${p.promotion}`
+                    : (p.promotion || '-'),
             });
         });
         return rows;

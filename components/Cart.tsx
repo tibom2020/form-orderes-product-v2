@@ -42,6 +42,8 @@ import {
     OSTELIN_60V_PRODUCT_ID,
     PHARMATON_VI_GOI_MIN_QTY,
     PHARMATON_VI_GOI_PRODUCT_ID,
+    CART_OSTELIN_TANG_CAN_VISIBLE,
+    CART_PHARMATON_VI_GOI_VISIBLE,
 } from '../constants';
 import {
     OSTELIN_TANG_CAN_NOTE,
@@ -368,6 +370,11 @@ const Cart: React.FC<CartProps> = (props) => {
         onNoteChange(stripOstelinTangCanNoteLines(noteLinesTrimmed).join('\n'));
     }, [ostelin60VTangCanLocked, hasOstelinTangCanNote, ostelin60vEligible, noteLinesTrimmed, onNoteChange]);
 
+    useEffect(() => {
+        if (CART_OSTELIN_TANG_CAN_VISIBLE || !hasOstelinTangCanNote) return;
+        onNoteChange(stripOstelinTangCanNoteLines(noteLinesTrimmed).join('\n'));
+    }, [hasOstelinTangCanNote, noteLinesTrimmed, onNoteChange]);
+
     const togglePharmatonViGoiNote = () => {
         if (pharmatonViGoiLocked) return;
         if (hasPharmatonViGoiNote) {
@@ -388,6 +395,11 @@ const Cart: React.FC<CartProps> = (props) => {
         if (pharmatonViEligible) return;
         onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
     }, [pharmatonViGoiLocked, hasPharmatonViGoiNote, pharmatonViEligible, noteLinesTrimmed, onNoteChange]);
+
+    useEffect(() => {
+        if (CART_PHARMATON_VI_GOI_VISIBLE || !hasPharmatonViGoiNote) return;
+        onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
+    }, [hasPharmatonViGoiNote, noteLinesTrimmed, onNoteChange]);
 
     const filteredCustomers = useMemo(() => {
         if (!customerName || customerName.trim() === '') return [];
@@ -1025,6 +1037,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </p>
                             </div>
                         )}
+                        {CART_OSTELIN_TANG_CAN_VISIBLE && (
                         <div className="flex items-center space-x-1.5">
                             <input
                                 type="checkbox"
@@ -1059,6 +1072,8 @@ const Cart: React.FC<CartProps> = (props) => {
                                 Ostelin tặng máy đo HA{ostelin60VTangCanLocked ? ' · Đã gói Đợt 2' : ''}
                             </label>
                         </div>
+                        )}
+                        {CART_PHARMATON_VI_GOI_VISIBLE && (
                         <div className="flex items-center space-x-1.5">
                             <input
                                 type="checkbox"
@@ -1093,6 +1108,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 Gói PHARMATON VỈ{pharmatonViGoiLocked ? ' · Đã gói' : ''}
                             </label>
                         </div>
+                        )}
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}

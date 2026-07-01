@@ -83,13 +83,14 @@ function stripRebatePaymentFromNote(note: string): string {
     .trim();
 }
 
-/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76% */
+/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76%, Active Acemuc/Ostelin, Gói Ostelin/PMT Vỉ */
 const SHOW_PRICE_LIST_TAB = false;
 const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
 const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 const SHOW_CALCI_PLUS_TAB = false;
-const SHOW_OSTELIN_60V_TAB = true;
+const SHOW_OSTELIN_60V_TAB = false;
+const SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB = false;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
@@ -479,6 +480,7 @@ const App: React.FC = () => {
     if (!SHOW_QUARTER_SALES_TRACKING_TAB && viewMode === 'quarterSalesTracking') setViewMode('order');
     if (!SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus') setViewMode('order');
     if (!SHOW_OSTELIN_60V_TAB && (viewMode === 'ostelin60v' || viewMode === 'pharmatonVi')) setViewMode('order');
+    if (!SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && viewMode === 'repActiveAcemucOstelin') setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -1536,6 +1538,7 @@ const App: React.FC = () => {
               <span className="sm:hidden">Q1</span>
             </button>
           )}
+          {SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && (
           <button
             onClick={() => setViewMode('repActiveAcemucOstelin')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
@@ -1548,6 +1551,7 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Active Acemuc / Ostelin</span>
             <span className="sm:hidden">Active</span>
           </button>
+          )}
           {SHOW_OSTELIN_60V_TAB && (
             <button
               onClick={() => setViewMode('ostelin60v')}
@@ -1889,7 +1893,7 @@ const App: React.FC = () => {
             onProgramTabChange={(tab) => setViewMode(tab === 'pharmaton' ? 'pharmatonVi' : 'ostelin60v')}
           />
         )}
-        {viewMode === 'repActiveAcemucOstelin' && (
+        {SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && viewMode === 'repActiveAcemucOstelin' && (
           <RepActiveAcemucOstelinTab
             salesRecords={allSalesRecords}
             currentEmployee={loggedInEmployee!}

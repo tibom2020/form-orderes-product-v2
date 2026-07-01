@@ -1,4 +1,18 @@
-import { CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS } from '../constants';
+import {
+    ACEMUC_GROUP_IDS,
+    ACEMUC_PROMO_SUSPENDED,
+    CALCIPLUS_PROMO_DISCOUNT_PERCENT,
+    PACK_476_PRODUCT_IDS,
+    TELFAST_PRODUCT_IDS,
+    TELFAST_PROMO_SUSPENDED,
+} from '../constants';
+
+/** CK tháng Acemuc/Telfast đang tạm ngưng (giữ chuỗi promotion trong config) */
+export function isGigaMonthlyPromoSuspended(productId: number): boolean {
+    if (ACEMUC_PROMO_SUSPENDED && ACEMUC_GROUP_IDS.includes(productId)) return true;
+    if (TELFAST_PROMO_SUSPENDED && TELFAST_PRODUCT_IDS.includes(productId)) return true;
+    return false;
+}
 
 /** Lấy % CK lớn nhất từ chuỗi promotion (ví dụ 4.9 từ "Mua 5h ck 4.9%") - dùng cho Giá HĐ, Giá cuối tháng */
 export const getMaxDiscountPercent = (promotion: string | undefined): number | null => {
@@ -19,9 +33,10 @@ export const getDiscountPercent = (
     promotion: string | undefined,
     quantity: number,
     value?: number,
-    _productId?: number
+    productId?: number
 ): number => {
     if (!promotion) return 0;
+    if (productId != null && isGigaMonthlyPromoSuspended(productId)) return 0;
 
     // Kiểm tra xem đây là KM theo giá trị đơn hàng (k) hay số lượng (h)
     // Sửa lỗi: Cần regex chặt chẽ hơn để tránh khớp nhầm "ck" (chiết khấu)

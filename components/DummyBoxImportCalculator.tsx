@@ -10,7 +10,7 @@ import {
 import { PlusIcon, MinusIcon } from './icons';
 
 // Thứ tự hiển thị gói Import (bao gồm các sản phẩm bổ sung)
-const IMPORT_ORDER: number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20];
+const IMPORT_ORDER: number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 18, 19, 20];
 const CALC_PRODUCTS = IMPORT_ORDER
     .map(id => PRODUCTS.find(p => p.id === id))
     .filter((p): p is Product => Boolean(p));
@@ -29,6 +29,7 @@ const VAT_BY_PRODUCT_ID: Record<number, number> = {
     19: 0.08,  // PHARMATON KIDDI - 8%
     20: 0.08,  // PHARMATON ENERGY FIZZI - 8%
     27: 0.08,  // PHARMATON VITALITY - 8%
+    31: 0.08,  // PHARMATON VITALITY BLISTER (5X10) - 8%
 };
 const getVatPercent = (p: Product): number => VAT_BY_PRODUCT_ID[p.id] ?? 0.08;
 

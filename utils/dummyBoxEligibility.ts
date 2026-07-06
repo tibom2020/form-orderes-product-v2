@@ -9,7 +9,7 @@ import { getDiscountPercent } from './calculations';
 /** Khớp `Cart.tsx` — DummyBoxLocalCalculator */
 const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
 /** Khớp `Cart.tsx` — DummyBoxImportCalculator */
-const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 18, 19, 20];
+const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 18, 19, 20];
 
 export function getDummyBoxEligibilityTotals(items: CartItem[]): {
     localTotalAfterDiscount: number;

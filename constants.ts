@@ -1027,7 +1027,7 @@ export const DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID = 1; // CORBIERE CALCIUM PLUS 3
 export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
 
 // CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
-export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [18, 20, 27, 12, 30] as const; // Essent, Fizzi, Vitality + Enterogermina (GUT 4B, 2B/20)
+export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [18, 20, 27, 31, 12, 30] as const; // Essent, Fizzi, Vitality, Vỉ + Enterogermina (GUT 4B, 2B/20)
 export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
 
 /** Mục tiêu số KH đã mua gói DummyBox / Rep (cả chương trình T3–T5) */

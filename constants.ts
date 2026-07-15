@@ -16,6 +16,8 @@ export const SHEET_DANGKYTBQ2 = 'DANGKYTBQ2';
 export const SHEET_REP_BUDGET_TBQ2 = 'REP_BUDGET_TBQ2';
 /** Doanh số KH: MustWin, Other — dùng Sale T4 = MustWin + Other ở tab DK PS */
 export const SHEET_DOANH_SO = 'DOANH_SO';
+/** Sheet E-consent T7 — import từ Econsent T7.xlsx (Sheet1) */
+export const SHEET_ECONSENT_T7 = 'ECONSENT_T7';
 
 export const EMPLOYEES: Employee[] = [
   { name: 'Huynh Thi To Trinh', code: '20045852' },

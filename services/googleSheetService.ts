@@ -6,6 +6,7 @@ import type {
   ApproveDisplayTBQ2Payload,
   CancelDisplayTBQ2Payload,
   UpdateGoiPs25TBQ2Payload,
+  SubmitEconsentPayload,
 } from '../types';
 import type { AiChatRequestPayload, AiChatResponse } from '../types';
 
@@ -526,6 +527,39 @@ export const submitAiChat = async (
       status: 'error',
       message: 'Không thể kết nối AI. Vui lòng thử lại sau.',
     };
+  }
+};
+
+/** Cập nhật E-consent dược sĩ — cần Web App trả JSON (CORS). */
+export const submitEconsentUpdate = async (
+  url: string,
+  payload: Omit<SubmitEconsentPayload, 'action'>
+): Promise<{ status: string; message?: string }> => {
+  try {
+    const body: SubmitEconsentPayload = { action: 'submitEconsent', ...payload };
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { status?: string; ok?: boolean; message?: string };
+      if (parsed.status === 'success') return { status: 'success' };
+      if (parsed.ok === true) return { status: 'success' };
+      return {
+        status: 'error',
+        message: String(parsed.message || '') || 'Gửi thất bại.',
+      };
+    } catch {
+      return { status: 'error', message: text?.slice(0, 200) || 'Phản hồi không hợp lệ' };
+    }
+  } catch (error) {
+    console.error('submitEconsentUpdate:', error);
+    return { status: 'error', message: String(error) };
   }
 };
 

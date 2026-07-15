@@ -111,6 +111,11 @@ function doPost(e) {
       return output.setContent(JSON.stringify({ status: "success" }));
     }
 
+    // --- ACTION: E-CONSENT T7 ---
+    if (data.action === "submitEconsent") {
+      return handleSubmitEconsent(data, ss, output);
+    }
+
     return output.setContent(JSON.stringify({ status: "error", message: "Unknown action" }));
 
   } catch (err) {
@@ -410,6 +415,141 @@ function handleForecast(data, ss, output) {
   ]);
   sendForecastNotification(data);
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+/** Đảm bảo sheet có cột theo tên header; trả về index 1-based. */
+function ensureSheetHeaderColumn_(sheet, headerName) {
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  for (var c = 0; c < headers.length; c++) {
+    if (String(headers[c]).trim() === headerName) return c + 1;
+  }
+  var newCol = lastCol + 1;
+  if (headers.length === 1 && String(headers[0]).trim() === "" && sheet.getLastColumn() === 0) {
+    newCol = 1;
+  }
+  sheet.getRange(1, newCol).setValue(headerName).setFontWeight("bold");
+  return newCol;
+}
+
+function handleSubmitEconsent(data, ss, output) {
+  var sheet = ss.getSheetByName("ECONSENT_T7");
+  if (!sheet) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy sheet ECONSENT_T7" }));
+  }
+  var locationId = String(data.locationId || "").trim();
+  if (!locationId) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu LocationID" }));
+  }
+  var names = Array.isArray(data.pharmacistNames) ? data.pharmacistNames : [];
+  var cleanNames = [];
+  for (var i = 0; i < names.length; i++) {
+    var n = String(names[i] || "").trim();
+    if (n) cleanNames.push(n);
+  }
+  var numUpdate = Number(data.numberOfPharmacistUpdate);
+  if (isNaN(numUpdate) || numUpdate < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Số dược sĩ không hợp lệ" }));
+  }
+  if (cleanNames.length < numUpdate) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Thiếu tên dược sĩ so với số lượng cập nhật" }));
+  }
+
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var locCol = -1;
+  for (var h = 0; h < headers.length; h++) {
+    if (String(headers[h]).trim() === "LocationID") {
+      locCol = h + 1;
+      break;
+    }
+  }
+  if (locCol < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet thiếu cột LocationID" }));
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Sheet ECONSENT_T7 chưa có dữ liệu" }));
+  }
+  var locValues = sheet.getRange(2, locCol, lastRow, locCol).getValues();
+  var rowIndex = -1;
+  for (var r = 0; r < locValues.length; r++) {
+    if (String(locValues[r][0] || "").trim() === locationId) {
+      rowIndex = r + 2;
+      break;
+    }
+  }
+  if (rowIndex < 0) {
+    return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy LocationID: " + locationId }));
+  }
+
+  var colNum = ensureSheetHeaderColumn_(sheet, "Number of Pharmacist (update)");
+  var colN1 = ensureSheetHeaderColumn_(sheet, "Pharmacist Full Name (1)");
+  var colN2 = ensureSheetHeaderColumn_(sheet, "Pharmacist Full Name (2)");
+  var colN3 = ensureSheetHeaderColumn_(sheet, "Pharmacist Full Name (3)");
+  var colExtra = ensureSheetHeaderColumn_(sheet, "Pharmacist Extra Names");
+  var colBy = ensureSheetHeaderColumn_(sheet, "UpdatedBy");
+  var colAt = ensureSheetHeaderColumn_(sheet, "UpdatedAt");
+
+  var name1 = cleanNames[0] || "";
+  var name2 = cleanNames[1] || "";
+  var name3 = cleanNames[2] || "";
+  var extra = cleanNames.length > 3 ? cleanNames.slice(3).join("|") : "";
+  var nowStr = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+
+  sheet.getRange(rowIndex, colNum).setValue(numUpdate);
+  sheet.getRange(rowIndex, colN1).setValue(name1);
+  sheet.getRange(rowIndex, colN2).setValue(name2);
+  sheet.getRange(rowIndex, colN3).setValue(name3);
+  sheet.getRange(rowIndex, colExtra).setValue(extra);
+  sheet.getRange(rowIndex, colBy).setValue(String(data.employeeName || ""));
+  sheet.getRange(rowIndex, colAt).setValue(nowStr);
+
+  sendEconsentNotification(data);
+  return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+function sendEconsentNotification(data) {
+  try {
+    var doneCount = data.doneCount != null ? data.doneCount : 0;
+    var totalCount = data.totalCount != null ? data.totalCount : 0;
+    var progressStr = totalCount > 0 ? (doneCount + "/" + totalCount) : "-";
+    var names = Array.isArray(data.pharmacistNames) ? data.pharmacistNames : [];
+    var namesText = "";
+    for (var i = 0; i < names.length; i++) {
+      var nm = String(names[i] || "").trim();
+      if (nm) namesText += "▪️ " + clean(nm) + "\n";
+    }
+    var message = data.message;
+    if (!message) {
+      message = "💊 <b>E-CONSENT — CẬP NHẬT DƯỢC SĨ</b>\n" +
+        "--------------------------------\n" +
+        "⏰ <b>Thời gian:</b> " + clean(Utilities.formatDate(new Date(), "GMT+7", "HH:mm:ss dd/MM/yyyy")) + "\n" +
+        "🔢 <b>LocationID:</b> " + clean(data.locationId || "") + "\n" +
+        "🏠 <b>Tên KH:</b> " + clean(data.customerName || "") + "\n" +
+        "🧑‍💼 <b>Nhân viên:</b> " + clean(data.employeeName || "") + "\n" +
+        "--------------------------------\n" +
+        "🔢 <b>Số dược sĩ (update):</b> " + clean(String(data.numberOfPharmacistUpdate != null ? data.numberOfPharmacistUpdate : "")) + "\n" +
+        (namesText ? ("👤 <b>Danh sách:</b>\n" + namesText) : "") +
+        "--------------------------------\n" +
+        "📈 <b>Tiến độ Cover:</b> " + progressStr + " KH";
+    }
+    UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
+      method: "post", contentType: "application/json",
+      payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+      muteHttpExceptions: true
+    });
+    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
+      method: "post", contentType: "application/json",
+      payload: JSON.stringify({
+        event_type: "econsent_submit",
+        data: data,
+        full_message: message
+      }),
+      muteHttpExceptions: true
+    });
+  } catch (e) { Logger.log("Lỗi sendEconsentNotification: " + e.toString()); }
 }
 
 function handleAdminNews(data, ss, output) {

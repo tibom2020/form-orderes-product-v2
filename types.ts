@@ -424,3 +424,43 @@ export interface UpdateGoiPs25TBQ2Payload {
   customerCode: string;
   goiPs25: 'YES' | 'NO';
 }
+
+/** Sheet ECONSENT_T7 — header khớp Excel Econsent T7 */
+export interface EconsentRecord {
+  LocationID: string;
+  'Customer type'?: string;
+  Channel?: string;
+  Name?: string;
+  Address?: string;
+  District?: string;
+  Province?: string;
+  Territory?: string;
+  MR?: string;
+  DM?: string;
+  RSM?: string;
+  'Cover Q3-2026'?: string;
+  'Number of Pharmacists'?: string | number;
+  'E-consent -2025'?: string;
+  'Personal ID'?: string;
+  'Personal Name'?: string;
+  'Number of Pharmacist (update)'?: string | number;
+  'Pharmacist Full Name (1)'?: string;
+  'Pharmacist Full Name (2)'?: string;
+  'Pharmacist Full Name (3)'?: string;
+  'Pharmacist Extra Names'?: string;
+  UpdatedBy?: string;
+  UpdatedAt?: string;
+}
+
+/** POST action submitEconsent */
+export interface SubmitEconsentPayload {
+  action: 'submitEconsent';
+  locationId: string;
+  customerName: string;
+  employeeName: string;
+  employeeCode: string;
+  numberOfPharmacistUpdate: number;
+  pharmacistNames: string[];
+  doneCount?: number;
+  totalCount?: number;
+}

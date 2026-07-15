@@ -24,6 +24,7 @@ import GiaThamKhaoTab from './components/GiaThamKhaoTab';
 import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './components/StoreProgramRegistrationTab';
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
+import EconsentTab from './components/EconsentTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders } from './utils/storage';
 import { getDiscountPercent } from './utils/calculations';
@@ -95,7 +96,7 @@ const SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB = false;
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin' | 'econsent';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -1458,6 +1459,18 @@ const App: React.FC = () => {
             <span className="sm:hidden">Đơn</span>
           </button>
           <button
+            onClick={() => setViewMode('econsent')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'econsent'
+                ? 'text-cyan-950 border-cyan-600 bg-cyan-100 dark:bg-cyan-950/55 dark:text-cyan-50 dark:border-cyan-400'
+                : 'text-cyan-800/90 border-transparent bg-cyan-50/70 dark:bg-cyan-950/30 dark:text-cyan-200/90 hover:bg-cyan-100/90 dark:hover:bg-cyan-900/45'
+            }`}
+          >
+            <IdentificationIcon />
+            <span className="hidden sm:inline">E-consent</span>
+            <span className="sm:hidden">E-con</span>
+          </button>
+          <button
             onClick={() => setViewMode('dashboard')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           >
@@ -1854,6 +1867,10 @@ const App: React.FC = () => {
             onCustomerClick={handleQuickViewCustomer}
             onReloadData={handleReloadAllData}
           />
+        )}
+
+        {viewMode === 'econsent' && loggedInEmployee && (
+          <EconsentTab currentEmployee={loggedInEmployee} />
         )}
 
         {SHOW_PRICE_LIST_TAB && viewMode === 'priceList' && (

@@ -17,7 +17,7 @@ import {
     getCartDummyBoxPercents,
     getCartLineAmountWithVat,
 } from '../utils/cartVatTotals';
-import { calcPsOrderTotals, getPsCartUnitPrice, PS_ON_INVOICE_NOTE_MARKER } from '../utils/psOnInvoicePromo';
+import { calcPsOrderTotals, getPsCartUnitPrice, PS_ON_INVOICE_NOTE_MARKER, findTierConfigByFinalStoreTypeQ2 } from '../utils/psOnInvoicePromo';
 import type { PsCustomerGate } from '../utils/psCustomerRegistry';
 import { getDummyBoxEligibilityTotals } from '../utils/dummyBoxEligibility';
 import {
@@ -297,6 +297,25 @@ const Cart: React.FC<CartProps> = (props) => {
         (currentSalesRecord?.FinalStoreTypeQ2?.trim() || '') ||
         '—';
 
+    /** Sale T7 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
+    const psDisplayMetrics = useMemo(() => {
+        const fromSheet = psGate?.saleT7Vnd ?? 0;
+        const fromDoanhSo =
+            (Number(currentSalesRecord?.MustWin) || 0) + (Number(currentSalesRecord?.Other) || 0);
+        const saleT7 = fromSheet > 0 ? fromSheet : fromDoanhSo;
+        const tier =
+            psGate?.tierConfig ||
+            findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');
+        const target = psGate?.targetTrungBay || tier?.minMonthlySales || 0;
+        if (target <= 0) {
+            return { saleT7, target: 0, status: null as 'dat' | 'chua' | null };
+        }
+        return {
+            saleT7,
+            target,
+            status: (saleT7 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
+        };
+    }, [psGate, currentSalesRecord]);
     const psTotals = useMemo(() => {
         if (!isPsOnInvoice25 || !psGate?.tierConfig) return null;
         return calcPsOrderTotals(items, psGate.tierConfig, {
@@ -752,16 +771,49 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {customerCode.trim() && (
-                        <div className="rounded-lg border border-violet-200/80 dark:border-violet-800/60 bg-violet-50/80 dark:bg-violet-950/30 px-2.5 py-2 space-y-1.5">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/90 px-2.5 py-2 space-y-2 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-[10px] font-bold text-violet-900 dark:text-violet-200 uppercase">Loại PS</span>
-                                <span className="text-sm font-black text-violet-800 dark:text-violet-100">{psTierLabel}</span>
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                    Loại PS
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black bg-[#003629]/10 text-[#003629] dark:bg-[#8abda9]/20 dark:text-[#8abda9] border border-[#003629]/15 dark:border-[#8abda9]/30">
+                                    {psTierLabel}
+                                </span>
                             </div>
-                            {ENABLE_PS_25_ORDER_IN_CART && psGate && !psGate.canShowCk25 && psGate.inPsList && (
-                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-200">
-                                    Đã hết suất PS ({psGate.suatPsDaDung}/{psGate.suatMax}) — không chọn {PS_ON_INVOICE_NOTE_MARKER}.
-                                </p>
-                            )}
+                            <div className="grid grid-cols-1 gap-1.5 text-[10px]">
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
+                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T7 đã đặt</span>
+                                    <span className="font-black tabular-nums text-red-700 dark:text-red-200">
+                                        {psDisplayMetrics.saleT7 > 0
+                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT7))
+                                            : '—'}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/50 px-2 py-1.5">
+                                    <span className="font-bold text-sky-800/80 dark:text-sky-200/90">Target trưng bày</span>
+                                    <span className="font-black tabular-nums text-sky-800 dark:text-sky-100">
+                                        {psDisplayMetrics.target > 0
+                                            ? formatCurrency(psDisplayMetrics.target)
+                                            : '—'}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                                    <span className="font-bold text-slate-600 dark:text-slate-300">Tình trạng</span>
+                                    {psDisplayMetrics.status == null ? (
+                                        <span className="font-bold text-slate-400">—</span>
+                                    ) : (
+                                        <span
+                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
+                                                psDisplayMetrics.status === 'dat'
+                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200'
+                                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200'
+                                            }`}
+                                        >
+                                            {psDisplayMetrics.status === 'dat' ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                             {ENABLE_PS_25_ORDER_IN_CART && psGate?.canShowCk25 && onIsPsOnInvoice25Change && (
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -776,7 +828,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </label>
                             )}
                             {ENABLE_PS_25_ORDER_IN_CART && isPsOnInvoice25 && psTotals && (
-                                <div className="space-y-1">
+                                <div className="space-y-1 rounded-md bg-violet-50/90 dark:bg-violet-950/35 border border-violet-100 dark:border-violet-900/40 px-2 py-1.5">
                                     <p className="text-[10px] font-bold text-violet-900 dark:text-violet-100">
                                         Suất còn {psTotals.suatRemaining}/{psTotals.suatMax}
                                         {psTotals.isMultiSuat

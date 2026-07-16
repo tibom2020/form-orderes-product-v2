@@ -1,5 +1,6 @@
 import type { DangKyTbq2RowView } from './displayTbq2Sheet';
 import { isRegisteredRow } from './displayTbq2Sheet';
+import { parseSheetSalesAmount } from './formatters';
 import {
   findTierConfigByFinalStoreTypeQ2,
   getPsMultiSuatRules,
@@ -19,6 +20,10 @@ export interface PsCustomerGate {
   suatMax: number;
   suatRemaining: number;
   isMultiSuat: boolean;
+  /** Sale T7 từ sheet DANGKYTBQ2 (VNĐ) */
+  saleT7Vnd: number;
+  /** Target trưng bày tháng = minMonthlySales theo tier */
+  targetTrungBay: number;
 }
 
 function registerGate(
@@ -37,6 +42,8 @@ function registerGate(
   const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
   /** Còn suất PS → được tick SPECIAL_PS0526 (không chặn riêng theo cột Gói PS 25% = YES) */
   const canShowCk25 = inPsList && suatRemaining > 0;
+  const saleT7Parsed = parseSheetSalesAmount(row.saleT7);
+  const saleT7Vnd = saleT7Parsed != null && Number.isFinite(saleT7Parsed) ? saleT7Parsed : 0;
 
   map.set(k, {
     customerCode: code.trim(),
@@ -49,6 +56,8 @@ function registerGate(
     suatMax,
     suatRemaining,
     isMultiSuat: multi,
+    saleT7Vnd,
+    targetTrungBay: tier.minMonthlySales,
   });
 }
 

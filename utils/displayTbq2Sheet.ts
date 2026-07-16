@@ -22,11 +22,11 @@ export interface DangKyTbq2RowView {
   topboard: string;
   frontCounter: string;
   countertop: string;
-  /** Doanh số theo sheet DANGKYTBQ2 */
-  saleT4: string;
+  /** Doanh số tháng 7 theo sheet DANGKYTBQ2 */
+  saleT7: string;
   saleT5: string;
   saleT6: string;
-  saleQ2: string;
+  saleQ3: string;
   /** Cột sheet Gói PS 25% — YES/NO (gạt tay trên DANGKYTBQ2) */
   goiPs25: string;
   /** Số suất PS 25% đã dùng (cột sheet — cập nhật khi gửi đơn) */
@@ -142,10 +142,21 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
       'Countertop / CDU',
       'COUNTERTOP',
     ]),
-    saleT4: pickCell(row, ['Sale T4', 'SaleT4', 'T4 Sale']),
+    saleT7: pickCell(row, ['Sale T7', 'sale T7', 'SaleT7', 'T7 Sale', 'Sale T4', 'SaleT4', 'T4 Sale']),
     saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
     saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
-    saleQ2: pickCell(row, ['Sale Q2', 'SaleQ2', 'Q2 Sale', 'Q2Sale', 'Q2_Sale']),
+    saleQ3: pickCell(row, [
+      'Sale Q3',
+      'SaleQ3',
+      'Q3 Sale',
+      'Q3Sale',
+      'Q3_Sale',
+      'Sale Q2',
+      'SaleQ2',
+      'Q2 Sale',
+      'Q2Sale',
+      'Q2_Sale',
+    ]),
     goiPs25: pickCell(row, GOI_PS25_HEADER_ALIASES),
     suatPsDaDung: parseSuatPsDaDung(pickCell(row, SUAT_PS_DA_DUNG_HEADER_ALIASES)),
     note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
@@ -201,7 +212,7 @@ export function repMatchesEmployee(repCell: string, employeeName: string): boole
 }
 
 /**
- * Sheet DOANH_SO: Sale T4 = MustWin + Other (VNĐ). Map theo CustomerCode và CodeBuyMed (lower).
+ * Sheet DOANH_SO: MustWin + Other (VNĐ) — fallback khi ô Sale T7 trống. Map theo CustomerCode và CodeBuyMed (lower).
  */
 export function buildSaleT4ByCustomerCodeMap(rows: Record<string, unknown>[]): Map<string, number> {
   const map = new Map<string, number>();
@@ -223,7 +234,7 @@ export function buildSaleT4ByCustomerCodeMap(rows: Record<string, unknown>[]): M
   return map;
 }
 
-/** Tra cứu Sale T4 (VNĐ) theo mã KH trên DANGKYTBQ2 */
+/** Tra cứu doanh số fallback (VNĐ) theo mã KH trên DANGKYTBQ2 */
 export function lookupSaleT4Vnd(map: Map<string, number>, customerCode: string): number | undefined {
   const k = customerCode.trim().toLowerCase();
   if (!k) return undefined;

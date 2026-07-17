@@ -91,26 +91,30 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
     void loadData();
   }, []);
 
-  const scopeRows = useMemo(() => {
-    let data = rows.filter((r) => String(r.LocationID ?? '').trim());
-    if (!isAdmin) {
-      data = data.filter((r) => mrMatchesEmployee(r, currentEmployee));
-    }
-    return data;
-  }, [rows, currentEmployee, isAdmin]);
+  const validRows = useMemo(
+    () => rows.filter((r) => String(r.LocationID ?? '').trim()),
+    [rows]
+  );
 
-  const coverScoped = useMemo(() => {
-    return scopeRows.filter((r) => normalizeCover(r[COVER_HEADER]) === coverFilter);
-  }, [scopeRows, coverFilter]);
+  /** Tiến độ toàn team — mọi user đều thấy */
+  const teamCoverScoped = useMemo(() => {
+    return validRows.filter((r) => normalizeCover(r[COVER_HEADER]) === coverFilter);
+  }, [validRows, coverFilter]);
+
+  /** Danh sách KH — Rep chỉ thấy KH của mình; admin thấy tất cả */
+  const userCoverScoped = useMemo(() => {
+    if (isAdmin) return teamCoverScoped;
+    return teamCoverScoped.filter((r) => mrMatchesEmployee(r, currentEmployee));
+  }, [teamCoverScoped, currentEmployee, isAdmin]);
 
   const districtOptions = useMemo(() => {
     const set = new Set<string>();
-    coverScoped.forEach((r) => {
+    userCoverScoped.forEach((r) => {
       const d = String(r.District ?? '').trim();
       if (d) set.add(d);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
-  }, [coverScoped]);
+  }, [userCoverScoped]);
 
   useEffect(() => {
     if (districtFilter && !districtOptions.includes(districtFilter)) {
@@ -120,7 +124,7 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
 
   const repProgress = useMemo(() => {
     const map = new Map<string, { total: number; done: number }>();
-    coverScoped.forEach((r) => {
+    teamCoverScoped.forEach((r) => {
       const rep = String(r.MR ?? '').trim() || 'Chưa xác định';
       const cur = map.get(rep) || { total: 0, done: 0 };
       cur.total += 1;
@@ -136,7 +140,7 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
         pct: v.total > 0 ? Math.round((v.done / v.total) * 100) : 0,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [coverScoped]);
+  }, [teamCoverScoped]);
 
   const progressTotals = useMemo(() => {
     return repProgress.reduce(
@@ -146,17 +150,18 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
   }, [repProgress]);
 
   const myProgress = useMemo(() => {
-    if (isAdmin) return progressTotals;
     const mine = repProgress.find(
       (r) => r.name.toLowerCase() === String(currentEmployee.name ?? '').trim().toLowerCase()
     );
-    return mine
-      ? { total: mine.total, done: mine.done }
-      : { total: coverScoped.length, done: coverScoped.filter(isEconsentDone).length };
-  }, [isAdmin, progressTotals, repProgress, currentEmployee, coverScoped]);
+    if (mine) return { total: mine.total, done: mine.done };
+    return {
+      total: userCoverScoped.length,
+      done: userCoverScoped.filter(isEconsentDone).length,
+    };
+  }, [repProgress, currentEmployee, userCoverScoped]);
 
   const filteredList = useMemo(() => {
-    let data = coverScoped;
+    let data = userCoverScoped;
     if (districtFilter) {
       data = data.filter((r) => String(r.District ?? '').trim() === districtFilter);
     }
@@ -186,7 +191,9 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
       if (aDone !== bDone) return aDone - bDone;
       return String(a.Name ?? '').localeCompare(String(b.Name ?? ''), 'vi');
     });
-  }, [coverScoped, districtFilter, searchTerm]);
+  }, [userCoverScoped, districtFilter, searchTerm]);
+
+  const currentRepName = String(currentEmployee.name ?? '').trim().toLowerCase();
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -296,7 +303,7 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
               E-consent T7
             </h2>
             <p className="text-[11px] text-cyan-700/80 dark:text-cyan-300/80 mt-0.5">
-              Hiển thị {filteredList.length} KH · Cover {coverFilter}
+              Danh sách của bạn: {filteredList.length} KH · Cover {coverFilter}
             </p>
           </div>
           <button
@@ -376,7 +383,9 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
 
         <div className="rounded-xl border border-cyan-300/70 dark:border-cyan-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900/40">
           <div className="px-3 py-2.5 bg-cyan-700 text-white dark:bg-cyan-800 flex flex-wrap gap-3 justify-between items-center">
-            <span className="text-xs font-bold uppercase tracking-wide">Tiến độ Rep · Cover {coverFilter}</span>
+            <span className="text-xs font-bold uppercase tracking-wide">
+              Tiến độ toàn team · Cover {coverFilter} · {repProgress.length} Rep
+            </span>
             <div className="flex items-center gap-3 text-xs font-bold">
               <span className="bg-white/15 px-2 py-0.5 rounded">
                 {progressTotals.done}/{progressTotals.total}
@@ -390,9 +399,9 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
               style={{ width: `${totalPct}%` }}
             />
           </div>
-          <div className="overflow-x-auto max-h-44 overflow-y-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 z-[1]">
+              <thead>
                 <tr className="text-left text-[10px] uppercase tracking-wide">
                   <th className="px-3 py-2 font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-600">
                     Rep
@@ -419,26 +428,37 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
                     </td>
                   </tr>
                 ) : (
-                  repProgress.map((r, idx) => (
+                  repProgress.map((r, idx) => {
+                    const isMe = r.name.toLowerCase() === currentRepName;
+                    return (
                     <tr
                       key={r.name}
                       className={`border-b border-slate-100 dark:border-slate-700/70 ${
-                        idx % 2 === 0
+                        isMe
+                          ? 'bg-cyan-100 dark:bg-cyan-900/50 ring-1 ring-inset ring-cyan-400 dark:ring-cyan-600'
+                          : idx % 2 === 0
                           ? 'bg-white dark:bg-slate-800/40'
                           : 'bg-cyan-50/50 dark:bg-cyan-950/20'
                       }`}
                     >
-                      <td className="px-3 py-2 font-semibold text-slate-800 dark:text-slate-100">{r.name}</td>
-                      <td className="px-3 py-2 text-right font-medium bg-sky-50/70 dark:bg-sky-950/30 text-sky-900 dark:text-sky-100">
+                      <td className="px-3 py-2.5 font-semibold text-slate-800 dark:text-slate-100">
+                        {r.name}
+                        {isMe ? (
+                          <span className="ml-1.5 text-[9px] font-bold uppercase text-cyan-700 dark:text-cyan-300 bg-cyan-200/80 dark:bg-cyan-800 px-1.5 py-0.5 rounded">
+                            Bạn
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-medium bg-sky-50/70 dark:bg-sky-950/30 text-sky-900 dark:text-sky-100">
                         {r.total}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200">
+                      <td className="px-3 py-2.5 text-right font-bold bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200">
                         {r.done}
                       </td>
-                      <td className={`px-3 py-2 bg-amber-50/70 dark:bg-amber-950/25 ${pctTextClass(r.pct)}`}>
+                      <td className={`px-3 py-2.5 bg-amber-50/70 dark:bg-amber-950/25 ${pctTextClass(r.pct)}`}>
                         <div className="flex flex-col items-end gap-1">
                           <span className="font-bold">{r.pct}%</span>
-                          <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                          <div className="w-20 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                             <div
                               className={`h-full ${pctBarClass(r.pct)}`}
                               style={{ width: `${r.pct}%` }}
@@ -446,11 +466,12 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-bold bg-rose-50/80 dark:bg-rose-950/30 text-rose-700 dark:text-rose-200">
+                      <td className="px-3 py-2.5 text-right font-bold bg-rose-50/80 dark:bg-rose-950/30 text-rose-700 dark:text-rose-200">
                         {r.todo}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -458,7 +479,12 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto border-t-2 border-cyan-200 dark:border-cyan-800">
+        <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+            Danh sách KH của bạn
+          </span>
+        </div>
         {loading ? (
           <div className="p-8 text-center text-cyan-700/70 dark:text-cyan-300/70 text-sm">Đang tải ECONSENT_T7...</div>
         ) : loadError ? (

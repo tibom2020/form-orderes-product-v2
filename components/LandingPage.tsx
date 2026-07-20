@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { submitMarketingData } from '../services/googleSheetService';
 import { registerDummyBoxPackage } from '../utils/dummyBoxPackage';
 
-import { GOOGLE_SCRIPT_URL, DUMMYBOX_TARGET_PER_REP, getDummyBoxTargetByProgress } from '../constants';
+import { GOOGLE_SCRIPT_URL, DUMMYBOX_TARGET_1, DUMMYBOX_TARGET_2 } from '../constants';
 import { removeVietnameseTones, formatCurrency } from '../utils/formatters';
 import { generateCustomerSummary } from '../utils/customerSummarizer';
-import type { MarketingRecord, Employee, SalesRecord, ForecastItem, Rebate } from '../types';
+import type { MarketingRecord, Employee, SalesRecord, Rebate } from '../types';
 import {
     CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
@@ -18,7 +18,6 @@ interface LandingPageProps {
     currentEmployee: Employee;
     marketingData: MarketingRecord[];
     salesRecords: SalesRecord[];
-    forecastData: ForecastItem[];
     rebates?: Rebate[];
     onReloadData: () => void;
     onCustomerSelect: (code: string) => void;
@@ -55,7 +54,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
     currentEmployee,
     marketingData,
     salesRecords,
-    forecastData,
     rebates = [],
     onCustomerSelect,
     onUpdateRecord,
@@ -115,8 +113,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return Array.from(map.values());
     }, [marketingData]);
 
-    const dummyBoxTargetByProgress = useMemo(() => getDummyBoxTargetByProgress(), []);
-
     // --- REPORT LOGIC (Dựa trên unique data) ---
     const reportData = useMemo(() => {
         const stats: Record<string, { total: number, upHinh: number, local: number, import: number, dangKyGoi: number }> = {};
@@ -150,8 +146,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
             .map(([rep, data]) => ({
                 rep,
                 ...data,
-                targetProgress: dummyBoxTargetByProgress,
-                todo: Math.max(0, dummyBoxTargetByProgress - data.dangKyGoi),
+                todoTarget1: Math.max(0, DUMMYBOX_TARGET_1 - data.dangKyGoi),
+                todoTarget2: Math.max(0, DUMMYBOX_TARGET_2 - data.dangKyGoi),
             }))
             .sort((a, b) => {
                 const orderA = a.local + a.import;
@@ -159,7 +155,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 if (orderB !== orderA) return orderB - orderA; // Ưu tiên Top 1 đơn hàng
                 return b.upHinh - a.upHinh; // Kế Top 1 ảnh
             });
-    }, [uniqueMarketingData, dummyBoxTargetByProgress]);
+    }, [uniqueMarketingData]);
 
     // Tổng số cho các ô thống kê phía trên báo cáo (tương tự Forecast)
     const reportTotalStats = useMemo(() => {
@@ -658,8 +654,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             </p>
                             <p className="text-[10px] text-slate-400 italic mt-1">(Click vào tên Rep để lọc danh sách)</p>
                             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                Target tiến độ: <span className="font-bold text-indigo-600 dark:text-indigo-400">{dummyBoxTargetByProgress}</span>
-                                {' '}/ {DUMMYBOX_TARGET_PER_REP} KH/Rep (T3–T5, theo KH đã mua gói)
+                                Target 1: <span className="font-bold text-indigo-600 dark:text-indigo-400">{DUMMYBOX_TARGET_1}</span>
+                                {' '}KH/Rep · Target 2:{' '}
+                                <span className="font-bold text-indigo-600 dark:text-indigo-400">{DUMMYBOX_TARGET_2}</span>
+                                {' '}KH/Rep (theo KH đã mua gói)
                             </p>
                         </div>
                         <button
@@ -708,16 +706,29 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 leading-tight"
-                                        title={`Mục tiêu theo tiến độ thời gian — ${DUMMYBOX_TARGET_PER_REP} KH/Rep (T3–T5)`}
+                                        title={`Mục tiêu 1 — ${DUMMYBOX_TARGET_1} KH/Rep đã mua gói`}
                                     >
-                                        <span className="block">Target</span>
-                                        <span className="block text-[9px] font-semibold normal-case opacity-90">(tiến độ)</span>
+                                        <span className="block">Target 1</span>
+                                        <span className="block text-[9px] font-semibold normal-case opacity-90">({DUMMYBOX_TARGET_1} KH)</span>
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-orange-600 dark:text-orange-400"
-                                        title="Số KH còn thiếu so với target tiến độ (tính theo cột KH đã mua)"
+                                        title={`Số KH còn thiếu so với Target 1 (${DUMMYBOX_TARGET_1})`}
                                     >
-                                        TODO
+                                        TODO T1
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 leading-tight"
+                                        title={`Mục tiêu 2 — ${DUMMYBOX_TARGET_2} KH/Rep đã mua gói`}
+                                    >
+                                        <span className="block">Target 2</span>
+                                        <span className="block text-[9px] font-semibold normal-case opacity-90">({DUMMYBOX_TARGET_2} KH)</span>
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-center text-orange-600 dark:text-orange-400"
+                                        title={`Số KH còn thiếu so với Target 2 (${DUMMYBOX_TARGET_2})`}
+                                    >
+                                        TODO T2
                                     </th>
                                     <th className="px-4 py-3 text-center text-green-600 dark:text-green-400">Gói Local</th>
                                     <th className="px-4 py-3 text-center text-blue-600 dark:text-blue-400">Gói Import</th>
@@ -767,17 +778,31 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/20">
-                                            {row.targetProgress}
+                                            {DUMMYBOX_TARGET_1}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span
                                                 className={`px-2 py-1 rounded text-xs font-black tabular-nums ${
-                                                    row.todo === 0
+                                                    row.todoTarget1 === 0
                                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                                         : 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
                                                 }`}
                                             >
-                                                {row.todo === 0 ? 'ĐẠT' : row.todo}
+                                                {row.todoTarget1 === 0 ? 'ĐẠT' : row.todoTarget1}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/20">
+                                            {DUMMYBOX_TARGET_2}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span
+                                                className={`px-2 py-1 rounded text-xs font-black tabular-nums ${
+                                                    row.todoTarget2 === 0
+                                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                        : 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
+                                                }`}
+                                            >
+                                                {row.todoTarget2 === 0 ? 'ĐẠT' : row.todoTarget2}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
@@ -793,7 +818,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     </tr>
                                 ))}
                                 {reportData.length === 0 && (
-                                    <tr><td colSpan={8} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
+                                    <tr><td colSpan={10} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
                                 )}
                             </tbody>
                         </table>

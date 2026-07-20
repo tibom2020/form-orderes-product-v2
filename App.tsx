@@ -1823,7 +1823,6 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee!}
             marketingData={marketingData}
             salesRecords={allSalesRecords}
-            forecastData={forecastData}
             rebates={allRebates}
             onReloadData={handleMarketingDataReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}
@@ -1843,7 +1842,6 @@ const App: React.FC = () => {
             currentEmployee={loggedInEmployee!}
             marketingData={marketingDataBs}
             salesRecords={allSalesRecords}
-            forecastData={forecastData}
             rebates={allRebates}
             onReloadData={handleMarketingDataBsReload}
             onCustomerSelect={handleCustomerSelectFromDashboard}

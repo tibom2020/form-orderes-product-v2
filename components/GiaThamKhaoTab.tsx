@@ -27,6 +27,7 @@ import {
   calculateGigaReferenceLineTotal,
   getGigaPackAdjacentTierPercent,
   getGigaReferenceDiscountPercent,
+  isGigaMonthlyPromoSuspended,
 } from '../utils/calculations';
 import { REBATE_TIERS, formatCompact } from './dashboard/DashboardUtils';
 import { TagIcon, MinusIcon, PlusIcon } from './icons';
@@ -197,6 +198,7 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
         compareValue: 0,
         tiers: [] as ReturnType<typeof parsePromotionTiers>,
         packAdjacentPct: 0,
+        promoSuspended: false,
       };
     }
     const isTelfast = TELFAST_GROUP_IDS.includes(product.id);
@@ -212,8 +214,9 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
     const discountPercent = getGigaReferenceDiscountPercent(product.promotion, qty, compareValue, product.id);
     const lineTotal = calculateGigaReferenceLineTotal(product.price, qty, product.promotion, compareValue, product.id);
     const packAdjacentPct = getGigaPackAdjacentTierPercent(product.promotion, qty, compareValue, product.id);
-    const tiers = parsePromotionTiers(product);
-    return { lineTotal, discountPercent, compareValue, tiers, packAdjacentPct };
+    const promoSuspended = isGigaMonthlyPromoSuspended(product.id);
+    const tiers = promoSuspended ? [] : parsePromotionTiers(product);
+    return { lineTotal, discountPercent, compareValue, tiers, packAdjacentPct, promoSuspended };
   }, [product, qty]);
 
   const lineTotalSauGiga = gigaCalc.lineTotal;
@@ -494,7 +497,11 @@ const GiaThamKhaoTab: React.FC<GiaThamKhaoTabProps> = ({ products = PRODUCTS }) 
                         <p className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">
                           Các CTKM khuyến mãi
                         </p>
-                        {!product.promotion ? (
+                        {gigaCalc.promoSuspended ? (
+                          <p className="text-amber-700 dark:text-amber-300 italic text-xs font-semibold">
+                            CTKM tháng đang tạm ngưng
+                          </p>
+                        ) : !product.promotion ? (
                           <p className="text-slate-400 italic text-xs">Không có CTKM theo sản phẩm</p>
                         ) : gigaCalc.tiers.length === 0 ? (
                           <p className="text-xs text-slate-700 dark:text-slate-300 leading-snug">{product.promotion}</p>

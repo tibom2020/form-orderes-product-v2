@@ -162,7 +162,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                         </span>
                     </p>
 
-                    {product.promotion && !hideMonthlyPromo && (
+                    {product.promotion && !hideMonthlyPromo && !promoSuspended && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900 p-2 rounded mb-3">
                             <p className="text-[10px] font-bold text-red-500 dark:text-red-400 uppercase leading-tight mb-1.5">{product.promotion}</p>
 

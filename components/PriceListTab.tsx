@@ -96,8 +96,8 @@ const PriceListTab: React.FC<PriceListTabProps> = ({ products }) => {
                 minOrder: getGigaMinOrderMax(p),
                 monthlyDiscountPercent: suspended ? null : getMaxDiscountPercent(p.promotion),
                 promoSuspended: suspended,
-                note: suspended && p.promotion
-                    ? `(tạm ngưng) ${p.promotion}`
+                note: suspended
+                    ? 'CTKM tháng đang tạm ngưng'
                     : (p.promotion || '-'),
             });
         });

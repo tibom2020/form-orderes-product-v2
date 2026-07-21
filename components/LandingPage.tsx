@@ -9,7 +9,7 @@ import type { MarketingRecord, Employee, SalesRecord, Rebate } from '../types';
 import {
     CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
-    DocumentTextIcon, ChartBarIcon, FunnelIcon
+    DocumentTextIcon, ChartBarIcon, FunnelIcon, ClipboardDocumentListIcon
 } from './icons';
 import DummyBoxCalculator from './DummyBoxCalculator';
 
@@ -49,6 +49,16 @@ function getDummyBoxKanbanStage(customer: MarketingRecord): DummyBoxKanbanStage 
     return 'TODO';
 }
 
+const STAGE_CHECK_COLS: {
+    key: 'PROCESSING_1' | 'PROCESSING_2' | 'COMPLETE';
+    label: string;
+    activeClass: string;
+}[] = [
+    { key: 'PROCESSING_1', label: 'P1', activeClass: 'bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' },
+    { key: 'PROCESSING_2', label: 'P2', activeClass: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800' },
+    { key: 'COMPLETE', label: 'Done', activeClass: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800' },
+];
+
 
 const LandingPage: React.FC<LandingPageProps> = ({
     currentEmployee,
@@ -74,6 +84,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE' | 'PACKAGE_NO_IMAGE'>('ALL');
     // State lọc theo Rep
     const [selectedRepFilter, setSelectedRepFilter] = useState<string | null>(null);
+    /** board = Kanban 4 cột; list = mỗi KH 1 dòng + cột tích P1 / P2 / COMPLETE */
+    const [customerViewMode, setCustomerViewMode] = useState<'board' | 'list'>('board');
 
     // States cho việc upload ảnh
     const [activeSlot, setActiveSlot] = useState<1 | 2 | null>(null);
@@ -1071,18 +1083,159 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                 {!selectedCustomer ? (
                     <div className="relative animate-fade-in">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><SearchIcon /></div>
-                        <input
-                            type="text"
-                            placeholder="Tìm tên KH, mã KH, quận..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none transition-all"
-                        />
-                        <div className="mt-4 max-h-[58vh] overflow-x-auto overflow-y-hidden pb-1">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><SearchIcon /></div>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm tên KH, mã KH, quận..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-opella-green outline-none transition-all"
+                                />
+                            </div>
+                            <div className="flex shrink-0 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden bg-slate-50 dark:bg-slate-900/40">
+                                <button
+                                    type="button"
+                                    onClick={() => setCustomerViewMode('board')}
+                                    className={`px-3 py-2.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                        customerViewMode === 'board'
+                                            ? 'bg-opella-green text-white'
+                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    }`}
+                                    title="Dạng cột Kanban"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4M9 4v16M9 4h6M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M15 4v16" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Cột</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCustomerViewMode('list')}
+                                    className={`px-3 py-2.5 text-xs font-bold transition-all flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-600 ${
+                                        customerViewMode === 'list'
+                                            ? 'bg-opella-green text-white'
+                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    }`}
+                                    title="Dạng dòng — P1 / P2 / COMPLETE"
+                                >
+                                    <ClipboardDocumentListIcon />
+                                    <span className="hidden sm:inline">Dòng</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className={`mt-1 ${customerViewMode === 'board' ? 'max-h-[58vh] overflow-x-auto overflow-y-hidden pb-1' : ''}`}>
                             {filteredCustomers.length === 0 ? (
                                 <div className="p-8 text-center text-slate-400 italic text-sm border-t border-slate-100 dark:border-slate-700">
                                     Không tìm thấy khách hàng phù hợp
+                                </div>
+                            ) : customerViewMode === 'list' ? (
+                                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col max-h-[58vh]">
+                                    <div className="shrink-0 px-3 py-2 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold">
+                                        <span className="text-blue-600 dark:text-blue-400">
+                                            <span className="font-black">P1</span> = PROCESSING_1 · Ảnh YES, Gói NO
+                                        </span>
+                                        <span className="text-amber-600 dark:text-amber-400">
+                                            <span className="font-black">P2</span> = PROCESSING_2 · Ảnh NO, Gói YES
+                                        </span>
+                                        <span className="text-green-600 dark:text-green-400">
+                                            <span className="font-black">COMPLETE</span> · Ảnh YES, Gói YES
+                                        </span>
+                                    </div>
+                                    <div className="overflow-auto flex-1 min-h-0">
+                                        <table className="w-full text-left border-collapse min-w-[640px]">
+                                            <thead className="sticky top-0 z-10 shadow-sm">
+                                                <tr className="text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                                    <th className="px-3 py-2.5 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">Khách hàng</th>
+                                                    <th className="px-2 py-2.5 text-center w-[88px] bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400" title="PROCESSING_1: Ảnh YES, Gói NO">
+                                                        <div>P1</div>
+                                                        <div className="normal-case font-semibold tracking-normal text-[9px] opacity-80 mt-0.5 leading-tight">Ảnh✓ Gói✗</div>
+                                                    </th>
+                                                    <th className="px-2 py-2.5 text-center w-[88px] bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400" title="PROCESSING_2: Ảnh NO, Gói YES">
+                                                        <div>P2</div>
+                                                        <div className="normal-case font-semibold tracking-normal text-[9px] opacity-80 mt-0.5 leading-tight">Ảnh✗ Gói✓</div>
+                                                    </th>
+                                                    <th className="px-2 py-2.5 text-center w-[96px] bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-green-600 dark:text-green-400" title="COMPLETE: Ảnh YES, Gói YES">
+                                                        <div>COMPLETE</div>
+                                                        <div className="normal-case font-semibold tracking-normal text-[9px] opacity-80 mt-0.5 leading-tight">Ảnh✓ Gói✓</div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredCustomers.map((c) => {
+                                                    const stage = getDummyBoxKanbanStage(c);
+                                                    const sale = salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0;
+                                                    const rebateFee = rebateFeeByCode.get(String(c.CustomerCode ?? '').trim());
+                                                    const localFee = rebateFee?.local ?? 0;
+                                                    const importFee = rebateFee?.import ?? 0;
+                                                    const hasAnyRebateFee = localFee > 0 || importFee > 0;
+                                                    return (
+                                                        <tr
+                                                            key={c.CustomerCode}
+                                                            onClick={() => setSelectedCustomer(c)}
+                                                            className="border-b border-slate-100 dark:border-slate-700/80 hover:bg-opella-beige/40 dark:hover:bg-opella-green/10 cursor-pointer transition-colors group"
+                                                        >
+                                                            <td className="px-3 py-2.5 min-w-0">
+                                                                <p className="text-[10px] text-slate-400 font-mono">#{c.CustomerCode}</p>
+                                                                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green line-clamp-1">
+                                                                    {c.CustomerName}
+                                                                </p>
+                                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                                                                    <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                                                                        {c.District || '—'}
+                                                                    </span>
+                                                                    <span className="text-[11px] font-black text-red-600 dark:text-red-400">
+                                                                        {formatCurrency(sale)}
+                                                                    </span>
+                                                                    {currentEmployee.code === '20043741' && c.Rep && (
+                                                                        <span className="text-[9px] text-slate-400">Rep: {c.Rep}</span>
+                                                                    )}
+                                                                </div>
+                                                                {hasAnyRebateFee && (
+                                                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                                                                        {localFee > 0 && (
+                                                                            <span className="font-bold text-green-700 dark:text-green-300">
+                                                                                Phí LOCAL còn lại: {formatCurrency(localFee)}
+                                                                            </span>
+                                                                        )}
+                                                                        {importFee > 0 && (
+                                                                            <span className="font-bold text-blue-700 dark:text-blue-300">
+                                                                                Phí IMPORT còn lại: {formatCurrency(importFee)}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            {STAGE_CHECK_COLS.map((col) => {
+                                                                const checked =
+                                                                    col.key === 'COMPLETE'
+                                                                        ? stage === 'COMPLETE'
+                                                                        : col.key === 'PROCESSING_1'
+                                                                          ? stage === 'PROCESSING_1' || stage === 'COMPLETE'
+                                                                          : stage === 'PROCESSING_2' || stage === 'COMPLETE';
+                                                                return (
+                                                                    <td key={col.key} className="px-2 py-2.5 text-center align-middle">
+                                                                        <span
+                                                                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border text-sm font-black transition-all ${
+                                                                                checked
+                                                                                    ? col.activeClass
+                                                                                    : 'bg-slate-50 text-slate-300 border-slate-100 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700'
+                                                                            }`}
+                                                                            title={checked ? col.key : `Chưa ${col.key}`}
+                                                                            aria-label={`${col.key}: ${checked ? 'yes' : 'no'}`}
+                                                                        >
+                                                                            {checked ? '✓' : '·'}
+                                                                        </span>
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex gap-4 min-w-max pr-2">

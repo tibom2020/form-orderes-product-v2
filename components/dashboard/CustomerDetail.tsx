@@ -581,8 +581,10 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                         {(() => {
                                             const importRebates = customerRebates.filter(r => r.Group === 'IMPORT');
                                             const localRebates = customerRebates.filter(r => r.Group === 'LOCAL');
+                                            const allRebates = customerRebates.filter(r => r.Group === 'ALL');
                                             const totalImport = importRebates.reduce((s, r) => s + (r.RemainAmount || 0), 0);
                                             const totalLocal = localRebates.reduce((s, r) => s + (r.RemainAmount || 0), 0);
+                                            const totalAll = allRebates.reduce((s, r) => s + (r.RemainAmount || 0), 0);
                                             return (
                                                 <>
                                                     <div>
@@ -601,6 +603,16 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                                                             ))}
                                                         </ul>
                                                     </div>
+                                                    {allRebates.length > 0 && (
+                                                        <div>
+                                                            <p className="font-black text-violet-700 dark:text-violet-300 mb-1">Tổng phí ALL: {formatCurrency(totalAll)}</p>
+                                                            <ul className="space-y-0.5 pl-2 text-slate-700 dark:text-slate-300">
+                                                                {allRebates.map((rb, idx) => (
+                                                                    <li key={idx}>{rb["PromotionID#program"]} - {formatCurrency(rb.RemainAmount)}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
                                                 </>
                                             );
                                         })()}

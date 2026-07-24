@@ -548,17 +548,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
   const saleT4ByCustomerCode = useMemo(() => buildSaleT4ByCustomerCodeMap(doanhSoRows), [doanhSoRows]);
 
-  /** Phí Rebate Import/Local còn lại theo mã KH (cộng RemainAmount theo Group). */
+  /** Phí Rebate Import/Local/ALL còn lại theo mã KH (cộng RemainAmount theo Group). */
   const rebateByCustomerCode = useMemo(() => {
-    const m = new Map<string, { import: number; local: number }>();
+    const m = new Map<string, { import: number; local: number; all: number }>();
     rebates.forEach(r => {
       const code = String(r.code ?? '').trim();
       if (!code) return;
       const amt = Number(r.RemainAmount) || 0;
-      if (!m.has(code)) m.set(code, { import: 0, local: 0 });
+      if (!m.has(code)) m.set(code, { import: 0, local: 0, all: 0 });
       const cur = m.get(code)!;
       if (r.Group === 'IMPORT') cur.import += amt;
       else if (r.Group === 'LOCAL') cur.local += amt;
+      else if (r.Group === 'ALL') cur.all += amt;
     });
     return m;
   }, [rebates]);
@@ -894,7 +895,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   }, [selectedSalesRecord]);
 
   /** CustomerCode … Sale Q3 + Todo T7; có thể ẩn Rep */
-  const tableColSpan = (hideRepColumn ? 16 : 17) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+  const tableColSpan = (hideRepColumn ? 17 : 18) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -1350,6 +1351,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           Rebate Local
                         </th>
                         <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-violet-50/90 dark:bg-violet-950/35 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="Phí Rebate ALL còn lại — trừ được Local + Import (sheet REBATE)"
+                        >
+                          Rebate ALL
+                        </th>
+                        <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-red-100/90 dark:bg-red-950/45 border-r border-red-200/60 dark:border-red-900/45 text-red-950 dark:text-red-100"
                           title="Ưu tiên cột Sale T7 trên DANGKYTBQ2; ô trống thì MustWin+Other (DOANH_SO)"
                         >
@@ -1529,7 +1536,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                 </>
                               )}
                               {(() => {
-                                const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0 };
+                                const reb = rebateByCustomerCode.get(row.customerCode.trim()) ?? { import: 0, local: 0, all: 0 };
                                 return (
                                   <>
                                     <td className={`${base} text-right tabular-nums bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-100`}>
@@ -1537,6 +1544,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                     </td>
                                     <td className={`${base} text-right tabular-nums bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-100`}>
                                       {reb.local > 0 ? formatCurrency(Math.round(reb.local)) : '—'}
+                                    </td>
+                                    <td className={`${base} text-right tabular-nums bg-violet-50/40 dark:bg-violet-950/20 text-violet-900 dark:text-violet-100`}>
+                                      {reb.all > 0 ? formatCurrency(Math.round(reb.all)) : '—'}
                                     </td>
                                   </>
                                 );

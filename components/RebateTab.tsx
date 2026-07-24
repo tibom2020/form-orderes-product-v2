@@ -96,7 +96,7 @@ type RebateGroup = {
 
 const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRecords = [], customers = [], currentEmployee, onCustomerClick, isAdmin, onPublishGppNotice, onPublishCustomerNotice, gppComments = {} }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'BM' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
+    const [filterGroup, setFilterGroup] = useState<'ALL' | 'LOCAL' | 'IMPORT' | 'GROUP_ALL' | 'BM' | 'DATE_SELECT' | 'PROMOTION_SELECT'>('ALL');
     const [sortOption, setSortOption] = useState<'NAME' | 'AMOUNT_DESC' | 'DATE_ASC'>('NAME');
     const [selectedDates, setSelectedDates] = useState<string[]>([]); // Array of YYYY-MM-DD
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
@@ -170,6 +170,8 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
             matchingItems = matchingItems.filter(item => item.groupTag === 'LOCAL');
         } else if (filterGroup === 'IMPORT') {
             matchingItems = matchingItems.filter(item => item.groupTag === 'IMPORT');
+        } else if (filterGroup === 'GROUP_ALL') {
+            matchingItems = matchingItems.filter(item => item.groupTag === 'ALL');
         } else if (filterGroup === 'BM') {
             matchingItems = matchingItems.filter(
                 item =>
@@ -455,6 +457,9 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
         const importPrograms = group.items
             .filter(item => item.groupTag === 'IMPORT')
             .map(toProgramItem);
+        const allPrograms = group.items
+            .filter(item => item.groupTag === 'ALL')
+            .map(toProgramItem);
         const bmLocalPrograms = includeBm
             ? group.items
                 .filter(item => item.groupTag === 'BM_LOCAL' || item.groupTag === 'BM')
@@ -468,10 +473,11 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
 
         const totalLocalAmount = localPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
         const totalImportAmount = importPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
+        const totalAllAmount = allPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
         const totalBmLocalAmount = bmLocalPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
         const totalBmImportAmount = bmImportPrograms.reduce((sum, item) => sum + item.remainAmount, 0);
         const totalBmAmount = includeBm ? totalBmLocalAmount + totalBmImportAmount : 0;
-        const totalAmount = totalLocalAmount + totalImportAmount + totalBmAmount;
+        const totalAmount = totalLocalAmount + totalImportAmount + totalAllAmount + totalBmAmount;
 
         const rawBuyMed = salesRecords.find((s) => String(s.CustomerCode).trim() === String(group.code).trim())?.CodeBuyMed;
         const codeBuyMed = rawBuyMed != null && rawBuyMed !== '' ? String(rawBuyMed).trim() : '';
@@ -505,6 +511,9 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
             '',
             `💙 IMPORT (Tổng: ${formatCurrency(totalImportAmount)}):`,
             formatProgramList(importPrograms),
+            '',
+            `💜 ALL (Tổng: ${formatCurrency(totalAllAmount)}):`,
+            formatProgramList(allPrograms),
             ...(includeBm
                 ? [
                     '',
@@ -517,8 +526,8 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                 : []),
             '',
             includeBm
-                ? `💰 Tổng phí còn lại (Local + Import + BM): ${formatCurrency(totalAmount)}`
-                : `💰 Tổng phí còn lại (Local + Import): ${formatCurrency(totalAmount)}`,
+                ? `💰 Tổng phí còn lại (Local + Import + ALL + BM): ${formatCurrency(totalAmount)}`
+                : `💰 Tổng phí còn lại (Local + Import + ALL): ${formatCurrency(totalAmount)}`,
         ].join('\n');
 
         return {
@@ -529,10 +538,12 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
             nearestDueDate,
             localPrograms,
             importPrograms,
+            allPrograms,
             bmLocalPrograms,
             bmImportPrograms,
             totalLocalAmount,
             totalImportAmount,
+            totalAllAmount,
             totalBmLocalAmount,
             totalBmImportAmount,
             totalBmAmount,
@@ -570,6 +581,13 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                         <div key={idx} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-blue-600 dark:text-blue-400">| {formatCurrency(it.remainAmount)}</span></div>
                     ))
                 ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
+                <div className="h-1.5" />
+                <div><span className="text-violet-600 dark:text-violet-400 font-bold">💜 ALL (Tổng: {formatCurrency(payload.totalAllAmount ?? 0)}):</span></div>
+                {(payload.allPrograms && payload.allPrograms.length > 0) ? (
+                    payload.allPrograms.map((it, idx) => (
+                        <div key={`all-${idx}`} className="pl-3"><span className="text-slate-500 dark:text-slate-400">{idx + 1}. {it.program}</span> <span className="font-bold text-violet-600 dark:text-violet-400">| {formatCurrency(it.remainAmount)}</span></div>
+                    ))
+                ) : <div className="pl-3 text-slate-600 dark:text-slate-400">- Không có</div>}
                 {includeBmInCustomerNotice && (
                     <>
                         <div className="h-1.5" />
@@ -591,7 +609,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                 <div className="h-2" />
                 <div>
                     <span className="text-slate-500 dark:text-slate-400">
-                        💰 Tổng phí {includeBmInCustomerNotice ? '(Local + Import + BM)' : '(Local + Import)'}:
+                        💰 Tổng phí {includeBmInCustomerNotice ? '(Local + Import + ALL + BM)' : '(Local + Import + ALL)'}:
                     </span>{' '}
                     <span className="font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payload.totalAmount)}</span>
                 </div>
@@ -769,6 +787,7 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                             { id: 'ALL', label: 'Tất cả' },
                             { id: 'LOCAL', label: 'LOCAL' },
                             { id: 'IMPORT', label: 'IMPORT' },
+                            { id: 'GROUP_ALL', label: 'ALL' },
                             { id: 'BM', label: 'BM' },
                             { id: 'DATE_SELECT', label: 'Ngày đến hạn' },
                             { id: 'PROMOTION_SELECT', label: 'Chương trình' }
@@ -1208,9 +1227,11 @@ const RebateTab: React.FC<RebateTabProps> = ({ rebates, rebatesBm = [], salesRec
                                                     ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/50 dark:text-purple-200 dark:border-purple-800'
                                                     : item.groupTag === 'BM_IMPORT'
                                                         ? 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/50 dark:text-violet-200 dark:border-violet-800'
-                                                        : item.groupTag === 'IMPORT'
-                                                            ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
-                                                            : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
+                                                        : item.groupTag === 'ALL'
+                                                            ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-800'
+                                                            : item.groupTag === 'IMPORT'
+                                                                ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
+                                                                : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
                                                 }`}>
                                                 {item.groupTag}
                                             </div>

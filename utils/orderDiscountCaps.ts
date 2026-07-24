@@ -136,6 +136,12 @@ export interface AppliedRebatesResult {
   rebateDiscountImportApplied: number;
   selectedLocalRebateTotal: number;
   selectedImportRebateTotal: number;
+  /** Tổng phí Group ALL đã chọn (chưa cắt Max) */
+  selectedAllRebateTotal: number;
+  /** Phần ALL đã áp sau khi chia pro-rata rem Local/Import */
+  allRebateApplied: number;
+  /** Cap còn lại cho ALL = remLocal + remImport sau LOCAL/IMPORT đã chọn */
+  totalMaxPayableFeeAll: number;
   totalMaxPayableFeeLocal: number;
   totalMaxPayableFeeImport: number;
 }
@@ -147,6 +153,7 @@ export function computeAppliedRebates(
 ): AppliedRebatesResult {
   const localRebates = rebates.filter(r => r.Group === 'LOCAL');
   const importRebates = rebates.filter(r => r.Group === 'IMPORT');
+  const allRebates = rebates.filter(r => r.Group === 'ALL');
 
   const selectedLocalRebateTotal = localRebates
     .filter(r => selectedRebateIds.includes(r['PromotionID#program']))
@@ -156,8 +163,27 @@ export function computeAppliedRebates(
     .filter(r => selectedRebateIds.includes(r['PromotionID#program']))
     .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
 
-  const actualLocal = Math.min(selectedLocalRebateTotal, maxFees.totalMaxPayableFeeLocal);
-  const actualImport = Math.min(selectedImportRebateTotal, maxFees.totalMaxPayableFeeImport);
+  const selectedAllRebateTotal = allRebates
+    .filter(r => selectedRebateIds.includes(r['PromotionID#program']))
+    .reduce((sum, r) => sum + Number(r.RemainAmount), 0);
+
+  const actualLocalFromGroup = Math.min(selectedLocalRebateTotal, maxFees.totalMaxPayableFeeLocal);
+  const actualImportFromGroup = Math.min(selectedImportRebateTotal, maxFees.totalMaxPayableFeeImport);
+
+  const remLocal = Math.max(0, maxFees.totalMaxPayableFeeLocal - actualLocalFromGroup);
+  const remImport = Math.max(0, maxFees.totalMaxPayableFeeImport - actualImportFromGroup);
+  const totalMaxPayableFeeAll = remLocal + remImport;
+
+  const allRebateApplied = Math.min(selectedAllRebateTotal, totalMaxPayableFeeAll);
+  let allToLocal = 0;
+  let allToImport = 0;
+  if (allRebateApplied > 0 && totalMaxPayableFeeAll > 0) {
+    allToLocal = (allRebateApplied * remLocal) / totalMaxPayableFeeAll;
+    allToImport = allRebateApplied - allToLocal;
+  }
+
+  const actualLocal = actualLocalFromGroup + allToLocal;
+  const actualImport = actualImportFromGroup + allToImport;
 
   return {
     rebateDiscount: actualLocal + actualImport,
@@ -165,6 +191,9 @@ export function computeAppliedRebates(
     rebateDiscountImportApplied: actualImport,
     selectedLocalRebateTotal,
     selectedImportRebateTotal,
+    selectedAllRebateTotal,
+    allRebateApplied,
+    totalMaxPayableFeeAll,
     totalMaxPayableFeeLocal: maxFees.totalMaxPayableFeeLocal,
     totalMaxPayableFeeImport: maxFees.totalMaxPayableFeeImport,
   };

@@ -223,15 +223,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
         return map;
     }, [salesRecords]);
 
-    // Map CustomerCode -> Tổng phí REBATE (Giga) theo LOCAL / IMPORT
+    // Map CustomerCode -> Tổng phí REBATE (Giga) theo LOCAL / IMPORT / ALL
     const rebateFeeByCode = useMemo(() => {
-        const map = new Map<string, { local: number; import: number }>();
+        const map = new Map<string, { local: number; import: number; all: number }>();
         rebates.forEach((item) => {
             const code = String(item.code ?? '').trim();
             if (!code) return;
 
             if (!map.has(code)) {
-                map.set(code, { local: 0, import: 0 });
+                map.set(code, { local: 0, import: 0, all: 0 });
             }
 
             const group = String(item.Group ?? '').toUpperCase().trim();
@@ -242,6 +242,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 cur.local += amount;
             } else if (group === 'IMPORT') {
                 cur.import += amount;
+            } else if (group === 'ALL') {
+                cur.all += amount;
             }
         });
         return map;
@@ -1168,45 +1170,51 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                     const sale = salesByCode.get(String(c.CustomerCode || '').trim()) ?? 0;
                                                     const rebateFee = rebateFeeByCode.get(String(c.CustomerCode ?? '').trim());
                                                     const localFee = rebateFee?.local ?? 0;
-                                                    const importFee = rebateFee?.import ?? 0;
-                                                    const hasAnyRebateFee = localFee > 0 || importFee > 0;
-                                                    return (
-                                                        <tr
-                                                            key={c.CustomerCode}
-                                                            onClick={() => setSelectedCustomer(c)}
-                                                            className="border-b border-slate-100 dark:border-slate-700/80 hover:bg-opella-beige/40 dark:hover:bg-opella-green/10 cursor-pointer transition-colors group"
-                                                        >
-                                                            <td className="px-3 py-2.5 min-w-0">
-                                                                <p className="text-[10px] text-slate-400 font-mono">#{c.CustomerCode}</p>
-                                                                <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green line-clamp-1">
-                                                                    {c.CustomerName}
-                                                                </p>
-                                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                                                                    <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                                                                        {c.District || '—'}
-                                                                    </span>
-                                                                    <span className="text-[11px] font-black text-red-600 dark:text-red-400">
-                                                                        {formatCurrency(sale)}
-                                                                    </span>
-                                                                    {currentEmployee.code === '20043741' && c.Rep && (
-                                                                        <span className="text-[9px] text-slate-400">Rep: {c.Rep}</span>
+                                                const importFee = rebateFee?.import ?? 0;
+                                                const allFee = rebateFee?.all ?? 0;
+                                                const hasAnyRebateFee = localFee > 0 || importFee > 0 || allFee > 0;
+                                                return (
+                                                    <tr
+                                                        key={c.CustomerCode}
+                                                        onClick={() => setSelectedCustomer(c)}
+                                                        className="border-b border-slate-100 dark:border-slate-700/80 hover:bg-opella-beige/40 dark:hover:bg-opella-green/10 cursor-pointer transition-colors group"
+                                                    >
+                                                        <td className="px-3 py-2.5 min-w-0">
+                                                            <p className="text-[10px] text-slate-400 font-mono">#{c.CustomerCode}</p>
+                                                            <p className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-opella-green line-clamp-1">
+                                                                {c.CustomerName}
+                                                            </p>
+                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                                                                <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                                                                    {c.District || '—'}
+                                                                </span>
+                                                                <span className="text-[11px] font-black text-red-600 dark:text-red-400">
+                                                                    {formatCurrency(sale)}
+                                                                </span>
+                                                                {currentEmployee.code === '20043741' && c.Rep && (
+                                                                    <span className="text-[9px] text-slate-400">Rep: {c.Rep}</span>
+                                                                )}
+                                                            </div>
+                                                            {hasAnyRebateFee && (
+                                                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                                                                    {localFee > 0 && (
+                                                                        <span className="font-bold text-green-700 dark:text-green-300">
+                                                                            Phí LOCAL còn lại: {formatCurrency(localFee)}
+                                                                        </span>
+                                                                    )}
+                                                                    {importFee > 0 && (
+                                                                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                                                                            Phí IMPORT còn lại: {formatCurrency(importFee)}
+                                                                        </span>
+                                                                    )}
+                                                                    {allFee > 0 && (
+                                                                        <span className="font-bold text-violet-700 dark:text-violet-300">
+                                                                            Phí ALL còn lại: {formatCurrency(allFee)}
+                                                                        </span>
                                                                     )}
                                                                 </div>
-                                                                {hasAnyRebateFee && (
-                                                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
-                                                                        {localFee > 0 && (
-                                                                            <span className="font-bold text-green-700 dark:text-green-300">
-                                                                                Phí LOCAL còn lại: {formatCurrency(localFee)}
-                                                                            </span>
-                                                                        )}
-                                                                        {importFee > 0 && (
-                                                                            <span className="font-bold text-blue-700 dark:text-blue-300">
-                                                                                Phí IMPORT còn lại: {formatCurrency(importFee)}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </td>
+                                                            )}
+                                                        </td>
                                                             {STAGE_CHECK_COLS.map((col) => {
                                                                 const checked =
                                                                     col.key === 'COMPLETE'
@@ -1298,7 +1306,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                     const rebateFee = rebateFeeByCode.get(String(c.CustomerCode ?? '').trim());
                                                     const localFee = rebateFee?.local ?? 0;
                                                     const importFee = rebateFee?.import ?? 0;
-                                                    const hasAnyRebateFee = localFee > 0 || importFee > 0;
+                                                    const allFee = rebateFee?.all ?? 0;
+                                                    const hasAnyRebateFee = localFee > 0 || importFee > 0 || allFee > 0;
                                                     const psQ2FinalStoreType = psQ2FinalStoreTypeByCode.get(String(c.CustomerCode ?? '').trim());
 
                                                     return (
@@ -1326,6 +1335,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                                                     {importFee > 0 && (
                                                                         <p className="font-bold text-blue-700 dark:text-blue-300 leading-tight">
                                                                             Tổng phí IMPORT (Giga): {formatCurrency(importFee)}
+                                                                        </p>
+                                                                    )}
+                                                                    {allFee > 0 && (
+                                                                        <p className="font-bold text-violet-700 dark:text-violet-300 leading-tight">
+                                                                            Tổng phí ALL (Giga): {formatCurrency(allFee)}
                                                                         </p>
                                                                     )}
                                                                 </div>

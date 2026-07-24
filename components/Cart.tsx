@@ -556,6 +556,7 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const localRebates = rebates.filter(r => r.Group === 'LOCAL');
     const importRebates = rebates.filter(r => r.Group === 'IMPORT');
+    const allGroupRebates = rebates.filter(r => r.Group === 'ALL');
 
     const maxPayableFees = useMemo(
         () =>
@@ -583,6 +584,8 @@ const Cart: React.FC<CartProps> = (props) => {
         rebateDiscountImportApplied,
         selectedLocalRebateTotal,
         selectedImportRebateTotal,
+        selectedAllRebateTotal,
+        totalMaxPayableFeeAll,
     } = useMemo(
         () => computeAppliedRebates(rebates, selectedRebateIds, maxPayableFees),
         [rebates, selectedRebateIds, maxPayableFees]
@@ -624,16 +627,19 @@ const Cart: React.FC<CartProps> = (props) => {
 
     const localOver = selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0;
     const importOver = selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0;
+    const allOver = selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0;
     const hasLocalMaxNote = note.includes('Trả tối đa phí Local');
     const hasImportMaxNote = note.includes('Trả tối đa phí Import');
+    const hasAllMaxNote = note.includes('Trả tối đa phí ALL');
 
     const feeOverNeedsNote =
         !rebatePaymentLocked &&
-        ((localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote));
+        ((localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote) || (allOver && !hasAllMaxNote));
     const rebateWithoutProducts =
         !rebatePaymentLocked &&
         ((selectedLocalRebateTotal > 0 && localProductCount < 1) ||
-            (selectedImportRebateTotal > 0 && importProductCount < 1));
+            (selectedImportRebateTotal > 0 && importProductCount < 1) ||
+            (selectedAllRebateTotal > 0 && localProductCount + importProductCount < 1));
     const psSubmitBlocked =
         isPsOnInvoice25 &&
         psTotals != null &&
@@ -903,6 +909,28 @@ const Cart: React.FC<CartProps> = (props) => {
                                                     <span className="text-xs font-black text-red-600 dark:text-red-400 ml-2">-{formatCurrency(r.RemainAmount)}</span>
                                                 </div>
                                                 <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Hạn: <span className="font-semibold">{formatRebateDate(r)}</span></div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
+                            {allGroupRebates.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="px-2 py-1 bg-violet-50 dark:bg-violet-900/20 text-[10px] font-black text-violet-700 dark:text-violet-300 uppercase tracking-wide rounded border border-violet-100 dark:border-violet-800/50">
+                                        TỔNG PHÍ CẦN TRẢ ALL (Local + Import): {formatCurrency(rebatePaymentLocked ? 0 : selectedAllRebateTotal)}
+                                    </p>
+                                    {allGroupRebates.map(r => (
+                                        <label key={r["PromotionID#program"]} title={rebatePaymentLocked ? 'Đã khóa — đơn CK PS 25%' : undefined} className={`flex items-start p-2.5 rounded-lg border transition-all ${rebatePaymentLocked ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700' : `cursor-pointer ${selectedRebateIds.includes(r["PromotionID#program"]) ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 dark:border-violet-600 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}`}>
+                                            <input type="checkbox" checked={!rebatePaymentLocked && selectedRebateIds.includes(r["PromotionID#program"])} disabled={rebatePaymentLocked} onChange={() => onToggleRebate(r["PromotionID#program"])} className="mt-1 h-4 w-4 rounded text-violet-600 focus:ring-violet-500 border-slate-300 dark:border-slate-600 dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                            <div className="ml-2.5 flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{r["PromotionID#program"]}</span>
+                                                    <span className="text-xs font-black text-red-600 dark:text-red-400 ml-2">-{formatCurrency(r.RemainAmount)}</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Group ALL · Hạn: <span className="font-semibold">{formatRebateDate(r)}</span>
+                                                </div>
                                             </div>
                                         </label>
                                     ))}
@@ -1293,6 +1321,34 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <label htmlFor="note-import-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí Import</label>
                             </div>
                         </div>
+                        {/* ALL */}
+                        {allGroupRebates.length > 0 && (
+                            <div>
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-baseline space-x-1.5">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Phí ALL Max (còn lại):</span>
+                                        <span className={`text-[10px] font-black ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-500 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}`}>{formatCurrency(totalMaxPayableFeeAll)}</span>
+                                    </div>
+                                    {selectedAllRebateTotal > 0 && (
+                                        <div className="flex items-baseline space-x-1.5">
+                                            <span className={`text-[9px] font-bold uppercase ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-500' : 'text-amber-500'}`}>Tổng Phí Cần Trả:</span>
+                                            <span className={`text-[10px] font-black ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>-{formatCurrency(selectedAllRebateTotal)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center space-x-1.5 mt-0.5">
+                                    <input
+                                        type="checkbox"
+                                        id="note-all-max"
+                                        checked={!rebatePaymentLocked && note.includes('Trả tối đa phí ALL')}
+                                        disabled={rebatePaymentLocked}
+                                        onChange={() => toggleNotePreset('Trả tối đa phí ALL')}
+                                        className="h-3.5 w-3.5 rounded text-violet-600 border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    />
+                                    <label htmlFor="note-all-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí ALL</label>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tổng cộng - Nhấn mạnh */}
@@ -1327,6 +1383,9 @@ const Cart: React.FC<CartProps> = (props) => {
                                     {importOver && !hasImportMaxNote && (
                                         <p>• Phí Import cần trả <span className="font-bold">{formatCurrency(selectedImportRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeImport)}</span>. Chọn &quot;Trả tối đa phí Import&quot; để xác nhận.</p>
                                     )}
+                                    {allOver && !hasAllMaxNote && (
+                                        <p>• Phí ALL cần trả <span className="font-bold">{formatCurrency(selectedAllRebateTotal)}</span> vượt Max còn lại <span className="font-bold">{formatCurrency(totalMaxPayableFeeAll)}</span>. Chọn &quot;Trả tối đa phí ALL&quot; để xác nhận.</p>
+                                    )}
                                 </>
                             )}
                             {rebateWithoutProducts && (
@@ -1336,6 +1395,9 @@ const Cart: React.FC<CartProps> = (props) => {
                                     )}
                                     {selectedImportRebateTotal > 0 && importProductCount < 1 && (
                                         <p>• Chọn trả phí Import nhưng đơn không có sản phẩm Import. Cần ít nhất 1 sản phẩm Import.</p>
+                                    )}
+                                    {selectedAllRebateTotal > 0 && localProductCount + importProductCount < 1 && (
+                                        <p>• Chọn trả phí ALL nhưng đơn chưa có sản phẩm. Cần ít nhất 1 sản phẩm Local hoặc Import.</p>
                                     )}
                                 </>
                             )}

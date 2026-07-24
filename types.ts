@@ -33,7 +33,7 @@ export interface Customer {
 
 export interface Rebate {
   code: string;
-  Group: 'LOCAL' | 'IMPORT';
+  Group: 'LOCAL' | 'IMPORT' | 'ALL';
   "PromotionID#program": string;
   EndDate?: string | number;
   Endate?: string | number;
@@ -328,15 +328,18 @@ export interface RebateCustomerNoticePayload {
   nearestDueDate: string;
   localPrograms: RebateNoticeProgramItem[];
   importPrograms: RebateNoticeProgramItem[];
+  /** Phí Group ALL — trừ được cả Local + Import */
+  allPrograms?: RebateNoticeProgramItem[];
   /** Phí BM Local / Import (sheet REBATE_BM) */
   bmLocalPrograms?: RebateNoticeProgramItem[];
   bmImportPrograms?: RebateNoticeProgramItem[];
   totalLocalAmount: number;
   totalImportAmount: number;
+  totalAllAmount?: number;
   totalBmLocalAmount?: number;
   totalBmImportAmount?: number;
   totalBmAmount?: number;
-  /** Tổng Local + Import + BM */
+  /** Tổng Local + Import + ALL + BM */
   totalAmount: number;
   /** Code BuyMed từ DOANH_SO khi KH có */
   codeBuyMed?: string;

@@ -80,8 +80,21 @@ function stripRebatePaymentFromNote(note: string): string {
     .join('\n')
     .replace(/\s*Trả tối đa phí Local\s*/gi, ' ')
     .replace(/\s*Trả tối đa phí Import\s*/gi, ' ')
+    .replace(/\s*Trả tối đa phí ALL\s*/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+/** Dòng ghi chú trả phí: `TRẢ PHÍ {mã} - {số tiền}` (vd: TRẢ PHÍ 26ACCHC_Jun_CONSOL_round 1 - 295,500) */
+function formatRebatePaymentNoteLine(programId: string, remainAmount: number): string {
+  const amountStr = new Intl.NumberFormat('en-US').format(Math.round(Number(remainAmount) || 0));
+  return `TRẢ PHÍ ${programId} - ${amountStr}`;
+}
+
+function isRebatePaymentNoteLineForProgram(line: string, programId: string): boolean {
+  const t = line.trim();
+  const prefix = `TRẢ PHÍ ${programId}`;
+  return t === prefix || t.startsWith(`${prefix} -`) || t.startsWith(`${prefix}-`);
 }
 
 /** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76%, Active Acemuc/Ostelin, Gói Ostelin/PMT Vỉ */
@@ -838,19 +851,29 @@ const App: React.FC = () => {
     const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
     if (!rebate) return;
 
-    const rebateStr = `TRẢ PHÍ ${rebate["PromotionID#program"]}`;
+    const programId = rebate["PromotionID#program"];
+    const rebateStr = formatRebatePaymentNoteLine(programId, Number(rebate.RemainAmount) || 0);
 
     setSelectedRebateIds(prev => {
       const isSelecting = !prev.includes(rebateId);
       if (isSelecting) {
         setNote(prevNote => {
           const lines = prevNote.split('\n').map(l => l.trim()).filter(l => l !== '');
-          if (!lines.includes(rebateStr)) return [...lines, rebateStr].join('\n');
-          return prevNote;
+          if (lines.some(l => isRebatePaymentNoteLineForProgram(l, programId))) {
+            return lines
+              .map(l => (isRebatePaymentNoteLineForProgram(l, programId) ? rebateStr : l))
+              .join('\n');
+          }
+          return [...lines, rebateStr].join('\n');
         });
         return [...prev, rebateId];
       } else {
-        setNote(prevNote => prevNote.split('\n').filter(line => line.trim() !== rebateStr.trim()).join('\n'));
+        setNote(prevNote =>
+          prevNote
+            .split('\n')
+            .filter(line => !isRebatePaymentNoteLineForProgram(line, programId))
+            .join('\n')
+        );
         return prev.filter(id => id !== rebateId);
       }
     });

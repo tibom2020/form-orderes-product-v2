@@ -211,6 +211,90 @@ function handleMarketing(data, ss, output) {
   return output.setContent(JSON.stringify({ status: "error", message: "Unknown marketing action" }));
 }
 
+/**
+ * Chuẩn hóa dòng ghi chú trả phí kèm số tiền.
+ * Ví dụ: "TRẢ PHÍ 26ACCHC_Jun_CONSOL_round 1 - 295,500"
+ * Ưu tiên số tiền đã có trong note; nếu thiếu thì lấy RemainAmount từ sheet REBATE theo appliedRebates.
+ */
+function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates) {
+  var noteStr = String(note || "").trim();
+  var ids = Array.isArray(appliedRebates) ? appliedRebates : [];
+  var amountByProgram = {};
+
+  try {
+    var rebateSheet = ss.getSheetByName("REBATE");
+    if (rebateSheet) {
+      var values = rebateSheet.getDataRange().getValues();
+      if (values.length >= 2) {
+        var headers = values[0].map(function (h) { return String(h).trim(); });
+        var progCol = -1;
+        var amtCol = -1;
+        for (var c = 0; c < headers.length; c++) {
+          var h = headers[c];
+          if (progCol < 0 && (h === "PromotionID#program" || h === "PromotionID" || /promotion/i.test(h))) progCol = c;
+          if (amtCol < 0 && (h === "RemainAmount" || h === "Remain Amount" || /remain/i.test(h))) amtCol = c;
+        }
+        if (progCol >= 0 && amtCol >= 0) {
+          for (var r = 1; r < values.length; r++) {
+            var pid = String(values[r][progCol] || "").trim();
+            if (!pid) continue;
+            var amt = Number(values[r][amtCol]) || 0;
+            if (!amountByProgram[pid]) amountByProgram[pid] = 0;
+            amountByProgram[pid] += amt;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    Logger.log("enrichOrderNoteWithRebateAmounts_ REBATE lookup: " + e);
+  }
+
+  function formatAmt(n) {
+    return Number(Math.round(Number(n) || 0)).toLocaleString("en-US");
+  }
+
+  function lineForProgram(programId, fallbackAmt) {
+    var amt = amountByProgram[programId];
+    if (amt == null || amt === "") amt = fallbackAmt;
+    return "TRẢ PHÍ " + programId + " - " + formatAmt(amt);
+  }
+
+  var lines = noteStr ? noteStr.split(/\r?\n/) : [];
+  var out = [];
+  var seenPrograms = {};
+
+  for (var i = 0; i < lines.length; i++) {
+    var raw = String(lines[i] || "");
+    var t = raw.trim();
+    if (!t) continue;
+
+    var m = /^TRẢ PHÍ\s+(.+?)(?:\s*-\s*([\d.,]+))?\s*$/i.exec(t);
+    if (m) {
+      var programId = String(m[1] || "").trim();
+      // Nếu đã có số tiền trong note thì giữ; vẫn chuẩn hóa format
+      var existingAmt = m[2] != null ? Number(String(m[2]).replace(/,/g, "")) : null;
+      if (existingAmt != null && !isNaN(existingAmt)) {
+        out.push("TRẢ PHÍ " + programId + " - " + formatAmt(existingAmt));
+      } else {
+        out.push(lineForProgram(programId, 0));
+      }
+      seenPrograms[programId] = true;
+      continue;
+    }
+    out.push(t);
+  }
+
+  // Bổ sung dòng TRẢ PHÍ còn thiếu từ appliedRebates
+  for (var j = 0; j < ids.length; j++) {
+    var id = String(ids[j] || "").trim();
+    if (!id || seenPrograms[id]) continue;
+    out.push(lineForProgram(id, 0));
+    seenPrograms[id] = true;
+  }
+
+  return out.join("\n");
+}
+
 function handleOrder(data, ss, output) {
   var sheetOrder = ss.getSheetByName("Orders");
   if (!sheetOrder) {
@@ -221,6 +305,9 @@ function handleOrder(data, ss, output) {
   var timestamp = new Date();
   var items = data.items;
   var rowsToAdd = [];
+  // Ghi chú TRẢ PHÍ kèm số tiền: "TRẢ PHÍ {mã} - 295,500"
+  var orderNote = enrichOrderNoteWithRebateAmounts_(ss, data.note, data.appliedRebates);
+  data.note = orderNote;
 
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
@@ -229,7 +316,7 @@ function handleOrder(data, ss, output) {
       data.employeeName,
       data.customerCode,
       data.customerName,
-      data.note,
+      orderNote,
       item.name,
       item.quantity,
       item.price,

@@ -786,6 +786,29 @@ const App: React.FC = () => {
     return allRebates.filter(r => String(r.code) === codeStr);
   }, [allRebates, customerCode]);
 
+  /** Đồng bộ số tiền trên dòng TRẢ PHÍ theo RemainAmount đúng của KH đang chọn */
+  useEffect(() => {
+    if (selectedRebateIds.length === 0 || currentCustomerRebates.length === 0) return;
+    setNote((prevNote) => {
+      const lines = prevNote.split('\n');
+      let changed = false;
+      const next = lines.map((line) => {
+        const t = line.trim();
+        if (!/^TRẢ PHÍ\s/i.test(t)) return line;
+        for (const rebate of currentCustomerRebates) {
+          const programId = rebate["PromotionID#program"];
+          if (!selectedRebateIds.includes(programId)) continue;
+          if (!isRebatePaymentNoteLineForProgram(t, programId)) continue;
+          const correct = formatRebatePaymentNoteLine(programId, Number(rebate.RemainAmount) || 0);
+          if (t !== correct) changed = true;
+          return correct;
+        }
+        return line;
+      });
+      return changed ? next.join('\n') : prevNote;
+    });
+  }, [currentCustomerRebates, selectedRebateIds]);
+
   const recordDummyBoxMarketingByCode = useMemo(
     () => mergeDummyBoxMarketingByCode(marketingData),
     [marketingData]
@@ -848,7 +871,13 @@ const App: React.FC = () => {
 
   const handleToggleRebate = (rebateId: string) => {
     if (isPsOnInvoice25) return;
-    const rebate = allRebates.find(r => r["PromotionID#program"] === rebateId);
+    const codeStr = String(customerCode ?? '').trim();
+    // Phải khớp mã KH — cùng PromotionID có thể khác RemainAmount giữa các KH
+    const rebate =
+      currentCustomerRebates.find(r => r["PromotionID#program"] === rebateId) ||
+      allRebates.find(
+        r => r["PromotionID#program"] === rebateId && String(r.code ?? '').trim() === codeStr
+      );
     if (!rebate) return;
 
     const programId = rebate["PromotionID#program"];

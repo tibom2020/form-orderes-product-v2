@@ -212,13 +212,14 @@ function handleMarketing(data, ss, output) {
 }
 
 /**
- * Chuẩn hóa dòng ghi chú trả phí kèm số tiền.
+ * Chuẩn hóa dòng ghi chú trả phí kèm số tiền đúng theo mã KH.
  * Ví dụ: "TRẢ PHÍ 26ACCHC_Jun_CONSOL_round 1 - 295,500"
- * Ưu tiên số tiền đã có trong note; nếu thiếu thì lấy RemainAmount từ sheet REBATE theo appliedRebates.
+ * Ưu tiên RemainAmount từ sheet REBATE (lọc theo customerCode + PromotionID).
  */
-function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates) {
+function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates, customerCode) {
   var noteStr = String(note || "").trim();
   var ids = Array.isArray(appliedRebates) ? appliedRebates : [];
+  var codeStr = String(customerCode || "").trim();
   var amountByProgram = {};
 
   try {
@@ -229,15 +230,21 @@ function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates) {
         var headers = values[0].map(function (h) { return String(h).trim(); });
         var progCol = -1;
         var amtCol = -1;
+        var codeCol = -1;
         for (var c = 0; c < headers.length; c++) {
           var h = headers[c];
           if (progCol < 0 && (h === "PromotionID#program" || h === "PromotionID" || /promotion/i.test(h))) progCol = c;
           if (amtCol < 0 && (h === "RemainAmount" || h === "Remain Amount" || /remain/i.test(h))) amtCol = c;
+          if (codeCol < 0 && (h === "code" || h === "Code" || h === "CustomerCode" || h === "MaKH" || /^code$/i.test(h))) codeCol = c;
         }
         if (progCol >= 0 && amtCol >= 0) {
           for (var r = 1; r < values.length; r++) {
             var pid = String(values[r][progCol] || "").trim();
             if (!pid) continue;
+            if (codeCol >= 0 && codeStr) {
+              var rowCode = String(values[r][codeCol] || "").trim();
+              if (rowCode !== codeStr) continue;
+            }
             var amt = Number(values[r][amtCol]) || 0;
             if (!amountByProgram[pid]) amountByProgram[pid] = 0;
             amountByProgram[pid] += amt;
@@ -254,8 +261,7 @@ function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates) {
   }
 
   function lineForProgram(programId, fallbackAmt) {
-    var amt = amountByProgram[programId];
-    if (amt == null || amt === "") amt = fallbackAmt;
+    var amt = amountByProgram.hasOwnProperty(programId) ? amountByProgram[programId] : fallbackAmt;
     return "TRẢ PHÍ " + programId + " - " + formatAmt(amt);
   }
 
@@ -268,12 +274,24 @@ function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates) {
     var t = raw.trim();
     if (!t) continue;
 
-    var m = /^TRẢ PHÍ\s+(.+?)(?:\s*-\s*([\d.,]+))?\s*$/i.exec(t);
-    if (m) {
-      var programId = String(m[1] || "").trim();
-      // Nếu đã có số tiền trong note thì giữ; vẫn chuẩn hóa format
-      var existingAmt = m[2] != null ? Number(String(m[2]).replace(/,/g, "")) : null;
-      if (existingAmt != null && !isNaN(existingAmt)) {
+    // Tách "TRẢ PHÍ {programId} - {amount}" — amount chỉ lấy phần số cuối sau " - "
+    var rebateMatch = /^TRẢ PHÍ\s+(.+)$/i.exec(t);
+    if (rebateMatch) {
+      var rest = String(rebateMatch[1] || "").trim();
+      var dashIdx = rest.lastIndexOf(" - ");
+      var programId = rest;
+      var existingAmt = null;
+      if (dashIdx >= 0) {
+        var maybeAmt = rest.slice(dashIdx + 3).trim();
+        if (/^[\d.,]+$/.test(maybeAmt)) {
+          programId = rest.slice(0, dashIdx).trim();
+          existingAmt = Number(String(maybeAmt).replace(/,/g, ""));
+        }
+      }
+      // Ưu tiên số tiền đúng theo KH trên sheet REBATE
+      if (amountByProgram.hasOwnProperty(programId)) {
+        out.push(lineForProgram(programId, existingAmt));
+      } else if (existingAmt != null && !isNaN(existingAmt)) {
         out.push("TRẢ PHÍ " + programId + " - " + formatAmt(existingAmt));
       } else {
         out.push(lineForProgram(programId, 0));
@@ -305,8 +323,8 @@ function handleOrder(data, ss, output) {
   var timestamp = new Date();
   var items = data.items;
   var rowsToAdd = [];
-  // Ghi chú TRẢ PHÍ kèm số tiền: "TRẢ PHÍ {mã} - 295,500"
-  var orderNote = enrichOrderNoteWithRebateAmounts_(ss, data.note, data.appliedRebates);
+  // Ghi chú TRẢ PHÍ kèm số tiền: "TRẢ PHÍ {mã} - 295,500" (đúng theo mã KH)
+  var orderNote = enrichOrderNoteWithRebateAmounts_(ss, data.note, data.appliedRebates, data.customerCode);
   data.note = orderNote;
 
   for (var i = 0; i < items.length; i++) {

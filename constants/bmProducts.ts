@@ -35,14 +35,10 @@ export const BM_PRICE_BY_ID: Record<number, number> = {
   6: 267390,
   7: 122791,
   8: 28850,
-  9: 43524,
   10: 38635,
   12: 290600,
   13: 425926,
   14: 60858,
-  15: 119800,
-  16: 25753,
-  29: 139646,
   27: 211680,
   18: 190080,
   20: 97000,
@@ -55,8 +51,8 @@ export const BM_PRICE_BY_ID: Record<number, number> = {
 
 /** Product IDs có trong danh sách BM (khớp file đính kèm) */
 export const BM_PRODUCT_IDS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16,
-  18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+  1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14,
+  18, 20, 21, 22, 23, 24, 25, 26, 27, 28
 ] as const;
 
 /** Kiểm tra sản phẩm có trong danh sách BM */
@@ -99,14 +95,10 @@ const BM_TIERS_BY_ID: Record<number, { minQty: number }[]> = {
   6: [{ minQty: 1 }],
   7: [{ minQty: 1 }],
   8: [{ minQty: 1 }],
-  9: [{ minQty: 1 }],
   10: [{ minQty: 1 }, { minQty: 66 }],
   12: [{ minQty: 1 }],
   13: [{ minQty: 1 }],
   14: [{ minQty: 1 }, { minQty: 238 }],
-  15: [{ minQty: 1 }],
-  16: [{ minQty: 1 }],
-  29: [{ minQty: 1 }],
   27: [{ minQty: 1 }],
   18: [{ minQty: 1 }],
   20: [{ minQty: 1 }],

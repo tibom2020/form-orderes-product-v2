@@ -391,7 +391,7 @@ export const submitAdminNews = async (
   }
 };
 
-/** Gửi cập nhật Product Quota khi đơn hàng có SP Enterogermina 2B/20 hoặc NOSPA 80 V */
+/** Gửi cập nhật Product Quota khi đơn hàng có SP Enterogermina 2B/20 */
 export const submitProductQuota = async (
   url: string,
   payload: { employeeName: string; employeeCode: string; items: { id: number; name: string; quantity: number; price: number }[] }

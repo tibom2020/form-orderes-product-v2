@@ -282,52 +282,54 @@ const LandingPage: React.FC<LandingPageProps> = ({
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const myCustomers = uniqueMarketingData.filter(r => {
-        const codeMatch = String(r.StaffCode ?? '').trim() === currentEmployee.code;
-        const repMatch = String(r.Rep ?? '').toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
-        if (currentEmployee.code === '20043741') return true;
-        return codeMatch || repMatch;
-    });
+    const myCustomers = useMemo(() => {
+        return uniqueMarketingData.filter(r => {
+            const codeMatch = String(r.StaffCode ?? '').trim() === currentEmployee.code;
+            const repMatch = String(r.Rep ?? '').toLowerCase().trim() === currentEmployee.name.toLowerCase().trim();
+            if (currentEmployee.code === '20043741') return true;
+            return codeMatch || repMatch;
+        });
+    }, [uniqueMarketingData, currentEmployee.code, currentEmployee.name]);
 
-    const filteredCustomers = myCustomers.filter(c => {
-        // 1. Lọc theo Search Term (Có xử lý tiếng Việt không dấu)
+    const filteredCustomers = useMemo(() => {
         const normalizedSearch = removeVietnameseTones(searchTerm).toLowerCase();
-        const normalizedName = removeVietnameseTones(String(c.CustomerName ?? '')).toLowerCase();
-        const normalizedAddress = removeVietnameseTones(String(c.District ?? '')).toLowerCase();
-        const normalizedRep = removeVietnameseTones(String(c.Rep ?? '')).toLowerCase();
+        return myCustomers
+            .filter(c => {
+                const normalizedName = removeVietnameseTones(String(c.CustomerName ?? '')).toLowerCase();
+                const normalizedAddress = removeVietnameseTones(String(c.District ?? '')).toLowerCase();
+                const normalizedRep = removeVietnameseTones(String(c.Rep ?? '')).toLowerCase();
 
-        const matchesSearch = normalizedName.includes(normalizedSearch) ||
-            String(c.CustomerCode).includes(normalizedSearch) ||
-            normalizedAddress.includes(normalizedSearch) ||
-            normalizedRep.includes(normalizedSearch);
+                const matchesSearch = normalizedName.includes(normalizedSearch) ||
+                    String(c.CustomerCode).includes(normalizedSearch) ||
+                    normalizedAddress.includes(normalizedSearch) ||
+                    normalizedRep.includes(normalizedSearch);
 
-        if (!matchesSearch) return false;
+                if (!matchesSearch) return false;
 
-        // 2. Lọc theo Rep (Nếu có chọn từ Báo cáo)
-        if (selectedRepFilter) {
-            const repName = String(c.Rep ?? '').trim() || 'Chưa phân công';
-            if (repName !== selectedRepFilter) return false;
-        }
+                if (selectedRepFilter) {
+                    const repName = String(c.Rep ?? '').trim() || 'Chưa phân công';
+                    if (repName !== selectedRepFilter) return false;
+                }
 
-        // 3. Logic lọc ảnh
-        const up1 = String(c.UpHinh ?? '').trim();
-        const up2 = String(c.UpHinh2 ?? '').trim();
-        const hasImage = (up1 !== '' && up1 !== 'NO') || (up2 !== '' && up2 !== 'NO');
+                const up1 = String(c.UpHinh ?? '').trim();
+                const up2 = String(c.UpHinh2 ?? '').trim();
+                const hasImage = (up1 !== '' && up1 !== 'NO') || (up2 !== '' && up2 !== 'NO');
 
-        if (imageFilterMode === 'HAS_IMAGE' && !hasImage) return false;
-        if (imageFilterMode === 'NO_IMAGE' && hasImage) return false;
-        if (imageFilterMode === 'PACKAGE_NO_IMAGE') {
-            const hasPackage = c.GoiLocal === 'YES' || c.GoiImport === 'YES';
-            if (!hasPackage || hasImage) return false;
-        }
+                if (imageFilterMode === 'HAS_IMAGE' && !hasImage) return false;
+                if (imageFilterMode === 'NO_IMAGE' && hasImage) return false;
+                if (imageFilterMode === 'PACKAGE_NO_IMAGE') {
+                    const hasPackage = c.GoiLocal === 'YES' || c.GoiImport === 'YES';
+                    if (!hasPackage || hasImage) return false;
+                }
 
-        return true;
-    })
-    .sort((a, b) => {
-        const saleA = salesByCode.get(String(a.CustomerCode || '').trim()) ?? 0;
-        const saleB = salesByCode.get(String(b.CustomerCode || '').trim()) ?? 0;
-        return saleB - saleA; // Sale Q1 giảm dần
-    });
+                return true;
+            })
+            .sort((a, b) => {
+                const saleA = salesByCode.get(String(a.CustomerCode || '').trim()) ?? 0;
+                const saleB = salesByCode.get(String(b.CustomerCode || '').trim()) ?? 0;
+                return saleB - saleA;
+            });
+    }, [myCustomers, searchTerm, selectedRepFilter, imageFilterMode, salesByCode]);
 
     type CustomerStage = DummyBoxKanbanStage;
 

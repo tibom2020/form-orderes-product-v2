@@ -239,32 +239,51 @@ const App: React.FC = () => {
   const hasLoadedGppComments = useRef(false);
   const hasLoadedForecast = useRef(false);
 
-  /** Phase 1: Dữ liệu cốt lõi cho Order/Rebate/Landing. `skipDangMucKh`: đã tải DANH_MUC_KH ở bước trước (post-login). */
+  /** Phase 1: Dữ liệu cốt lõi. DummyBox paint ngay khi sheet trả về — không chờ REBATE_BM / DANGKYTBQ2. */
   const loadCriticalData = async (options?: { skipDangMucKh?: boolean }) => {
     setDummyBoxSheetsReady(false);
     try {
       let rebates: Rebate[];
       let sales: SalesRecord[];
       let marketing: MarketingRecord[];
+      let marketingBs: MarketingRecord[] = [];
+
+      const fetchDummyBoxBs = () =>
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs").catch((e) => {
+          console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
+          return [] as MarketingRecord[];
+        });
+
       if (options?.skipDangMucKh) {
-        [rebates, sales, marketing] = await Promise.all([
+        [rebates, sales, marketing, marketingBs] = await Promise.all([
           fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
           fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
           fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+          fetchDummyBoxBs(),
         ]);
       } else {
-        const [customers, r, s, m] = await Promise.all([
+        const [customers, r, s, m, mBs] = await Promise.all([
           fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
           fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
           fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
           fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+          fetchDummyBoxBs(),
         ]);
         setAllCustomers(customers);
         rebates = r;
         sales = s;
         marketing = m;
+        marketingBs = mBs || [];
       }
+
+      // Paint DummyBox + sales ngay — không block bởi sheet phụ
       setAllRebates(rebates);
+      setAllSalesRecords(sales);
+      setMarketingData(marketing);
+      setMarketingDataBs(marketingBs || []);
+      setDummyBoxSheetsReady(true);
+
+      // Sheet phụ: chạy nền, cập nhật state khi xong
       try {
         const bm = await fetchDataFromSheet<RebateBm>(GOOGLE_SCRIPT_URL, "REBATE_BM");
         setAllRebatesBm(bm || []);
@@ -272,9 +291,7 @@ const App: React.FC = () => {
         console.warn("REBATE_BM sheet load failed (optional sheet)", e);
         setAllRebatesBm([]);
       }
-      // Ghép thêm dữ liệu đăng ký TB Q2 từ sheet DANGKYTBQ2 vào từng SalesRecord theo mã KH.
-      // Nếu sheet thiếu/không có dữ liệu thì vẫn giữ nguyên sales như cũ.
-      let salesWithTbQ2 = sales;
+
       try {
         const dangKyRows = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, "DANGKYTBQ2");
         const byCode = new Map<string, string>();
@@ -295,10 +312,12 @@ const App: React.FC = () => {
           ).trim();
           byCode.set(code, finalStoreTypeQ2);
         });
-        salesWithTbQ2 = (sales || []).map((s) => ({
-          ...s,
-          FinalStoreTypeQ2: byCode.get(String(s.CustomerCode || '').trim()) || '',
-        }));
+        setAllSalesRecords(
+          (sales || []).map((s) => ({
+            ...s,
+            FinalStoreTypeQ2: byCode.get(String(s.CustomerCode || '').trim()) || '',
+          }))
+        );
         const normalizedDk = (dangKyRows || []).map(r =>
           normalizeDangKyTbq2Row(r as Record<string, unknown>)
         );
@@ -307,15 +326,7 @@ const App: React.FC = () => {
         console.warn("DANGKYTBQ2 sheet load failed (optional sheet)", e);
         setPsCustomerByCode(new Map());
       }
-      setAllSalesRecords(salesWithTbQ2);
-      setMarketingData(marketing);
-      try {
-        const marketingBs = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs");
-        setMarketingDataBs(marketingBs || []);
-      } catch (e) {
-        console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
-        setMarketingDataBs([]);
-      }
+
       try {
         const [ostelinGoi, pharmatonViGoi] = await Promise.all([
           fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, OSTELIN_60V_GOI_SHEET),
@@ -330,7 +341,6 @@ const App: React.FC = () => {
       }
     } catch (e) {
       console.error("Critical data load failed", e);
-    } finally {
       setDummyBoxSheetsReady(true);
     }
   };
@@ -454,9 +464,9 @@ const App: React.FC = () => {
     if (viewMode === 'rebate') loadGppComments();
   }, [viewMode]);
 
-  /** Lazy load Forecast khi mở Landing / Dashboard / Forecast */
+  /** Lazy load Forecast khi mở Dashboard / Forecast (không tải khi vào DummyBox) */
   useEffect(() => {
-    if (viewMode === 'landing' || viewMode === 'landingBsT3' || viewMode === 'dashboard' || viewMode === 'forecast') loadForecastData();
+    if (viewMode === 'dashboard' || viewMode === 'forecast') loadForecastData();
   }, [viewMode]);
 
   /** Reload toàn bộ dữ liệu (dùng cho nút Tải lại ở Forecast/Landing) */
@@ -468,7 +478,7 @@ const App: React.FC = () => {
     await loadSecondaryData();
     if (viewMode === 'dashboard' || viewMode === 'purchaseHistory') await loadPurchaseHistory();
     if (viewMode === 'rebate') await loadGppComments();
-    if (['landing', 'dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
+    if (['dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
   };
 
   // Khi đăng nhập: nếu tab Sale KH PS bật — sang PS + báo cáo; nếu tạm ẩn — ở Đặt hàng

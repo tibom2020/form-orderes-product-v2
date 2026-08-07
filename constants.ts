@@ -42,9 +42,9 @@ export const PRODUCTS: Product[] = [
   { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
   { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
   { id: 5, name: 'MAGNE-B6 Tab B/50 (bao film)', minOrder: '1', minOrderQuantity: 1, price: 101706, type: 'Local', basePrice: 96863, image: 'https://i.postimg.cc/0NnR1znv/magie-B6.webp' },
-  { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
-  { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
-  { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
+  { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, promotion: 'Mua 2h ck 4.43%, 3h ck 4.93% (đến 31.08.2026)', image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
+  { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 31.08.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
+  { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 31.08.2026)', image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
   { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 40567, type: 'Local', basePrice: 38635, nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
   { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, requireApproval: true, promotion: 'Mua 3h ck 2.96% (đến 31.08.2026)', image: 'https://i.postimg.cc/htwjVtX6/ENTERO-2B-(1).webp' },
   { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 305130, type: 'Import', basePrice: 290600, nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
@@ -929,7 +929,7 @@ export const ACEMUC_GROUP_IDS: readonly number[] = [2, 3, 4];
 export const ACEMUC_PROMO_SUSPENDED = true;
 
 /** Tạm ngưng CK tháng Telfast (HD + BD + 30MG) — đổi false để bật lại */
-export const TELFAST_PROMO_SUSPENDED = true;
+export const TELFAST_PROMO_SUSPENDED = false;
 
 // CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
 export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml

@@ -107,6 +107,10 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                             </span>
                         </div>
                         <div>
+                            <span className="text-slate-500 dark:text-slate-400">+ Doanh số đã đặt:</span>{' '}
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.totalQuarterDS)}</span>
+                        </div>
+                        <div>
                             <span className="text-slate-500 dark:text-slate-400">+ TODO:</span>{' '}
                             <span className={`font-bold ${data.isQuarterPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {data.quarterTodo > 0 ? '+' : ''}{formatCurrency(data.quarterTodo)}

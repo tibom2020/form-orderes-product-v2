@@ -228,6 +228,8 @@ interface TierTableRowClasses {
   ftq2Hover: string;
   saleT7: string;
   saleT7Hover: string;
+  saleT8: string;
+  saleT8Hover: string;
   saleTn: string;
   saleTnHover: string;
 }
@@ -245,6 +247,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-emerald-200/60 dark:group-hover/row:bg-emerald-800/35',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-50/75 dark:bg-orange-950/22',
     saleTnHover: 'group-hover/row:bg-orange-100/70 dark:group-hover/row:bg-orange-900/28',
   },
@@ -260,6 +264,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-slate-300/55 dark:group-hover/row:bg-slate-700/40',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-50/75 dark:bg-orange-950/22',
     saleTnHover: 'group-hover/row:bg-orange-100/70 dark:group-hover/row:bg-orange-900/28',
   },
@@ -275,6 +281,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-neutral-300/55 dark:group-hover/row:bg-neutral-700/38',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-50/75 dark:bg-orange-950/22',
     saleTnHover: 'group-hover/row:bg-orange-100/70 dark:group-hover/row:bg-orange-900/28',
   },
@@ -290,6 +298,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-amber-200/65 dark:group-hover/row:bg-amber-800/32',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-100/70 dark:bg-orange-950/28',
     saleTnHover: 'group-hover/row:bg-orange-200/65 dark:group-hover/row:bg-orange-900/32',
   },
@@ -305,6 +315,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-slate-300/55 dark:group-hover/row:bg-slate-700/35',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-50/75 dark:bg-orange-950/22',
     saleTnHover: 'group-hover/row:bg-orange-100/70 dark:group-hover/row:bg-orange-900/28',
   },
@@ -320,6 +332,8 @@ const TIER_TABLE_ROW: Record<StoreTierId, TierTableRowClasses> = {
     ftq2Hover: 'group-hover/row:bg-amber-300/50 dark:group-hover/row:bg-amber-800/30',
     saleT7: 'bg-red-50/85 dark:bg-red-950/28',
     saleT7Hover: 'group-hover/row:bg-red-100/80 dark:group-hover/row:bg-red-900/32',
+    saleT8: 'bg-rose-50/85 dark:bg-rose-950/28',
+    saleT8Hover: 'group-hover/row:bg-rose-100/80 dark:group-hover/row:bg-rose-900/32',
     saleTn: 'bg-orange-100/72 dark:bg-orange-950/26',
     saleTnHover: 'group-hover/row:bg-orange-200/68 dark:group-hover/row:bg-orange-900/30',
   },
@@ -337,6 +351,8 @@ const NEUTRAL_TABLE_ROW: TierTableRowClasses = {
   ftq2Hover: 'group-hover/row:bg-violet-100/60 dark:group-hover/row:bg-violet-900/32',
   saleT7: 'bg-red-50/75 dark:bg-red-950/28',
   saleT7Hover: 'group-hover/row:bg-red-100/72 dark:group-hover/row:bg-red-900/32',
+  saleT8: 'bg-rose-50/75 dark:bg-rose-950/28',
+  saleT8Hover: 'group-hover/row:bg-rose-100/72 dark:group-hover/row:bg-rose-900/32',
   saleTn: 'bg-orange-50/55 dark:bg-orange-950/22',
   saleTnHover: 'group-hover/row:bg-orange-100/58 dark:group-hover/row:bg-orange-900/28',
 };
@@ -402,32 +418,44 @@ function sumSaleQ3VndFromRows(rows: DangKyTbq2RowView[]): number {
   return sum;
 }
 
-/** Sale T7: ưu tiên cột sheet DANGKYTBQ2; nếu trống → DOANH_SO (MustWin+Other) theo CustomerCode hoặc Code BM */
-function displaySaleT7Cell(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): string {
+/** Sale T7: chỉ lấy từ cột sheet DANGKYTBQ2 */
+function displaySaleT7Cell(row: DangKyTbq2RowView): string {
   if (row.saleT7.trim()) return formatSheetSaleQ1Display(row.saleT7);
+  return '—';
+}
+
+/** Giá trị Sale T7 (VNĐ) — chỉ từ sheet */
+function resolveSaleT7Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT7);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
+/** Sale T8: ưu tiên cột sheet DANGKYTBQ2; nếu trống → DOANH_SO (MustWin+Other) theo CustomerCode hoặc Code BM */
+function displaySaleT8Cell(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): string {
+  if (row.saleT8.trim()) return formatSheetSaleQ1Display(row.saleT8);
   let v = lookupSaleT4Vnd(doanhSoMap, row.customerCode);
   if (v == null && row.codeBm.trim()) v = lookupSaleT4Vnd(doanhSoMap, row.codeBm);
   if (v != null && Number.isFinite(v)) return formatCurrency(Math.round(v));
   return '—';
 }
 
-/** Giá trị Sale T7 (VNĐ) — cùng nguồn với ô hiển thị */
-function resolveSaleT7Vnd(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): number {
-  const fromSheet = parseSheetSalesAmount(row.saleT7);
+/** Giá trị Sale T8 (VNĐ) — cùng nguồn với ô hiển thị */
+function resolveSaleT8Vnd(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT8);
   if (fromSheet != null && Number.isFinite(fromSheet)) return fromSheet;
   let v = lookupSaleT4Vnd(doanhSoMap, row.customerCode);
   if (v == null && row.codeBm.trim()) v = lookupSaleT4Vnd(doanhSoMap, row.codeBm);
   return v != null && Number.isFinite(v) ? v : 0;
 }
 
-/** Todo T7: ĐẠT nếu Sale T7 ≥ target tháng theo FinalStoreTypeQ2 */
-function todoT7Status(
+/** Todo T8: ĐẠT nếu Sale T8 ≥ target tháng theo FinalStoreTypeQ2 */
+function todoT8Status(
   row: DangKyTbq2RowView,
   doanhSoMap: Map<string, number>
 ): { reached: boolean; target: number; actual: number } | null {
   const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
   if (!cfg || cfg.minMonthlySales <= 0) return null;
-  const actual = resolveSaleT7Vnd(row, doanhSoMap);
+  const actual = resolveSaleT8Vnd(row, doanhSoMap);
   return {
     target: cfg.minMonthlySales,
     actual,
@@ -580,15 +608,17 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     };
   }, [myRows, isAdmin]);
 
-  /** Tháng hiện tại theo dõi doanh số (T7/T5/T6) */
-  const currentMonthKey = useMemo<'saleT7' | 'saleT5' | 'saleT6'>(() => {
+  /** Tháng hiện tại theo dõi doanh số (T8/T7/T5/T6) */
+  const currentMonthKey = useMemo<'saleT8' | 'saleT7' | 'saleT5' | 'saleT6'>(() => {
     const m = new Date().getMonth() + 1;
+    if (m === 8) return 'saleT8';
     if (m === 7) return 'saleT7';
     if (m === 5) return 'saleT5';
     if (m === 6) return 'saleT6';
-    return 'saleT7';
+    return 'saleT8';
   }, []);
   const currentMonthLabel = useMemo(() => {
+    if (currentMonthKey === 'saleT8') return 'T8';
     if (currentMonthKey === 'saleT7') return 'T7';
     if (currentMonthKey === 'saleT5') return 'T5';
     return 'T6';
@@ -609,15 +639,20 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       m[cfg.label].count += 1;
       const n = parseSheetSalesAmount(r.saleQ3);
       if (n != null && Number.isFinite(n)) m[cfg.label].saleQ3Sum += n;
-      const monthVal = parseSheetSalesAmount(r[currentMonthKey]);
-      if (monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
+      const monthVal =
+        currentMonthKey === 'saleT8'
+          ? resolveSaleT8Vnd(r, saleT4ByCustomerCode)
+          : currentMonthKey === 'saleT7'
+            ? resolveSaleT7Vnd(r)
+            : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+      if (Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
         m[cfg.label].achievedMonth += 1;
       }
       if (isGoiPs25Yes(r.goiPs25)) m[cfg.label].ps25DaDat += 1;
       else if (isGoiPs25No(r.goiPs25)) m[cfg.label].ps25ChuaDat += 1;
     });
     return m;
-  }, [myRows, currentMonthKey]);
+  }, [myRows, currentMonthKey, saleT4ByCustomerCode]);
 
   /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
   const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
@@ -723,8 +758,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         if (!isRegisteredRow(r)) return false;
         const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
         if (!cfg) return false;
-        const monthVal = parseSheetSalesAmount(r[currentMonthKey]);
-        const achieved = monthVal != null && Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
+        const monthVal =
+          currentMonthKey === 'saleT8'
+            ? resolveSaleT8Vnd(r, saleT4ByCustomerCode)
+            : currentMonthKey === 'saleT7'
+              ? resolveSaleT7Vnd(r)
+              : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+        const achieved = Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
         return monthAchievementFilter === 'achieved' ? achieved : !achieved;
       });
     }
@@ -741,14 +781,14 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter(r => {
-      const saleT7DoanhSo = lookupSaleT4Vnd(saleT4ByCustomerCode, r.customerCode);
-      const saleT7DoanhSoBm =
+      const saleT8DoanhSo = lookupSaleT4Vnd(saleT4ByCustomerCode, r.customerCode);
+      const saleT8DoanhSoBm =
         r.codeBm.trim() ? lookupSaleT4Vnd(saleT4ByCustomerCode, r.codeBm) : undefined;
-      const saleT7Fallback = saleT7DoanhSo ?? saleT7DoanhSoBm;
-      const saleT7Search =
-        (saleT7Fallback != null && Number.isFinite(saleT7Fallback)
-          ? `${saleT7Fallback} ${formatCurrency(Math.round(saleT7Fallback))} `.toLowerCase()
-          : '') + r.saleT7.toLowerCase();
+      const saleT8Fallback = saleT8DoanhSo ?? saleT8DoanhSoBm;
+      const saleT8Search =
+        (saleT8Fallback != null && Number.isFinite(saleT8Fallback)
+          ? `${saleT8Fallback} ${formatCurrency(Math.round(saleT8Fallback))} `.toLowerCase()
+          : '') + r.saleT8.toLowerCase();
       const hay = (s: string) => s.toLowerCase().includes(q);
       return (
         hay(r.customerName) ||
@@ -767,8 +807,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         hay(r.frontCounter) ||
         hay(r.countertop) ||
         hay(r.saleT7) ||
+        hay(r.saleT8) ||
         hay(r.saleQ3) ||
-        saleT7Search.includes(q)
+        saleT8Search.includes(q)
       );
     });
   }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, goiPs25Filter, currentMonthKey, saleT4ByCustomerCode]);
@@ -894,8 +935,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedSalesRecord]);
 
-  /** CustomerCode … Sale Q3 + Todo T7; có thể ẩn Rep */
-  const tableColSpan = (hideRepColumn ? 17 : 18) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+  /** CustomerCode … Sale Q3 + Sale T8 + Todo T8; có thể ẩn Rep */
+  const tableColSpan = (hideRepColumn ? 18 : 19) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -1243,8 +1284,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   <table
                     className={`tbq2-sticky-table w-full text-left text-xs ${
                       SHOW_PS_TABLE_COLUMNS
-                        ? 'min-w-[1850px] sm:min-w-[1960px]'
-                        : 'min-w-[950px] sm:min-w-[1050px]'
+                        ? 'min-w-[1920px] sm:min-w-[2030px]'
+                        : 'min-w-[1020px] sm:min-w-[1120px]'
                     }`}
                   >
                     <thead>
@@ -1358,13 +1399,19 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-red-100/90 dark:bg-red-950/45 border-r border-red-200/60 dark:border-red-900/45 text-red-950 dark:text-red-100"
-                          title="Ưu tiên cột Sale T7 trên DANGKYTBQ2; ô trống thì MustWin+Other (DOANH_SO)"
+                          title="Cột Sale T7 trên DANGKYTBQ2"
                         >
                           Sale T7
                         </th>
                         <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-rose-100/90 dark:bg-rose-950/45 border-r border-rose-200/60 dark:border-rose-900/45 text-rose-950 dark:text-rose-100"
+                          title="Ưu tiên cột Sale T8 trên DANGKYTBQ2; ô trống thì MustWin+Other (DOANH_SO)"
+                        >
+                          Sale T8
+                        </th>
+                        <th
                           className="py-3 px-2 text-center min-w-[5.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
-                          title="ĐẠT nếu Sale T7 ≥ target tháng theo FinalStoreTypeQ2 (Flagship/Platinum/Gold: 15tr · Silver: 6tr · Bronze: 3tr)"
+                          title="ĐẠT nếu Sale T8 ≥ target tháng theo FinalStoreTypeQ2 (Flagship/Platinum/Gold: 15tr · Silver: 6tr · Bronze: 3tr)"
                         >
                           Todo
                         </th>
@@ -1553,16 +1600,22 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               })()}
                               <td
                                 className={`${base} text-right font-semibold tabular-nums ${tc.saleT7} ${tc.saleT7Hover} text-red-900 dark:text-red-100`}
+                                title="Từ sheet DANGKYTBQ2"
+                              >
+                                {displaySaleT7Cell(row)}
+                              </td>
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums ${tc.saleT8} ${tc.saleT8Hover} text-rose-900 dark:text-rose-100`}
                                 title={
-                                  row.saleT7.trim()
+                                  row.saleT8.trim()
                                     ? 'Từ sheet DANGKYTBQ2'
                                     : 'Bổ sung từ DOANH_SO (MustWin+Other) khi ô sheet trống'
                                 }
                               >
-                                {displaySaleT7Cell(row, saleT4ByCustomerCode)}
+                                {displaySaleT8Cell(row, saleT4ByCustomerCode)}
                               </td>
                               {(() => {
-                                const todo = todoT7Status(row, saleT4ByCustomerCode);
+                                const todo = todoT8Status(row, saleT4ByCustomerCode);
                                 if (!todo) {
                                   return (
                                     <td className="py-2.5 px-2 text-[10px] text-center bg-violet-50/40 dark:bg-violet-950/20 text-slate-400 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
@@ -1580,8 +1633,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                     }`}
                                     title={
                                       todo.reached
-                                        ? `Đã đạt target ${formatCurrency(todo.target)}`
-                                        : `Còn thiếu ${formatCurrency(thieu)} (target ${formatCurrency(todo.target)})`
+                                        ? `Đã đạt target ${formatCurrency(todo.target)} (Sale T8)`
+                                        : `Còn thiếu ${formatCurrency(thieu)} (target ${formatCurrency(todo.target)} · Sale T8)`
                                     }
                                   >
                                     {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}

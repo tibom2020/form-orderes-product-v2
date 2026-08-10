@@ -14,7 +14,7 @@ export const ADMIN_CODE = '20043741';
 export const SHEET_DANGKYTBQ2 = 'DANGKYTBQ2';
 /** Sheet quản lý ngân sách Rep: Rep | Budget | Đã Sử dụng | Còn lại */
 export const SHEET_REP_BUDGET_TBQ2 = 'REP_BUDGET_TBQ2';
-/** Doanh số KH: MustWin, Other — fallback Sale T7 khi ô sheet trống ở tab PS 2026 */
+/** Doanh số KH: MustWin, Other — fallback Sale T8 khi ô sheet trống ở tab PS 2026 */
 export const SHEET_DOANH_SO = 'DOANH_SO';
 /** Sheet E-consent T7 — import từ Econsent T7.xlsx (Sheet1) */
 export const SHEET_ECONSENT_T7 = 'ECONSENT_T7';

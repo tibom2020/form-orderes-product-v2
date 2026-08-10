@@ -329,6 +329,7 @@ export const buildCustomerSalesNoticePayload = (
         message += `\n🎯 DOANH SỐ TRƯNG BÀY Q2:\n`;
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
         message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
+        message += `+ Doanh số đã đặt: ${formatCurrency(totalQuarterDS)}\n`;
         message += `+ TODO: ${quarterTodo > 0 ? '+' : ''}${formatCurrency(quarterTodo)}\n`;
     }
 

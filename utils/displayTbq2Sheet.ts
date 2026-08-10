@@ -24,6 +24,8 @@ export interface DangKyTbq2RowView {
   countertop: string;
   /** Doanh số tháng 7 theo sheet DANGKYTBQ2 */
   saleT7: string;
+  /** Doanh số tháng 8 theo sheet DANGKYTBQ2 */
+  saleT8: string;
   saleT5: string;
   saleT6: string;
   saleQ3: string;
@@ -143,6 +145,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
       'COUNTERTOP',
     ]),
     saleT7: pickCell(row, ['Sale T7', 'sale T7', 'SaleT7', 'T7 Sale', 'Sale T4', 'SaleT4', 'T4 Sale']),
+    saleT8: pickCell(row, ['Sale T8', 'sale T8', 'SaleT8', 'T8 Sale']),
     saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
     saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
     saleQ3: pickCell(row, [
@@ -212,7 +215,8 @@ export function repMatchesEmployee(repCell: string, employeeName: string): boole
 }
 
 /**
- * Sheet DOANH_SO: MustWin + Other (VNĐ) — fallback khi ô Sale T7 trống. Map theo CustomerCode và CodeBuyMed (lower).
+ * Sheet DOANH_SO: MustWin + Other (VNĐ) — fallback khi ô Sale T8 (tháng hiện tại) trống.
+ * Map theo CustomerCode và CodeBuyMed (lower).
  */
 export function buildSaleT4ByCustomerCodeMap(rows: Record<string, unknown>[]): Map<string, number> {
   const map = new Map<string, number>();

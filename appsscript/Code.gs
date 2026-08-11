@@ -10,7 +10,7 @@ var GEMINI_API_KEY = "";
 var GEMINI_MODEL = "gemini-2.5-flash";
 
 var clean = function(text) { return text ? text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; };
-var formatCurrency = function(amount) { return new Intl.NumberFormat('vi-VN').format(amount); };
+var formatCurrency = function(amount) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(amount) || 0)); };
 
 /** GET ?sheet=TEN_SHEET — trả JSON mảng object (hàng 1 = header). Cần deploy Web App: Anyone. */
 function doGet(e) {
@@ -889,14 +889,14 @@ function sendTelegramNotification(data) {
     var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm:ss");
     var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
 
-    // Ưu tiên giá trên hóa đơn (CK+VAT) từ app; fallback giá list nếu thiếu
+    // Ưu tiên giá trên hóa đơn (CK+VAT) từ app; fallback giá list nếu thiếu — luôn làm tròn VNĐ
     if (invoiceLines && Array.isArray(invoiceLines) && invoiceLines.length > 0) {
       for (var i = 0; i < invoiceLines.length; i++) {
         var line = invoiceLines[i];
         var qty = Number(line.quantity) || 0;
-        var unitInvoice = Number(line.unitInvoice) || 0;
-        var lineTotal = Number(line.lineTotal);
-        if (isNaN(lineTotal) || lineTotal <= 0) lineTotal = unitInvoice * qty;
+        var unitInvoice = Math.round(Number(line.unitInvoice) || 0);
+        var lineTotal = Math.round(Number(line.lineTotal));
+        if (isNaN(lineTotal) || lineTotal <= 0) lineTotal = Math.round(unitInvoice * qty);
         totalAmount += lineTotal;
         itemsText += "▪️ <b>" + clean(line.name) + "</b>\n" +
           "   SL: " + qty + " x " + formatCurrency(unitInvoice) + " = " + formatCurrency(lineTotal) + "\n";
@@ -904,16 +904,17 @@ function sendTelegramNotification(data) {
     } else {
       for (var j = 0; j < items.length; j++) {
         var item = items[j];
-        var itemTotal = (item.price || 0) * (item.quantity || 0);
+        var unitPrice = Math.round(Number(item.price) || 0);
+        var itemTotal = Math.round(unitPrice * (Number(item.quantity) || 0));
         totalAmount += itemTotal;
         itemsText += "▪️ <b>" + clean(item.name) + "</b>\n" +
-          "   SL: " + item.quantity + " x " + formatCurrency(item.price) + " = " + formatCurrency(itemTotal) + "\n";
+          "   SL: " + item.quantity + " x " + formatCurrency(unitPrice) + " = " + formatCurrency(itemTotal) + "\n";
       }
     }
 
-    // Tổng cộng trên hóa đơn (VAT) — khớp Cart / panel submit
-    var displayTotal = Number(data.finalAmount);
-    if (isNaN(displayTotal) || displayTotal < 0) displayTotal = totalAmount;
+    // Tổng cộng trên hóa đơn (VAT) — khớp Cart / panel submit, làm tròn hết phần thập phân
+    var displayTotal = Math.round(Number(data.finalAmount));
+    if (isNaN(displayTotal) || displayTotal < 0) displayTotal = Math.round(totalAmount);
 
     var message = "📦 <b>ĐƠN HÀNG MỚI (App 2026)</b>\n" +
       "--------------------------------\n" +

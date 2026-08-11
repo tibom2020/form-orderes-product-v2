@@ -314,5 +314,5 @@ export function computeCartFinalAmountWithVat(input: CartFinalAmountInput): numb
   const orderDeductions =
     (input.onTopLiXiDiscount ?? 0) + (input.calciPlusPack476Discount ?? 0);
 
-  return Math.max(0, totalWithVatBeforeOrderDeductions - orderDeductions);
+  return Math.round(Math.max(0, totalWithVatBeforeOrderDeductions - orderDeductions));
 }

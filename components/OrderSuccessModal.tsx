@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Order } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { CheckCircleIcon } from './icons';
+import { buildOrderInvoiceLines } from '../utils/orderInvoicePrices';
 
 interface OrderSuccessModalProps {
     order: Order;
@@ -11,6 +12,8 @@ interface OrderSuccessModalProps {
 }
 
 const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ order, employeeName, onClose }) => {
+    const invoiceRows = useMemo(() => buildOrderInvoiceLines(order), [order]);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 transform transition-all scale-100">
@@ -36,14 +39,22 @@ const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ order, employeeNa
                         <p className="text-sm text-slate-500 dark:text-slate-400 font-mono mt-0.5">{order.customerCode}</p>
                     </div>
 
-                    {/* Items Summary */}
+                    {/* Items Summary — giá trên hóa đơn (CK+VAT) */}
                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 mb-4 max-h-[150px] overflow-y-auto custom-scrollbar">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-2 tracking-wide">
+                            Giá trên hóa đơn (CK + VAT)
+                        </p>
                         <ul className="space-y-2">
-                            {order.items.map((item, index) => (
-                                <li key={index} className="flex justify-between text-xs text-slate-700 dark:text-slate-300">
-                                    <span className="font-medium line-clamp-1 flex-1 mr-2">• {item.name}</span>
-                                    <span className="whitespace-nowrap font-bold">
-                                        {item.quantity} x {formatCurrency(item.price)}
+                            {invoiceRows.map(({ id, name, quantity, unitInvoice, lineTotal }, index) => (
+                                <li key={`${id}-${index}`} className="flex justify-between text-xs text-slate-700 dark:text-slate-300 gap-2">
+                                    <span className="font-medium line-clamp-1 flex-1 min-w-0">• {name}</span>
+                                    <span className="whitespace-nowrap font-bold text-right shrink-0">
+                                        <span className="text-slate-500 dark:text-slate-400 font-semibold">
+                                            {quantity} × {formatCurrency(unitInvoice)}
+                                        </span>
+                                        <span className="block text-opella-green dark:text-sky-400">
+                                            {formatCurrency(lineTotal)}
+                                        </span>
                                     </span>
                                 </li>
                             ))}
@@ -52,7 +63,10 @@ const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ order, employeeNa
 
                     {/* Total */}
                     <div className="flex justify-between items-end mb-6">
-                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">TỔNG CỘNG:</span>
+                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                            TỔNG CỘNG
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase">(VAT · hóa đơn)</span>
+                        </span>
                         <span className="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">
                             {formatCurrency(order.finalAmount)}
                         </span>

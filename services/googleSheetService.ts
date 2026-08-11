@@ -42,6 +42,17 @@ interface OrderPayload {
   pharmatonViPackages?: number;
   pharmatonViAmount?: number;
   pharmatonViQuantity?: number;
+  pharmatonViDot2?: boolean;
+  /** Tổng thanh toán hóa đơn (VAT) — dùng Telegram/n8n */
+  finalAmount?: number;
+  /** Dòng giá hóa đơn (CK+VAT) — dùng Telegram/n8n */
+  invoiceLines?: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    unitInvoice: number;
+    lineTotal: number;
+  }>;
   isPsOnInvoice25?: boolean;
   isChc2606Ontop?: boolean;
   psSuatApplied?: number;

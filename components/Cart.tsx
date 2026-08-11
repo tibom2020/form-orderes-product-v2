@@ -40,10 +40,7 @@ import {
     ACEMUC_GROUP_IDS,
     OSTELIN_60V_GOI_MIN_QTY,
     OSTELIN_60V_PRODUCT_ID,
-    PHARMATON_VI_GOI_MIN_QTY,
-    PHARMATON_VI_GOI_PRODUCT_ID,
     CART_OSTELIN_TANG_CAN_VISIBLE,
-    CART_PHARMATON_VI_GOI_VISIBLE,
 } from '../constants';
 import {
     OSTELIN_TANG_CAN_NOTE,
@@ -52,7 +49,6 @@ import {
 } from '../utils/ostelin60v';
 import {
     noteHasPharmatonViGoi,
-    PHARMATON_VI_GOI_NOTE,
     stripPharmatonViGoiNoteLines,
 } from '../utils/pharmatonVi';
 
@@ -258,8 +254,8 @@ interface CartProps {
     dummyBoxListGate?: DummyBoxListGate;
     /** Sheet OSTELIN_60V_GOI: KH đã gói Đợt 2 — khóa tick tặng máy đo HA */
     ostelin60VTangCanLocked?: boolean;
-    /** Sheet PHARMATON_VI_GOI: KH đã mua gói PMT Vỉ — khóa tick */
-    pharmatonViGoiLocked?: boolean;
+    /** KH đã mua gói PMT Vỉ Đợt 1 — hiện cảnh báo dưới Loại PS */
+    pharmatonViGoiDot1Purchased?: boolean;
     /** Perfect Store — CK On Invoice 25% */
     psGate?: PsCustomerGate | null;
     isPsOnInvoice25?: boolean;
@@ -284,7 +280,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onViewCustomerDetail,
         dummyBoxListGate,
         ostelin60VTangCanLocked = false,
-        pharmatonViGoiLocked = false,
+        pharmatonViGoiDot1Purchased = false,
         psGate = null,
         isPsOnInvoice25 = false,
         onIsPsOnInvoice25Change,
@@ -361,13 +357,6 @@ const Cart: React.FC<CartProps> = (props) => {
     const ostelin60vEligible =
         (ostelin60vInCart?.quantity ?? 0) >= OSTELIN_60V_GOI_MIN_QTY;
 
-    const pharmatonViInCart = useMemo(
-        () => items.find(i => i.id === PHARMATON_VI_GOI_PRODUCT_ID),
-        [items]
-    );
-    const pharmatonViEligible =
-        (pharmatonViInCart?.quantity ?? 0) >= PHARMATON_VI_GOI_MIN_QTY;
-
     const toggleOstelinTangCanNote = () => {
         if (ostelin60VTangCanLocked) return;
         if (hasOstelinTangCanNote) {
@@ -394,29 +383,9 @@ const Cart: React.FC<CartProps> = (props) => {
         onNoteChange(stripOstelinTangCanNoteLines(noteLinesTrimmed).join('\n'));
     }, [hasOstelinTangCanNote, noteLinesTrimmed, onNoteChange]);
 
-    const togglePharmatonViGoiNote = () => {
-        if (pharmatonViGoiLocked) return;
-        if (hasPharmatonViGoiNote) {
-            onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
-        } else {
-            onNoteChange(note.trim() ? `${note.trim()}\n${PHARMATON_VI_GOI_NOTE}` : PHARMATON_VI_GOI_NOTE);
-        }
-    };
-
+    /** Đợt 2 không dùng tick — gỡ dòng ghi chú gói PMT cũ nếu còn sót */
     useEffect(() => {
-        if (!pharmatonViGoiLocked) return;
         if (!hasPharmatonViGoiNote) return;
-        onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
-    }, [pharmatonViGoiLocked, hasPharmatonViGoiNote, noteLinesTrimmed, onNoteChange]);
-
-    useEffect(() => {
-        if (pharmatonViGoiLocked || !hasPharmatonViGoiNote) return;
-        if (pharmatonViEligible) return;
-        onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
-    }, [pharmatonViGoiLocked, hasPharmatonViGoiNote, pharmatonViEligible, noteLinesTrimmed, onNoteChange]);
-
-    useEffect(() => {
-        if (CART_PHARMATON_VI_GOI_VISIBLE || !hasPharmatonViGoiNote) return;
         onNoteChange(stripPharmatonViGoiNoteLines(noteLinesTrimmed).join('\n'));
     }, [hasPharmatonViGoiNote, noteLinesTrimmed, onNoteChange]);
 
@@ -786,6 +755,37 @@ const Cart: React.FC<CartProps> = (props) => {
                                     {psTierLabel}
                                 </span>
                             </div>
+                            <div
+                                className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 border ${
+                                    pharmatonViGoiDot1Purchased
+                                        ? 'bg-red-50 dark:bg-red-950/45 border-red-300 dark:border-red-700'
+                                        : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700'
+                                }`}
+                                title={
+                                    pharmatonViGoiDot1Purchased
+                                        ? 'KH đã mua gói PHARMATON VỈ Đợt 1 (sheet PHARMATON_VI_GOI)'
+                                        : 'KH chưa có dòng gói PMT Vỉ Đợt 1 trên sheet'
+                                }
+                            >
+                                <span
+                                    className={`font-bold text-[10px] ${
+                                        pharmatonViGoiDot1Purchased
+                                            ? 'text-red-800 dark:text-red-200'
+                                            : 'text-slate-600 dark:text-slate-300'
+                                    }`}
+                                >
+                                    PMT Vỉ Đợt 1
+                                </span>
+                                <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
+                                        pharmatonViGoiDot1Purchased
+                                            ? 'bg-red-600 text-white dark:bg-red-500'
+                                            : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                    }`}
+                                >
+                                    {pharmatonViGoiDot1Purchased ? 'ĐÃ MUA' : 'CHƯA MUA'}
+                                </span>
+                            </div>
                             <div className="grid grid-cols-1 gap-1.5 text-[10px]">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
                                     <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T7 đã đặt</span>
@@ -1150,42 +1150,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                 }
                             >
                                 Ostelin tặng máy đo HA{ostelin60VTangCanLocked ? ' · Đã gói Đợt 2' : ''}
-                            </label>
-                        </div>
-                        )}
-                        {CART_PHARMATON_VI_GOI_VISIBLE && (
-                        <div className="flex items-center space-x-1.5">
-                            <input
-                                type="checkbox"
-                                id="pharmaton-vi-goi"
-                                checked={hasPharmatonViGoiNote}
-                                onChange={togglePharmatonViGoiNote}
-                                disabled={pharmatonViGoiLocked || !pharmatonViEligible}
-                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                    pharmatonViGoiLocked
-                                        ? 'KH đã mua gói PHARMATON VỈ (5h) — không chọn lại'
-                                        : !pharmatonViEligible
-                                            ? `Cần ≥ ${PHARMATON_VI_GOI_MIN_QTY} hộp PHARMATON VITALITY BLISTER trong giỏ`
-                                            : undefined
-                                }
-                            />
-                            <label
-                                htmlFor="pharmaton-vi-goi"
-                                className={`text-[11px] font-bold ${
-                                    pharmatonViGoiLocked || !pharmatonViEligible
-                                        ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
-                                        : 'cursor-pointer text-slate-600 dark:text-slate-300'
-                                }`}
-                                title={
-                                    pharmatonViGoiLocked
-                                        ? 'KH đã ghi nhận gói PMT Vỉ 5h trên sheet'
-                                        : !pharmatonViEligible
-                                            ? `Cần ≥ ${PHARMATON_VI_GOI_MIN_QTY} hộp (id ${PHARMATON_VI_GOI_PRODUCT_ID})`
-                                            : 'Gói PHARMATON VITALITY BLISTER 5h — ghi sheet khi tick và gửi đơn'
-                                }
-                            >
-                                Gói PHARMATON VỈ{pharmatonViGoiLocked ? ' · Đã gói' : ''}
                             </label>
                         </div>
                         )}

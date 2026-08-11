@@ -251,10 +251,12 @@ export interface Order {
   ostelin60VQuantity?: number;
   /** Đợt 2 Ostelin 60V (từ 20/05/2026) — ghi cột Dot_2 trên sheet */
   ostelin60VDot2?: boolean;
-  /** Pharmaton Vitality Blister: ≥5 hộp + tick gói → ghi sheet PHARMATON_VI_GOI */
+  /** Pharmaton Vitality Blister Đợt 2: ≥1 hộp khi submit → ghi sheet PHARMATON_VI_GOI */
   pharmatonViPackages?: number;
   pharmatonViAmount?: number;
   pharmatonViQuantity?: number;
+  /** Đợt 2 PHARMATON VỈ (từ 11/08/2026) — ghi cột Dot_2 trên sheet */
+  pharmatonViDot2?: boolean;
 }
 
 // Interface cho lịch sử mua hàng từ Sheet HISTORY_GG và HISTORY_BM (merged)

@@ -980,12 +980,17 @@ export const PACK_476_PRODUCT_IDS: readonly number[] = [1, 30];
 // Nhóm OSTELIN: KM theo tổng basePrice nhóm (dùng cho getDiscountPercent)
 export const OSTELIN_GROUP_IDS: readonly number[] = [22, 23, 24, 25];
 
-/** Theo dõi gói PHARMATON VITALITY BLISTER (5h) — khớp sheet Google & Apps Script */
+/** Theo dõi gói PHARMATON VITALITY BLISTER — khớp sheet Google & Apps Script */
 export const PHARMATON_VI_GOI_PRODUCT_ID = 31;
+/** Đợt 1 (cũ): gói ≥5 hộp + tick — giữ để đọc dữ liệu lịch sử */
 export const PHARMATON_VI_GOI_MIN_QTY = 5;
+/** Đợt 2: mua ≥ 1 hộp là ghi nhận (không cần tick) */
+export const PHARMATON_VI_DOT2_MIN_QTY = 1;
 export const PHARMATON_VI_GOI_SHEET = 'PHARMATON_VI_GOI';
-/** Ẩn checkbox Gói PHARMATON VỈ trên Cart — đổi true để hiện lại */
+/** Ẩn checkbox Gói PHARMATON VỈ trên Cart (Đợt 2 auto ghi) */
 export const CART_PHARMATON_VI_GOI_VISIBLE = false;
+/** Cột sheet Apps Script: Dot_2 = "Đợt 2" cho đơn từ 11/08/2026 */
+export const PHARMATON_VI_DOT2_SHEET_COL = 'Dot_2';
 
 /** Theo dõi gói Ostelin 60V (5h ck 21.67%) — khớp sheet Google & Apps Script */
 export const OSTELIN_60V_PRODUCT_ID = 25;

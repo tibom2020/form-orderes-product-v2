@@ -375,16 +375,19 @@ function handleOrder(data, ss, output) {
       ]);
     }
 
-    // --- PHARMATON VITALITY BLISTER: Gói 5h (tick "Gói PHARMATON VỈ") ---
+    // --- PHARMATON VITALITY BLISTER Đợt 2: ≥1 hộp tự ghi (cột Dot_2 = Đợt 2) ---
     var pharmatonViPackages = Number(data.pharmatonViPackages) || 0;
     var pharmatonViAmount = Number(data.pharmatonViAmount) || 0;
     if (pharmatonViPackages > 0 && pharmatonViAmount >= 0) {
       var sheetPharmatonVi = ss.getSheetByName("PHARMATON_VI_GOI");
       if (!sheetPharmatonVi) {
         sheetPharmatonVi = ss.insertSheet("PHARMATON_VI_GOI");
-        sheetPharmatonVi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien"]);
-        sheetPharmatonVi.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#e8daf5");
+        sheetPharmatonVi.appendRow(["Timestamp", "Rep", "CustomerCode", "CustomerName", "SL_hộp", "SL_goi", "Thanh_tien", "Dot_2"]);
+        sheetPharmatonVi.getRange(1, 1, 1, 8).setFontWeight("bold").setBackground("#e8daf5");
+      } else if (sheetPharmatonVi.getLastColumn() < 8) {
+        sheetPharmatonVi.getRange(1, 8).setValue("Dot_2").setFontWeight("bold").setBackground("#e8daf5");
       }
+      var pharmatonDot2Label = (data.pharmatonViDot2 === true || String(data.pharmatonViDot2).toLowerCase() === "true") ? "Đợt 2" : "";
       sheetPharmatonVi.appendRow([
         new Date(),
         data.employeeName || "",
@@ -392,7 +395,8 @@ function handleOrder(data, ss, output) {
         data.customerName || "",
         Number(data.pharmatonViQuantity) || 0,
         pharmatonViPackages,
-        pharmatonViAmount
+        pharmatonViAmount,
+        pharmatonDot2Label
       ]);
     }
 
@@ -877,19 +881,40 @@ function sendAdminNewsNotification(data) {
 
 function sendTelegramNotification(data) {
   try {
-    var items = data.items;
+    var items = data.items || [];
+    var invoiceLines = data.invoiceLines;
     var totalAmount = 0;
     var itemsText = "";
     var now = new Date();
     var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm:ss");
     var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
-    for (var i = 0; i < items.length; i++) {
-      var item = items[i];
-      var itemTotal = (item.price || 0) * (item.quantity || 0);
-      totalAmount += itemTotal;
-      itemsText += "▪️ <b>" + clean(item.name) + "</b>\n" +
-        "   SL: " + item.quantity + " x " + formatCurrency(item.price) + " = " + formatCurrency(itemTotal) + "\n";
+
+    // Ưu tiên giá trên hóa đơn (CK+VAT) từ app; fallback giá list nếu thiếu
+    if (invoiceLines && Array.isArray(invoiceLines) && invoiceLines.length > 0) {
+      for (var i = 0; i < invoiceLines.length; i++) {
+        var line = invoiceLines[i];
+        var qty = Number(line.quantity) || 0;
+        var unitInvoice = Number(line.unitInvoice) || 0;
+        var lineTotal = Number(line.lineTotal);
+        if (isNaN(lineTotal) || lineTotal <= 0) lineTotal = unitInvoice * qty;
+        totalAmount += lineTotal;
+        itemsText += "▪️ <b>" + clean(line.name) + "</b>\n" +
+          "   SL: " + qty + " x " + formatCurrency(unitInvoice) + " = " + formatCurrency(lineTotal) + "\n";
+      }
+    } else {
+      for (var j = 0; j < items.length; j++) {
+        var item = items[j];
+        var itemTotal = (item.price || 0) * (item.quantity || 0);
+        totalAmount += itemTotal;
+        itemsText += "▪️ <b>" + clean(item.name) + "</b>\n" +
+          "   SL: " + item.quantity + " x " + formatCurrency(item.price) + " = " + formatCurrency(itemTotal) + "\n";
+      }
     }
+
+    // Tổng cộng trên hóa đơn (VAT) — khớp Cart / panel submit
+    var displayTotal = Number(data.finalAmount);
+    if (isNaN(displayTotal) || displayTotal < 0) displayTotal = totalAmount;
+
     var message = "📦 <b>ĐƠN HÀNG MỚI (App 2026)</b>\n" +
       "--------------------------------\n" +
       "⏰ <b>Thời gian:</b> " + timeStr + " | " + dateStr + "\n" +
@@ -897,8 +922,10 @@ function sendTelegramNotification(data) {
       "🔢 <b>Mã KH:</b> " + clean(data.customerCode) + "\n" +
       "🧑💼 <b>NV:</b> " + clean(data.employeeName) + "\n";
     if (data.note) { message += "📝 <b>Ghi chú:</b> " + clean(data.note) + "\n"; }
-    message += "--------------------------------\n" + itemsText + "--------------------------------\n" +
-      "💰 <b>TỔNG CỘNG: " + formatCurrency(totalAmount) + " VNĐ</b>\n";
+    message += "--------------------------------\n" +
+      "<i>Giá trên hóa đơn (CK + VAT)</i>\n" +
+      itemsText + "--------------------------------\n" +
+      "💰 <b>TỔNG CỘNG: " + formatCurrency(displayTotal) + " VNĐ</b>\n";
     if (data.customerSummary) {
       message += "--------------------------------\n" + data.customerSummary + "\n";
     }
@@ -910,7 +937,13 @@ function sendTelegramNotification(data) {
     });
     UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
       method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "new_order", data: data, total_amount: totalAmount, full_message: message }),
+      payload: JSON.stringify({
+        event_type: "new_order",
+        data: data,
+        total_amount: displayTotal,
+        invoice_lines: invoiceLines || null,
+        full_message: message
+      }),
       muteHttpExceptions: true
     });
   } catch (e) { Logger.log("Lỗi sendTelegramNotification: " + e.toString()); }

@@ -4,9 +4,9 @@ import { formatCurrency } from '../utils/formatters';
 import { getDiscountPercent } from '../utils/calculations';
 import {
     PRODUCTS,
-    DUMMY_BOX_IMPORT_MIN_AMOUNT,
-    DUMMY_BOX_DISCOUNT,
+    DUMMY_BOX_PROMO_TIERS,
 } from '../constants';
+import { resolveDummyBoxPromoTier } from '../utils/dummyBoxEligibility';
 import { PlusIcon, MinusIcon } from './icons';
 
 // Thứ tự hiển thị gói Import (bao gồm các sản phẩm bổ sung)
@@ -81,8 +81,9 @@ const DummyBoxImportCalculator: React.FC<DummyBoxImportCalculatorProps> = () => 
         [rows]
     );
 
-    const eligible = tongDonSauCk >= DUMMY_BOX_IMPORT_MIN_AMOUNT;
-    const percentGiam = eligible && tongDonSauCk > 0 ? (DUMMY_BOX_DISCOUNT / tongDonSauCk) * 100 : 0;
+    const activeTier = useMemo(() => resolveDummyBoxPromoTier(tongDonSauCk), [tongDonSauCk]);
+    const discountAmount = activeTier?.discount ?? 0;
+    const percentGiam = discountAmount > 0 && tongDonSauCk > 0 ? (discountAmount / tongDonSauCk) * 100 : 0;
 
     const rowsWithFinal = useMemo(() => {
         return rows.map(r => {
@@ -201,19 +202,44 @@ const DummyBoxImportCalculator: React.FC<DummyBoxImportCalculatorProps> = () => 
                 </div>
                 <div className="flex justify-between items-center py-1">
                     <span className="font-bold">Giảm:</span>
-                    <span className="font-black">{eligible ? formatCurrency(DUMMY_BOX_DISCOUNT) : '0'}</span>
+                    <span className="font-black">{discountAmount > 0 ? formatCurrency(discountAmount) : '0'}</span>
                 </div>
                 <div className="flex justify-between items-center py-1">
                     <span className="font-bold">% giảm:</span>
-                    <span className="font-black">{eligible ? `${percentGiam.toFixed(1)}%` : '0%'}</span>
+                    <span className="font-black">{discountAmount > 0 ? `${percentGiam.toFixed(1)}%` : '0%'}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-t border-slate-200 dark:border-slate-600">
                     <span className="font-bold">Tổng đơn:</span>
                     <span className="font-black text-opella-green dark:text-opella-green text-lg">{formatCurrency(tongDon)}</span>
                 </div>
-                {!eligible && (
+                <div className="mt-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 space-y-1">
+                    <p className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wide">
+                        Mức CTKM DummyBox Import
+                    </p>
+                    {DUMMY_BOX_PROMO_TIERS.map((tier) => {
+                        const reached = tongDonSauCk >= tier.minAmount;
+                        const isActive = activeTier?.minAmount === tier.minAmount;
+                        return (
+                            <p
+                                key={tier.minAmount}
+                                className={`text-xs font-bold ${
+                                    isActive
+                                        ? 'text-blue-700 dark:text-blue-300'
+                                        : reached
+                                            ? 'text-slate-500 dark:text-slate-400'
+                                            : 'text-slate-400 dark:text-slate-500'
+                                }`}
+                            >
+                                {isActive ? '✓ ' : '· '}
+                                ≥ {formatCurrency(tier.minAmount)} → giảm {formatCurrency(tier.discount)}
+                                {isActive ? ' (đang áp)' : ''}
+                            </p>
+                        );
+                    })}
+                </div>
+                {!activeTier && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-2">
-                        ⚠️ Điều kiện: Tổng đơn sau CK ≥ 1.000.000 để được giảm 150.000
+                        ⚠️ Chưa đạt mức thấp nhất: tổng sau CK ≥ {formatCurrency(DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].minAmount)} để giảm {formatCurrency(DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].discount)}
                     </p>
                 )}
             </div>

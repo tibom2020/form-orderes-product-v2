@@ -947,6 +947,20 @@ export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;
 
+/**
+ * Các mức CTKM DummyBox (Local / Import giống nhau) — dùng modal tính toán.
+ * Chọn mức cao nhất mà tổng đơn sau CK đạt ngưỡng.
+ */
+export const DUMMY_BOX_PROMO_TIERS = [
+  { minAmount: 1_000_000, discount: 150_000, label: '1.000.000 → giảm 150.000' },
+  { minAmount: 500_000, discount: 75_000, label: '500.000 → giảm 75.000' },
+] as const;
+
+export type DummyBoxPromoTier = (typeof DUMMY_BOX_PROMO_TIERS)[number];
+
+/** Mức thấp nhất (500k) — dùng gợi ý điều kiện trên modal */
+export const DUMMY_BOX_TIER_MIN_AMOUNT = DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].minAmount;
+
 /** CTKM CHC2606-ONTOP — 15/06–30/06/2026, pool Local/Import riêng */
 /** Tạm ngưng — đổi false để bật lại CHC2606-ONTOP */
 export const CHC2606_ONTOP_SUSPENDED = true;

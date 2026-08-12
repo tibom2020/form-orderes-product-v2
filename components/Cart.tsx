@@ -293,23 +293,23 @@ const Cart: React.FC<CartProps> = (props) => {
         (currentSalesRecord?.FinalStoreTypeQ2?.trim() || '') ||
         '—';
 
-    /** Sale T7 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
+    /** Sale T8 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
     const psDisplayMetrics = useMemo(() => {
-        const fromSheet = psGate?.saleT7Vnd ?? 0;
+        const fromSheet = psGate?.saleT8Vnd ?? 0;
         const fromDoanhSo =
             (Number(currentSalesRecord?.MustWin) || 0) + (Number(currentSalesRecord?.Other) || 0);
-        const saleT7 = fromSheet > 0 ? fromSheet : fromDoanhSo;
+        const saleT8 = fromSheet > 0 ? fromSheet : fromDoanhSo;
         const tier =
             psGate?.tierConfig ||
             findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');
         const target = psGate?.targetTrungBay || tier?.minMonthlySales || 0;
         if (target <= 0) {
-            return { saleT7, target: 0, status: null as 'dat' | 'chua' | null };
+            return { saleT8, target: 0, status: null as 'dat' | 'chua' | null };
         }
         return {
-            saleT7,
+            saleT8,
             target,
-            status: (saleT7 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
+            status: (saleT8 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
         };
     }, [psGate, currentSalesRecord]);
     const psTotals = useMemo(() => {
@@ -788,10 +788,10 @@ const Cart: React.FC<CartProps> = (props) => {
                             </div>
                             <div className="grid grid-cols-1 gap-1.5 text-[10px]">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
-                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T7 đã đặt</span>
+                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T8 đã đặt</span>
                                     <span className="font-black tabular-nums text-red-700 dark:text-red-200">
-                                        {psDisplayMetrics.saleT7 > 0
-                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT7))
+                                        {psDisplayMetrics.saleT8 > 0
+                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT8))
                                             : '—'}
                                     </span>
                                 </div>

@@ -2,6 +2,8 @@ import type { CartItem } from '../types';
 import {
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
+    DUMMY_BOX_PROMO_TIERS,
+    type DummyBoxPromoTier,
     TELFAST_GROUP_IDS,
 } from '../constants';
 import { getDiscountPercent } from './calculations';
@@ -10,6 +12,15 @@ import { getDiscountPercent } from './calculations';
 const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
 /** Khớp `Cart.tsx` — DummyBoxImportCalculator */
 const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 18, 19, 20];
+
+/** Chọn mức DummyBox cao nhất đủ điều kiện theo tổng sau CK (modal tính toán) */
+export function resolveDummyBoxPromoTier(totalAfterDiscount: number): DummyBoxPromoTier | null {
+    const amount = Number(totalAfterDiscount) || 0;
+    for (const tier of DUMMY_BOX_PROMO_TIERS) {
+        if (amount >= tier.minAmount) return tier;
+    }
+    return null;
+}
 
 export function getDummyBoxEligibilityTotals(items: CartItem[]): {
     localTotalAfterDiscount: number;

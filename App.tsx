@@ -246,49 +246,36 @@ const App: React.FC = () => {
   const hasLoadedGppComments = useRef(false);
   const hasLoadedForecast = useRef(false);
 
-  /** Phase 1: Dữ liệu cốt lõi. DummyBox paint ngay khi sheet trả về — không chờ REBATE_BM / DANGKYTBQ2. */
+  /** Phase 1: DANH_MUC_KH (nếu cần) → DummyBox ưu tiên → rồi REBATE/DOANH_SO → sheet phụ. */
   const loadCriticalData = async (options?: { skipDangMucKh?: boolean }) => {
     setDummyBoxSheetsReady(false);
     try {
-      let rebates: Rebate[];
-      let sales: SalesRecord[];
-      let marketing: MarketingRecord[];
-      let marketingBs: MarketingRecord[] = [];
-
       const fetchDummyBoxBs = () =>
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs").catch((e) => {
           console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
           return [] as MarketingRecord[];
         });
 
-      if (options?.skipDangMucKh) {
-        [rebates, sales, marketing, marketingBs] = await Promise.all([
-          fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
-          fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
-          fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
-          fetchDummyBoxBs(),
-        ]);
-      } else {
-        const [customers, r, s, m, mBs] = await Promise.all([
-          fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH"),
-          fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
-          fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
-          fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
-          fetchDummyBoxBs(),
-        ]);
+      if (!options?.skipDangMucKh) {
+        const customers = await fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH");
         setAllCustomers(customers);
-        rebates = r;
-        sales = s;
-        marketing = m;
-        marketingBs = mBs || [];
       }
 
-      // Paint DummyBox + sales ngay — không block bởi sheet phụ
-      setAllRebates(rebates);
-      setAllSalesRecords(sales);
-      setMarketingData(marketing);
+      // Ưu tiên Dummy ngay sau danh sách KH — không chờ REBATE / DOANH_SO
+      const [marketing, marketingBs] = await Promise.all([
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+        fetchDummyBoxBs(),
+      ]);
+      setMarketingData(marketing || []);
       setMarketingDataBs(marketingBs || []);
       setDummyBoxSheetsReady(true);
+
+      const [rebates, sales] = await Promise.all([
+        fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
+        fetchDataFromSheet<SalesRecord>(GOOGLE_SCRIPT_URL, "DOANH_SO"),
+      ]);
+      setAllRebates(rebates);
+      setAllSalesRecords(sales);
 
       // Sheet phụ: chạy nền, cập nhật state khi xong
       try {
@@ -429,7 +416,7 @@ const App: React.FC = () => {
     }
   };
 
-  /** Sau đăng nhập: chỉ chặn UI để tải DANH_MUC_KH; rebate/doanh số/… tải nền (không kẹt màn hình). */
+  /** Sau đăng nhập: chặn UI tải DANH_MUC_KH; nền ưu tiên DummyBox rồi mới REBATE/DOANH_SO/… */
   useEffect(() => {
     if (!loggedInEmployee || !postLoginHydrating) return;
     let cancelled = false;

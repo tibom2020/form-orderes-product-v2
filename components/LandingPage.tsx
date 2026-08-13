@@ -9,7 +9,7 @@ import type { MarketingRecord, Employee, SalesRecord, Rebate } from '../types';
 import {
     CameraIcon, CloudArrowUpIcon, CheckCircleIcon, GiftIcon, UserGroupIcon,
     SearchIcon, RocketLaunchIcon, ExclamationCircleIcon, CartIcon,
-    DocumentTextIcon, ChartBarIcon, FunnelIcon, ClipboardDocumentListIcon
+    DocumentTextIcon, ChartBarIcon, FunnelIcon, ClipboardDocumentListIcon, ArrowsRotateIcon
 } from './icons';
 import DummyBoxCalculator from './DummyBoxCalculator';
 
@@ -19,7 +19,7 @@ interface LandingPageProps {
     marketingData: MarketingRecord[];
     salesRecords: SalesRecord[];
     rebates?: Rebate[];
-    onReloadData: () => void;
+    onReloadData: () => void | Promise<void>;
     onCustomerSelect: (code: string) => void;
     onUpdateRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
     showReportOnMount?: boolean;
@@ -65,6 +65,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     marketingData,
     salesRecords,
     rebates = [],
+    onReloadData,
     onCustomerSelect,
     onUpdateRecord,
     showReportOnMount = false,
@@ -81,6 +82,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [showConditionsModal, setShowConditionsModal] = useState(false);
     const [showCalculatorModal, setShowCalculatorModal] = useState(false);
     const [showRepTodoProcessingModal, setShowRepTodoProcessingModal] = useState(false);
+    const [isReloadingList, setIsReloadingList] = useState(false);
     const [imageFilterMode, setImageFilterMode] = useState<'ALL' | 'HAS_IMAGE' | 'NO_IMAGE' | 'PACKAGE_NO_IMAGE'>('ALL');
     // State lọc theo Rep
     const [selectedRepFilter, setSelectedRepFilter] = useState<string | null>(null);
@@ -100,6 +102,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const [localStatus, setLocalStatus] = useState<{ upHinh: string; upHinh2: string; goiLocal: string; goiImport: string } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleReloadDummyList = async () => {
+        if (isReloadingList) return;
+        setIsReloadingList(true);
+        try {
+            await Promise.resolve(onReloadData());
+        } catch (e) {
+            console.error('Reload DummyBox list failed', e);
+        } finally {
+            setIsReloadingList(false);
+        }
+    };
 
     // Khi mount với showReportOnMount (nhắc nhở KPI sau đăng nhập): mở báo cáo DummyBox
     useEffect(() => {
@@ -1012,6 +1026,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
                             <UserGroupIcon />
                         </div>
                         <span>Danh mục khách hàng ({filteredCustomers.length})</span>
+                        <button
+                            type="button"
+                            onClick={() => void handleReloadDummyList()}
+                            disabled={isReloadingList}
+                            className="ml-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide border border-opella-green/40 bg-opella-beige/60 hover:bg-opella-beige text-opella-green dark:bg-opella-green/20 dark:hover:bg-opella-green/30 dark:border-opella-green/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Ép tải lại danh sách DummyBox từ Google Sheet"
+                        >
+                            <span className={isReloadingList ? 'inline-block animate-spin' : 'inline-block'}>
+                                <ArrowsRotateIcon />
+                            </span>
+                            <span>{isReloadingList ? 'Đang tải…' : 'Làm mới'}</span>
+                        </button>
                         {selectedRepFilter && (
                             <button
                                 onClick={() => setSelectedRepFilter(null)}

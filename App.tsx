@@ -1258,22 +1258,33 @@ const App: React.FC = () => {
     [searchTerm, productTypeFilter]
   );
 
-  const handleMarketingDataReload = async () => {
+  /** Ép tải lại cả 2 sheet Dummy (Record + Bs) — dùng nút Làm mới trên tab Dummy */
+  const reloadDummyBoxLists = async () => {
+    setDummyBoxSheetsReady(false);
     try {
-      const marketing = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord");
-      setMarketingData(marketing);
+      const [marketing, marketingBs] = await Promise.all([
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs").catch((e) => {
+          console.warn("DummyBoxRecordBs reload failed (optional sheet)", e);
+          return [] as MarketingRecord[];
+        }),
+      ]);
+      setMarketingData(marketing || []);
+      setMarketingDataBs(marketingBs || []);
     } catch (e) {
-      console.error("Reload marketing failed", e);
+      console.error("Reload DummyBox lists failed", e);
+      throw e;
+    } finally {
+      setDummyBoxSheetsReady(true);
     }
   };
 
+  const handleMarketingDataReload = async () => {
+    await reloadDummyBoxLists();
+  };
+
   const handleMarketingDataBsReload = async () => {
-    try {
-      const marketing = await fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs");
-      setMarketingDataBs(marketing);
-    } catch (e) {
-      console.error("Reload marketing Bs failed", e);
-    }
+    await reloadDummyBoxLists();
   };
 
   const handleUpdateMarketingRecord = (customerCode: string, updates: Partial<MarketingRecord>) => {

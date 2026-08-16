@@ -35,6 +35,9 @@ import {
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
     DUMMY_BOX_DISCOUNT,
+    DUMMY_BOX_500_DISCOUNT,
+    DUMMY_BOX_500_MIN_AMOUNT,
+    DUMMY_BOX_500_SHEET,
     TELFAST_GROUP_IDS,
     OSTELIN_GROUP_IDS,
     ACEMUC_GROUP_IDS,
@@ -238,6 +241,10 @@ interface CartProps {
     onIsDummyBoxLocalChange?: (isChecked: boolean) => void;
     isDummyBoxImport?: boolean;
     onIsDummyBoxImportChange?: (isChecked: boolean) => void;
+    isDummyBoxLocal500?: boolean;
+    onIsDummyBoxLocal500Change?: (isChecked: boolean) => void;
+    isDummyBoxImport500?: boolean;
+    onIsDummyBoxImport500Change?: (isChecked: boolean) => void;
     isCalciPlusPack476?: boolean;
     onIsCalciPlusPack476Change?: (isChecked: boolean) => void;
     isChc2606Ontop?: boolean;
@@ -252,6 +259,8 @@ interface CartProps {
     onViewCustomerDetail?: (code: string) => void;
     /** Tra DummyBoxRecord (Bs-only không mở tick); GoiLocal/GoiImport gộp cả 2 sheet */
     dummyBoxListGate?: DummyBoxListGate;
+    /** Tra DummyBoxRecord_1 — gói DummyBox 500k / -75k */
+    dummyBox500ListGate?: DummyBoxListGate;
     /** Sheet OSTELIN_60V_GOI: KH đã gói Đợt 2 — khóa tick tặng máy đo HA */
     ostelin60VTangCanLocked?: boolean;
     /** KH đã mua gói PMT Vỉ Đợt 1 — hiện cảnh báo dưới Loại PS */
@@ -271,6 +280,7 @@ const Cart: React.FC<CartProps> = (props) => {
         note, onNoteChange, onUpdateQuantity, onRemoveItem,
         onClearCart, onSaveDraft, onSubmitOrder, isLoading, successMessage,
         isOnTopLiXi, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
+        isDummyBoxLocal500, onIsDummyBoxLocal500Change, isDummyBoxImport500, onIsDummyBoxImport500Change,
         isCalciPlusPack476, onIsCalciPlusPack476Change,
         isChc2606Ontop, onIsChc2606OntopChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
@@ -279,6 +289,7 @@ const Cart: React.FC<CartProps> = (props) => {
         onExportSales,
         onViewCustomerDetail,
         dummyBoxListGate,
+        dummyBox500ListGate,
         ostelin60VTangCanLocked = false,
         pharmatonViGoiDot1Purchased = false,
         psGate = null,
@@ -430,28 +441,86 @@ const Cart: React.FC<CartProps> = (props) => {
     const onTopLiXiDiscount = isPsOnInvoice25 ? 0 : isOnTopLiXi ? 250000 : 0;
 
     const dummyBoxEligibility = useMemo(() => getDummyBoxEligibilityTotals(items), [items]);
-    const { eligibleDummyBoxLocal, eligibleDummyBoxImport, localTotalAfterDiscount, importTotalAfterDiscount } =
-        dummyBoxEligibility;
+    const {
+        eligibleDummyBoxLocal,
+        eligibleDummyBoxImport,
+        eligibleDummyBoxLocal500,
+        eligibleDummyBoxImport500,
+        localTotalAfterDiscount,
+        importTotalAfterDiscount,
+    } = dummyBoxEligibility;
+
+    const program150Checked = !!isDummyBoxLocal || !!isDummyBoxImport;
+    const program500Checked = !!isDummyBoxLocal500 || !!isDummyBoxImport500;
 
     const dummyBoxLocalToggle = useMemo(
         () =>
             getDummyBoxToggleState(dummyBoxListGate, 'local', eligibleDummyBoxLocal, {
                 amountAfterDiscount: localTotalAfterDiscount,
+                mutexBlocked: program500Checked,
+                mutexTitle: 'Đã chọn DummyBox 500k — không kết hợp gói 1tr',
             }),
-        [dummyBoxListGate, eligibleDummyBoxLocal, localTotalAfterDiscount]
+        [dummyBoxListGate, eligibleDummyBoxLocal, localTotalAfterDiscount, program500Checked]
     );
     const dummyBoxImportToggle = useMemo(
         () =>
             getDummyBoxToggleState(dummyBoxListGate, 'import', eligibleDummyBoxImport, {
                 amountAfterDiscount: importTotalAfterDiscount,
+                mutexBlocked: program500Checked,
+                mutexTitle: 'Đã chọn DummyBox 500k — không kết hợp gói 1tr',
             }),
-        [dummyBoxListGate, eligibleDummyBoxImport, importTotalAfterDiscount]
+        [dummyBoxListGate, eligibleDummyBoxImport, importTotalAfterDiscount, program500Checked]
+    );
+    const dummyBoxLocal500Toggle = useMemo(
+        () =>
+            getDummyBoxToggleState(dummyBox500ListGate, 'local', eligibleDummyBoxLocal500, {
+                amountAfterDiscount: localTotalAfterDiscount,
+                minAmount: DUMMY_BOX_500_MIN_AMOUNT,
+                sheetLabel: DUMMY_BOX_500_SHEET,
+                needSuffix: ' — Cần ≥500k',
+                mutexBlocked: program150Checked,
+                mutexTitle: 'Đã chọn DummyBox 1tr — không kết hợp gói 500k',
+            }),
+        [dummyBox500ListGate, eligibleDummyBoxLocal500, localTotalAfterDiscount, program150Checked]
+    );
+    const dummyBoxImport500Toggle = useMemo(
+        () =>
+            getDummyBoxToggleState(dummyBox500ListGate, 'import', eligibleDummyBoxImport500, {
+                amountAfterDiscount: importTotalAfterDiscount,
+                minAmount: DUMMY_BOX_500_MIN_AMOUNT,
+                sheetLabel: DUMMY_BOX_500_SHEET,
+                needSuffix: ' — Cần ≥500k',
+                mutexBlocked: program150Checked,
+                mutexTitle: 'Đã chọn DummyBox 1tr — không kết hợp gói 500k',
+            }),
+        [dummyBox500ListGate, eligibleDummyBoxImport500, importTotalAfterDiscount, program150Checked]
     );
 
     const canToggleDummyBoxLocal = dummyBoxLocalToggle.canToggle;
     const canToggleDummyBoxImport = dummyBoxImportToggle.canToggle;
+    const canToggleDummyBoxLocal500 = dummyBoxLocal500Toggle.canToggle;
+    const canToggleDummyBoxImport500 = dummyBoxImport500Toggle.canToggle;
     const dummyBoxLocalLockedRegistered = dummyBoxListGate?.goiLocalRegistered === true;
     const dummyBoxImportLockedRegistered = dummyBoxListGate?.goiImportRegistered === true;
+    const dummyBoxLocal500LockedRegistered = dummyBox500ListGate?.goiLocalRegistered === true;
+    const dummyBoxImport500LockedRegistered = dummyBox500ListGate?.goiImportRegistered === true;
+
+    const applyDummyBoxLocal150 = canToggleDummyBoxLocal && !!isDummyBoxLocal;
+    const applyDummyBoxImport150 = canToggleDummyBoxImport && !!isDummyBoxImport;
+    const applyDummyBoxLocal500 = canToggleDummyBoxLocal500 && !!isDummyBoxLocal500;
+    const applyDummyBoxImport500 = canToggleDummyBoxImport500 && !!isDummyBoxImport500;
+    const applyDummyBoxLocal = applyDummyBoxLocal150 || applyDummyBoxLocal500;
+    const applyDummyBoxImport = applyDummyBoxImport150 || applyDummyBoxImport500;
+    const dummyBoxLocalDiscount = applyDummyBoxLocal150
+        ? DUMMY_BOX_DISCOUNT
+        : applyDummyBoxLocal500
+          ? DUMMY_BOX_500_DISCOUNT
+          : 0;
+    const dummyBoxImportDiscount = applyDummyBoxImport150
+        ? DUMMY_BOX_DISCOUNT
+        : applyDummyBoxImport500
+          ? DUMMY_BOX_500_DISCOUNT
+          : 0;
 
     useEffect(() => {
         if (dummyBoxListGate === undefined) return;
@@ -473,6 +542,45 @@ const Cart: React.FC<CartProps> = (props) => {
         isDummyBoxImport,
         onIsDummyBoxLocalChange,
         onIsDummyBoxImportChange,
+    ]);
+
+    useEffect(() => {
+        if (dummyBox500ListGate === undefined) return;
+        if (dummyBox500ListGate.pending) return;
+        const inList = dummyBox500ListGate.inList;
+        if (!inList && !dummyBoxLocal500LockedRegistered && isDummyBoxLocal500 && onIsDummyBoxLocal500Change) {
+            onIsDummyBoxLocal500Change(false);
+        }
+        if (!inList && !dummyBoxImport500LockedRegistered && isDummyBoxImport500 && onIsDummyBoxImport500Change) {
+            onIsDummyBoxImport500Change(false);
+        }
+        if (dummyBoxLocal500LockedRegistered && isDummyBoxLocal500 && onIsDummyBoxLocal500Change) {
+            onIsDummyBoxLocal500Change(false);
+        }
+        if (dummyBoxImport500LockedRegistered && isDummyBoxImport500 && onIsDummyBoxImport500Change) {
+            onIsDummyBoxImport500Change(false);
+        }
+    }, [
+        dummyBox500ListGate,
+        dummyBoxLocal500LockedRegistered,
+        dummyBoxImport500LockedRegistered,
+        isDummyBoxLocal500,
+        isDummyBoxImport500,
+        onIsDummyBoxLocal500Change,
+        onIsDummyBoxImport500Change,
+    ]);
+
+    useEffect(() => {
+        if (!program150Checked || !program500Checked) return;
+        if (isDummyBoxLocal500 && onIsDummyBoxLocal500Change) onIsDummyBoxLocal500Change(false);
+        if (isDummyBoxImport500 && onIsDummyBoxImport500Change) onIsDummyBoxImport500Change(false);
+    }, [
+        program150Checked,
+        program500Checked,
+        isDummyBoxLocal500,
+        isDummyBoxImport500,
+        onIsDummyBoxLocal500Change,
+        onIsDummyBoxImport500Change,
     ]);
 
     // CTKM gói 4.76% đã kết thúc: luôn tắt cờ để tránh đơn nháp cũ còn áp dụng.
@@ -506,16 +614,18 @@ const Cart: React.FC<CartProps> = (props) => {
     const { dummyLocalPercent, dummyImportPercent } = useMemo(
         () =>
             getCartDummyBoxPercents({
-                applyDummyBoxLocal: canToggleDummyBoxLocal && !!isDummyBoxLocal,
-                applyDummyBoxImport: canToggleDummyBoxImport && !!isDummyBoxImport,
+                applyDummyBoxLocal,
+                applyDummyBoxImport,
+                dummyBoxLocalDiscount,
+                dummyBoxImportDiscount,
                 dummyBoxLocalPoolExVat: localTotalAfterDiscount,
                 dummyBoxImportPoolExVat: importTotalAfterDiscount,
             }),
         [
-            canToggleDummyBoxLocal,
-            isDummyBoxLocal,
-            canToggleDummyBoxImport,
-            isDummyBoxImport,
+            applyDummyBoxLocal,
+            applyDummyBoxImport,
+            dummyBoxLocalDiscount,
+            dummyBoxImportDiscount,
             localTotalAfterDiscount,
             importTotalAfterDiscount,
         ]
@@ -631,8 +741,10 @@ const Cart: React.FC<CartProps> = (props) => {
                 items,
                 groupTotals: cartGroupTotals,
                 psTotals: psTotals ?? undefined,
-                applyDummyBoxLocal: canToggleDummyBoxLocal && !!isDummyBoxLocal,
-                applyDummyBoxImport: canToggleDummyBoxImport && !!isDummyBoxImport,
+                applyDummyBoxLocal,
+                applyDummyBoxImport,
+                dummyBoxLocalDiscount,
+                dummyBoxImportDiscount,
                 dummyBoxLocalPoolExVat: localTotalAfterDiscount,
                 dummyBoxImportPoolExVat: importTotalAfterDiscount,
                 ontopLocalPercent,
@@ -646,10 +758,10 @@ const Cart: React.FC<CartProps> = (props) => {
             items,
             cartGroupTotals,
             psTotals,
-            canToggleDummyBoxLocal,
-            isDummyBoxLocal,
-            canToggleDummyBoxImport,
-            isDummyBoxImport,
+            applyDummyBoxLocal,
+            applyDummyBoxImport,
+            dummyBoxLocalDiscount,
+            dummyBoxImportDiscount,
             localTotalAfterDiscount,
             importTotalAfterDiscount,
             ontopLocalPercent,
@@ -1078,6 +1190,22 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </label>
                             </div>
                         )}
+                        {onIsDummyBoxLocal500Change && (
+                            <div className="flex items-center space-x-1.5">
+                                <input type="checkbox" id="dummy-box-local-500" checked={!!isDummyBoxLocal500 && canToggleDummyBoxLocal500} onChange={(e) => onIsDummyBoxLocal500Change(e.target.checked)} disabled={!canToggleDummyBoxLocal500} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-local-500" className={`text-[11px] font-bold ${canToggleDummyBoxLocal500 ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxLocal500Toggle.title}>
+                                    DummyBox Local (-75k){dummyBoxLocal500LockedRegistered ? ' · Đã đặt' : dummyBoxLocal500Toggle.labelSuffix}
+                                </label>
+                            </div>
+                        )}
+                        {onIsDummyBoxImport500Change && (
+                            <div className="flex items-center space-x-1.5">
+                                <input type="checkbox" id="dummy-box-import-500" checked={!!isDummyBoxImport500 && canToggleDummyBoxImport500} onChange={(e) => onIsDummyBoxImport500Change(e.target.checked)} disabled={!canToggleDummyBoxImport500} className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed" />
+                                <label htmlFor="dummy-box-import-500" className={`text-[11px] font-bold ${canToggleDummyBoxImport500 ? 'cursor-pointer text-slate-600 dark:text-slate-300' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`} title={dummyBoxImport500Toggle.title}>
+                                    DummyBox Import (-75k){dummyBoxImport500LockedRegistered ? ' · Đã đặt' : dummyBoxImport500Toggle.labelSuffix}
+                                </label>
+                            </div>
+                        )}
                         {ontopPromoActive && !isPsOnInvoice25 && onIsChc2606OntopChange && (
                             <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center space-x-1.5">
@@ -1156,7 +1284,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || (isDummyBoxLocal && canToggleDummyBoxLocal) || (isDummyBoxImport && canToggleDummyBoxImport) || effectiveChc2606Ontop || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
+                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || applyDummyBoxLocal150 || applyDummyBoxImport150 || applyDummyBoxLocal500 || applyDummyBoxImport500 || effectiveChc2606Ontop || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isPsOnInvoice25 && psDiscountGross > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
@@ -1176,16 +1304,28 @@ const Cart: React.FC<CartProps> = (props) => {
                                     <span>-{formatCurrency(250000)}</span>
                                 </div>
                             )}
-                            {isDummyBoxLocal && canToggleDummyBoxLocal && (
+                            {applyDummyBoxLocal150 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- Trừ DummyBox Local:</span>
                                     <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
                                 </div>
                             )}
-                            {isDummyBoxImport && canToggleDummyBoxImport && (
+                            {applyDummyBoxImport150 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- Trừ DummyBox Import:</span>
                                     <span>-{formatCurrency(DUMMY_BOX_DISCOUNT)}</span>
+                                </div>
+                            )}
+                            {applyDummyBoxLocal500 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ DummyBox Local 500k:</span>
+                                    <span>-{formatCurrency(DUMMY_BOX_500_DISCOUNT)}</span>
+                                </div>
+                            )}
+                            {applyDummyBoxImport500 && (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
+                                    <span>- Trừ DummyBox Import 500k:</span>
+                                    <span>-{formatCurrency(DUMMY_BOX_500_DISCOUNT)}</span>
                                 </div>
                             )}
                             {effectiveChc2606Ontop && ontopAppliedTotals.discountLocal > 0 && (

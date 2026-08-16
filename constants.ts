@@ -947,13 +947,18 @@ export const DUMMY_BOX_IMPORT_MIN_AMOUNT = 1_000_000;
 
 export const DUMMY_BOX_DISCOUNT = 150_000;
 
+/** CTKM DummyBox 500k — sheet riêng DummyBoxRecord_1, giảm 75k */
+export const DUMMY_BOX_500_SHEET = 'DummyBoxRecord_1';
+export const DUMMY_BOX_500_DISCOUNT = 75_000;
+export const DUMMY_BOX_500_MIN_AMOUNT = 500_000;
+
 /**
  * Các mức CTKM DummyBox (Local / Import giống nhau) — dùng modal tính toán.
  * Chọn mức cao nhất mà tổng đơn sau CK đạt ngưỡng.
  */
 export const DUMMY_BOX_PROMO_TIERS = [
   { minAmount: 1_000_000, discount: 150_000, label: '1.000.000 → giảm 150.000' },
-  { minAmount: 500_000, discount: 75_000, label: '500.000 → giảm 75.000' },
+  { minAmount: DUMMY_BOX_500_MIN_AMOUNT, discount: DUMMY_BOX_500_DISCOUNT, label: '500.000 → giảm 75.000' },
 ] as const;
 
 export type DummyBoxPromoTier = (typeof DUMMY_BOX_PROMO_TIERS)[number];

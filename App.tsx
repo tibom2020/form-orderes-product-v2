@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, PHARMATON_VI_GOI_PRODUCT_ID, PHARMATON_VI_DOT2_MIN_QTY, PHARMATON_VI_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2 } from './constants';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, PHARMATON_VI_GOI_PRODUCT_ID, PHARMATON_VI_DOT2_MIN_QTY, PHARMATON_VI_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2, DUMMY_BOX_DISCOUNT, DUMMY_BOX_500_DISCOUNT, DUMMY_BOX_500_SHEET } from './constants';
 import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -102,7 +102,7 @@ function isRebatePaymentNoteLineForProgram(line: string, programId: string): boo
   return t === prefix || t.startsWith(`${prefix} -`) || t.startsWith(`${prefix}-`);
 }
 
-/** Tạm ẩn tab — đặt `true` để hiện lại: Báo giá & CTKM, Theo dõi AO, Sale KH PS, DS Quý 1 KH, Gói 4.76%, Active Acemuc/Ostelin, Gói Ostelin/PMT Vỉ */
+/** Tạm ẩn tab — đặt `true` để hiện lại */
 const SHOW_PRICE_LIST_TAB = false;
 const SHOW_AO_TRACKING_TAB = false;
 const SHOW_SALE_KH_PS_TAB = false;
@@ -112,11 +112,14 @@ const SHOW_OSTELIN_60V_TAB = false;
 /** Tab theo dõi gói PHARMATON VỈ (Đợt 2 từ 11/08/2026) */
 const SHOW_PHARMATON_VI_TAB = true;
 const SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB = false;
+const SHOW_ECONSENT_TAB = false;
+const SHOW_FORECAST_TAB = false;
+const SHOW_GIA_THAM_KHAO_TAB = false;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin' | 'econsent';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'landing500' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin' | 'econsent';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -131,6 +134,7 @@ const App: React.FC = () => {
   const [allPurchaseHistory, setAllPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [marketingDataBs, setMarketingDataBs] = useState<MarketingRecord[]>([]);
+  const [marketingData500, setMarketingData500] = useState<MarketingRecord[]>([]);
   /** True sau khi loadCriticalData hoàn tất phần DummyBox (kể cả mảng rỗng) */
   const [dummyBoxSheetsReady, setDummyBoxSheetsReady] = useState(false);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
@@ -154,6 +158,8 @@ const App: React.FC = () => {
   const [isOnTopLiXi, setIsOnTopLiXi] = useState(false);
   const [isDummyBoxLocal, setIsDummyBoxLocal] = useState(false);
   const [isDummyBoxImport, setIsDummyBoxImport] = useState(false);
+  const [isDummyBoxLocal500, setIsDummyBoxLocal500] = useState(false);
+  const [isDummyBoxImport500, setIsDummyBoxImport500] = useState(false);
   const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
   const [isChc2606Ontop, setIsChc2606Ontop] = useState(false);
   const [isPsOnInvoice25, setIsPsOnInvoice25] = useState(false);
@@ -255,6 +261,11 @@ const App: React.FC = () => {
           console.warn("DummyBoxRecordBs sheet load failed (optional sheet)", e);
           return [] as MarketingRecord[];
         });
+      const fetchDummyBox500 = () =>
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, DUMMY_BOX_500_SHEET).catch((e) => {
+          console.warn("DummyBoxRecord_1 sheet load failed (optional sheet)", e);
+          return [] as MarketingRecord[];
+        });
 
       if (!options?.skipDangMucKh) {
         const customers = await fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH");
@@ -262,12 +273,14 @@ const App: React.FC = () => {
       }
 
       // Ưu tiên Dummy ngay sau danh sách KH — không chờ REBATE / DOANH_SO
-      const [marketing, marketingBs] = await Promise.all([
+      const [marketing, marketingBs, marketing500] = await Promise.all([
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDummyBoxBs(),
+        fetchDummyBox500(),
       ]);
       setMarketingData(marketing || []);
       setMarketingDataBs(marketingBs || []);
+      setMarketingData500(marketing500 || []);
       setDummyBoxSheetsReady(true);
 
       const [rebates, sales] = await Promise.all([
@@ -500,6 +513,9 @@ const App: React.FC = () => {
     if (!SHOW_OSTELIN_60V_TAB && viewMode === 'ostelin60v') setViewMode('order');
     if (!SHOW_PHARMATON_VI_TAB && viewMode === 'pharmatonVi') setViewMode('order');
     if (!SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && viewMode === 'repActiveAcemucOstelin') setViewMode('order');
+    if (!SHOW_ECONSENT_TAB && viewMode === 'econsent') setViewMode('order');
+    if (!SHOW_FORECAST_TAB && viewMode === 'forecast') setViewMode('order');
+    if (!SHOW_GIA_THAM_KHAO_TAB && viewMode === 'giaThamKhao') setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -526,6 +542,8 @@ const App: React.FC = () => {
     setIsOnTopLiXi(false);
     setIsDummyBoxLocal(false);
     setIsDummyBoxImport(false);
+    setIsDummyBoxLocal500(false);
+    setIsDummyBoxImport500(false);
     setIsCalciPlusPack476(false);
     setIsChc2606Ontop(false);
     setIsPsOnInvoice25(false);
@@ -580,10 +598,42 @@ const App: React.FC = () => {
   const handleDummyBoxLocalToggle = (checked: boolean) => {
     setIsDummyBoxLocal(checked);
     toggleNoteLine('DummyBox Local -150k', checked);
+    if (checked) {
+      setIsDummyBoxLocal500(false);
+      setIsDummyBoxImport500(false);
+      toggleNoteLine('DummyBox Local -75k', false);
+      toggleNoteLine('DummyBox Import -75k', false);
+    }
   };
   const handleDummyBoxImportToggle = (checked: boolean) => {
     setIsDummyBoxImport(checked);
     toggleNoteLine('DummyBox Import -150k', checked);
+    if (checked) {
+      setIsDummyBoxLocal500(false);
+      setIsDummyBoxImport500(false);
+      toggleNoteLine('DummyBox Local -75k', false);
+      toggleNoteLine('DummyBox Import -75k', false);
+    }
+  };
+  const handleDummyBoxLocal500Toggle = (checked: boolean) => {
+    setIsDummyBoxLocal500(checked);
+    toggleNoteLine('DummyBox Local -75k', checked);
+    if (checked) {
+      setIsDummyBoxLocal(false);
+      setIsDummyBoxImport(false);
+      toggleNoteLine('DummyBox Local -150k', false);
+      toggleNoteLine('DummyBox Import -150k', false);
+    }
+  };
+  const handleDummyBoxImport500Toggle = (checked: boolean) => {
+    setIsDummyBoxImport500(checked);
+    toggleNoteLine('DummyBox Import -75k', checked);
+    if (checked) {
+      setIsDummyBoxLocal(false);
+      setIsDummyBoxImport(false);
+      toggleNoteLine('DummyBox Local -150k', false);
+      toggleNoteLine('DummyBox Import -150k', false);
+    }
   };
 
   const handleChc2606OntopToggle = (checked: boolean) => {
@@ -840,6 +890,27 @@ const App: React.FC = () => {
     });
   }, [customerCode, mergedDummyBoxMarketingByCode, recordDummyBoxMarketingByCode, sentOrders, dummyBoxSheetsReady]);
 
+  const recordDummyBox500ByCode = useMemo(
+    () => mergeDummyBoxMarketingByCode(marketingData500),
+    [marketingData500]
+  );
+
+  const dummyBox500ListGate = useMemo(() => {
+    const code = normalizeCustomerCodeKey(customerCode);
+    const orderHadLocal = sentOrders.some(
+      o => normalizeCustomerCodeKey(o.customerCode) === code && !!o.isDummyBoxLocal500
+    );
+    const orderHadImport = sentOrders.some(
+      o => normalizeCustomerCodeKey(o.customerCode) === code && !!o.isDummyBoxImport500
+    );
+    return buildDummyBoxListGate(code, recordDummyBox500ByCode, {
+      recordMap: recordDummyBox500ByCode,
+      orderHadDummyBoxLocal: orderHadLocal,
+      orderHadDummyBoxImport: orderHadImport,
+      pending: !dummyBoxSheetsReady,
+    });
+  }, [customerCode, recordDummyBox500ByCode, sentOrders, dummyBoxSheetsReady]);
+
   /** KH đã gói Ostelin Đợt 2 — khóa tick tặng máy đo HA; KH chỉ Đợt 1 vẫn được tick Đợt 2 */
   const ostelin60VDot2PurchasedCodeSet = useMemo(
     () => buildOstelin60VDot2PurchasedCodeSet(ostelin60VGoiRows, sentOrders),
@@ -970,19 +1041,42 @@ const App: React.FC = () => {
       maxPayableFees
     );
 
-    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxAmountEligibility(cart);
+    const {
+      eligibleDummyBoxLocal,
+      eligibleDummyBoxImport,
+      eligibleDummyBoxLocal500,
+      eligibleDummyBoxImport500,
+    } = getDummyBoxAmountEligibility(cart);
+    const program500Checked = isDummyBoxLocal500 || isDummyBoxImport500;
+    const program150Checked = isDummyBoxLocal || isDummyBoxImport;
     const effectiveDummyBoxLocal =
+      !program500Checked &&
       !dummyBoxListGate.pending &&
       dummyBoxListGate.inList &&
       eligibleDummyBoxLocal &&
       !dummyBoxListGate.goiLocalRegistered &&
       isDummyBoxLocal;
     const effectiveDummyBoxImport =
+      !program500Checked &&
       !dummyBoxListGate.pending &&
       dummyBoxListGate.inList &&
       eligibleDummyBoxImport &&
       !dummyBoxListGate.goiImportRegistered &&
       isDummyBoxImport;
+    const effectiveDummyBoxLocal500 =
+      !program150Checked &&
+      !dummyBox500ListGate.pending &&
+      dummyBox500ListGate.inList &&
+      eligibleDummyBoxLocal500 &&
+      !dummyBox500ListGate.goiLocalRegistered &&
+      isDummyBoxLocal500;
+    const effectiveDummyBoxImport500 =
+      !program150Checked &&
+      !dummyBox500ListGate.pending &&
+      dummyBox500ListGate.inList &&
+      eligibleDummyBoxImport500 &&
+      !dummyBox500ListGate.goiImportRegistered &&
+      isDummyBoxImport500;
     const { localTotalAfterDiscount, importTotalAfterDiscount } = getDummyBoxEligibilityTotals(cart);
 
     const ontopPreviewForOrder = calcChc2606OntopTotals(cart, groupTotals, false);
@@ -994,12 +1088,27 @@ const App: React.FC = () => {
     const ontopLocalPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.localPercent : 0;
     const ontopImportPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.importPercent : 0;
 
+    const applyDummyBoxLocal = effectiveDummyBoxLocal || effectiveDummyBoxLocal500;
+    const applyDummyBoxImport = effectiveDummyBoxImport || effectiveDummyBoxImport500;
+    const dummyBoxLocalDiscount = effectiveDummyBoxLocal
+      ? DUMMY_BOX_DISCOUNT
+      : effectiveDummyBoxLocal500
+        ? DUMMY_BOX_500_DISCOUNT
+        : 0;
+    const dummyBoxImportDiscount = effectiveDummyBoxImport
+      ? DUMMY_BOX_DISCOUNT
+      : effectiveDummyBoxImport500
+        ? DUMMY_BOX_500_DISCOUNT
+        : 0;
+
     const cartVatInput = {
       items: cart,
       groupTotals,
       psTotals: psTotalsForOrder ?? undefined,
-      applyDummyBoxLocal: effectiveDummyBoxLocal,
-      applyDummyBoxImport: effectiveDummyBoxImport,
+      applyDummyBoxLocal,
+      applyDummyBoxImport,
+      dummyBoxLocalDiscount,
+      dummyBoxImportDiscount,
       dummyBoxLocalPoolExVat: localTotalAfterDiscount,
       dummyBoxImportPoolExVat: importTotalAfterDiscount,
       ontopLocalPercent,
@@ -1072,6 +1181,8 @@ const App: React.FC = () => {
         isDummyBox: effectiveDummyBoxLocal || effectiveDummyBoxImport,
         isDummyBoxLocal: effectiveDummyBoxLocal,
         isDummyBoxImport: effectiveDummyBoxImport,
+        isDummyBoxLocal500: effectiveDummyBoxLocal500,
+        isDummyBoxImport500: effectiveDummyBoxImport500,
         isCalciPlusPack476: false,
         isChc2606Ontop: false,
         isPsOnInvoice25: true,
@@ -1109,6 +1220,8 @@ const App: React.FC = () => {
       isDummyBox: effectiveDummyBoxLocal || effectiveDummyBoxImport,
       isDummyBoxLocal: effectiveDummyBoxLocal,
       isDummyBoxImport: effectiveDummyBoxImport,
+      isDummyBoxLocal500: effectiveDummyBoxLocal500,
+      isDummyBoxImport500: effectiveDummyBoxImport500,
       isCalciPlusPack476,
       isChc2606Ontop: effectiveChc2606Ontop,
       isPsOnInvoice25: false,
@@ -1183,13 +1296,15 @@ const App: React.FC = () => {
       setSentOrders([newSent, ...sentOrders]);
       saveOrders('sentOrders', [newSent, ...sentOrders]);
 
-      if (orderObj.isDummyBoxLocal || orderObj.isDummyBoxImport) {
+      if (orderObj.isDummyBoxLocal || orderObj.isDummyBoxImport || orderObj.isDummyBoxLocal500 || orderObj.isDummyBoxImport500) {
         void autoRegisterDummyBoxPackagesFromOrder({
           order: orderObj,
           marketingData,
           marketingDataBs,
+          marketingData500,
           onUpdateMarketingRecord: handleUpdateMarketingRecord,
           onUpdateMarketingRecordBs: handleUpdateMarketingRecordBs,
+          onUpdateMarketingRecord500: handleUpdateMarketingRecord500,
         });
       }
 
@@ -1227,6 +1342,8 @@ const App: React.FC = () => {
     setIsOnTopLiXi(d.isOnTopLiXi);
     setIsDummyBoxLocal(!!d.isDummyBoxLocal);
     setIsDummyBoxImport(!!d.isDummyBoxImport);
+    setIsDummyBoxLocal500(!!d.isDummyBoxLocal500);
+    setIsDummyBoxImport500(!!d.isDummyBoxImport500);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
     setIsChc2606Ontop(!!d.isChc2606Ontop);
     setIsPsOnInvoice25(psDraft);
@@ -1262,15 +1379,20 @@ const App: React.FC = () => {
   const reloadDummyBoxLists = async () => {
     setDummyBoxSheetsReady(false);
     try {
-      const [marketing, marketingBs] = await Promise.all([
+      const [marketing, marketingBs, marketing500] = await Promise.all([
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecordBs").catch((e) => {
           console.warn("DummyBoxRecordBs reload failed (optional sheet)", e);
           return [] as MarketingRecord[];
         }),
+        fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, DUMMY_BOX_500_SHEET).catch((e) => {
+          console.warn("DummyBoxRecord_1 reload failed (optional sheet)", e);
+          return [] as MarketingRecord[];
+        }),
       ]);
       setMarketingData(marketing || []);
       setMarketingDataBs(marketingBs || []);
+      setMarketingData500(marketing500 || []);
     } catch (e) {
       console.error("Reload DummyBox lists failed", e);
       throw e;
@@ -1287,6 +1409,10 @@ const App: React.FC = () => {
     await reloadDummyBoxLists();
   };
 
+  const handleMarketingData500Reload = async () => {
+    await reloadDummyBoxLists();
+  };
+
   const handleUpdateMarketingRecord = (customerCode: string, updates: Partial<MarketingRecord>) => {
     setMarketingData(prevData => prevData.map(record =>
       String(record.CustomerCode).trim() === String(customerCode).trim()
@@ -1297,6 +1423,14 @@ const App: React.FC = () => {
 
   const handleUpdateMarketingRecordBs = (customerCode: string, updates: Partial<MarketingRecord>) => {
     setMarketingDataBs(prevData => prevData.map(record =>
+      String(record.CustomerCode).trim() === String(customerCode).trim()
+        ? { ...record, ...updates }
+        : record
+    ));
+  };
+
+  const handleUpdateMarketingRecord500 = (customerCode: string, updates: Partial<MarketingRecord>) => {
+    setMarketingData500(prevData => prevData.map(record =>
       String(record.CustomerCode).trim() === String(customerCode).trim()
         ? { ...record, ...updates }
         : record
@@ -1540,6 +1674,7 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Đặt Hàng</span>
             <span className="sm:hidden">Đơn</span>
           </button>
+          {SHOW_ECONSENT_TAB && (
           <button
             onClick={() => setViewMode('econsent')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
@@ -1552,6 +1687,7 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">E-consent</span>
             <span className="sm:hidden">E-con</span>
           </button>
+          )}
           <button
             onClick={() => setViewMode('dashboard')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'dashboard' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
@@ -1590,6 +1726,18 @@ const App: React.FC = () => {
             <StarIcon />
             <span className="hidden sm:inline">Dummybox</span>
             <span className="sm:hidden">Dummy</span>
+          </button>
+          <button
+            onClick={() => setViewMode('landing500')}
+            className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+              viewMode === 'landing500'
+                ? 'text-amber-900 border-amber-600 bg-amber-100 dark:bg-amber-950/55 dark:text-amber-50 dark:border-amber-400'
+                : 'text-amber-800/90 border-transparent bg-amber-50/70 dark:bg-amber-950/30 dark:text-amber-200/90 hover:bg-amber-100/90 dark:hover:bg-amber-900/45'
+            }`}
+          >
+            <StarIcon />
+            <span className="hidden sm:inline">DummyBox - 500k</span>
+            <span className="sm:hidden">500k</span>
           </button>
           <button
             onClick={() => setViewMode('landingBsT3')}
@@ -1689,6 +1837,7 @@ const App: React.FC = () => {
               <span className="sm:hidden">4.76%</span>
             </button>
           )}
+          {SHOW_GIA_THAM_KHAO_TAB && (
           <button
             onClick={() => setViewMode('giaThamKhao')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
@@ -1701,6 +1850,7 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Giá tham khảo</span>
             <span className="sm:hidden">Giá TK</span>
           </button>
+          )}
           {SHOW_PRICE_LIST_TAB && (
             <button
               onClick={() => setViewMode('priceList')}
@@ -1711,6 +1861,7 @@ const App: React.FC = () => {
               <span className="sm:hidden">Báo giá</span>
             </button>
           )}
+          {SHOW_FORECAST_TAB && (
           <button
             onClick={() => setViewMode('forecast')}
             className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${viewMode === 'forecast' ? 'text-opella-green border-opella-green bg-opella-beige dark:bg-opella-green/20 dark:text-white dark:border-opella-green' : 'text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`}
@@ -1719,6 +1870,7 @@ const App: React.FC = () => {
             <span className="hidden sm:inline">Forecast T3</span>
             <span className="sm:hidden">FC T3</span>
           </button>
+          )}
           {loggedInEmployee?.code === ADMIN_CODE && (
             <button
               onClick={() => setViewMode('aiTuVan')}
@@ -1776,7 +1928,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'pharmatonVi', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'landingBsT3', 'landing500', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'pharmatonVi', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -1807,6 +1959,8 @@ const App: React.FC = () => {
                     isOnTopLiXi={isOnTopLiXi}
                     isDummyBoxLocal={isDummyBoxLocal} onIsDummyBoxLocalChange={handleDummyBoxLocalToggle}
                     isDummyBoxImport={isDummyBoxImport} onIsDummyBoxImportChange={handleDummyBoxImportToggle}
+                    isDummyBoxLocal500={isDummyBoxLocal500} onIsDummyBoxLocal500Change={handleDummyBoxLocal500Toggle}
+                    isDummyBoxImport500={isDummyBoxImport500} onIsDummyBoxImport500Change={handleDummyBoxImport500Toggle}
                     isCalciPlusPack476={isCalciPlusPack476} onIsCalciPlusPack476Change={handleCalciPlusPack476Toggle}
                     isChc2606Ontop={isChc2606Ontop} onIsChc2606OntopChange={handleChc2606OntopToggle}
                     activeDraftId={activeDraftId}
@@ -1818,6 +1972,7 @@ const App: React.FC = () => {
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}
+                    dummyBox500ListGate={dummyBox500ListGate}
                     ostelin60VTangCanLocked={ostelin60VTangCanLocked}
                     pharmatonViGoiDot1Purchased={pharmatonViGoiDot1Purchased}
                     psGate={psGate}
@@ -1938,7 +2093,21 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'forecast' && (
+        {viewMode === 'landing500' && (
+          <LandingPage
+            currentEmployee={loggedInEmployee!}
+            marketingData={marketingData500}
+            salesRecords={allSalesRecords}
+            rebates={allRebates}
+            onReloadData={handleMarketingData500Reload}
+            onCustomerSelect={handleCustomerSelectFromDashboard}
+            onUpdateRecord={handleUpdateMarketingRecord500}
+            sheetName={DUMMY_BOX_500_SHEET}
+            enableReportTools={true}
+          />
+        )}
+
+        {SHOW_FORECAST_TAB && viewMode === 'forecast' && (
           <ForecastTab
             salesData={allSalesRecords}
             forecastData={forecastData}
@@ -1949,7 +2118,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {viewMode === 'econsent' && loggedInEmployee && (
+        {SHOW_ECONSENT_TAB && viewMode === 'econsent' && loggedInEmployee && (
           <EconsentTab currentEmployee={loggedInEmployee} />
         )}
 
@@ -2006,7 +2175,7 @@ const App: React.FC = () => {
         {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
           <CalciPlusTab />
         )}
-        {viewMode === 'giaThamKhao' && (
+        {SHOW_GIA_THAM_KHAO_TAB && viewMode === 'giaThamKhao' && (
           <GiaThamKhaoTab products={PRODUCTS} />
         )}
 

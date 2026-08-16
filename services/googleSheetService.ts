@@ -33,6 +33,8 @@ interface OrderPayload {
   isDummyBox?: boolean;
   isDummyBoxLocal?: boolean;
   isDummyBoxImport?: boolean;
+  isDummyBoxLocal500?: boolean;
+  isDummyBoxImport500?: boolean;
   appliedRebates: string[];
   customerSummary?: string;
   ostelin60VPackages?: number;

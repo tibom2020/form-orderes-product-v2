@@ -1,9 +1,9 @@
-import { GOOGLE_SCRIPT_URL } from '../constants';
+import { GOOGLE_SCRIPT_URL, DUMMY_BOX_500_SHEET } from '../constants';
 import { submitMarketingData } from '../services/googleSheetService';
 import type { MarketingRecord, Order } from '../types';
 import { normalizeCustomerCodeKey } from './dummyBoxGate';
 
-export type DummyBoxSheetName = 'DummyBoxRecord' | 'DummyBoxRecordBs';
+export type DummyBoxSheetName = 'DummyBoxRecord' | 'DummyBoxRecordBs' | 'DummyBoxRecord_1';
 export type DummyBoxPackageType = 'GoiLocal' | 'GoiImport';
 export type DummyBoxPackageValue = 'YES' | 'NO';
 
@@ -27,19 +27,31 @@ export async function registerDummyBoxPackage(
 }
 
 export interface AutoRegisterDummyBoxPackagesOptions {
-  order: Pick<Order, 'customerCode' | 'isDummyBoxLocal' | 'isDummyBoxImport'>;
+  order: Pick<
+    Order,
+    'customerCode' | 'isDummyBoxLocal' | 'isDummyBoxImport' | 'isDummyBoxLocal500' | 'isDummyBoxImport500'
+  >;
   marketingData: MarketingRecord[];
   marketingDataBs: MarketingRecord[];
+  marketingData500?: MarketingRecord[];
   onUpdateMarketingRecord: (customerCode: string, updates: Partial<MarketingRecord>) => void;
   onUpdateMarketingRecordBs: (customerCode: string, updates: Partial<MarketingRecord>) => void;
+  onUpdateMarketingRecord500?: (customerCode: string, updates: Partial<MarketingRecord>) => void;
 }
 
 /** Sau gửi đơn thành công: ghi GoiLocal/GoiImport = YES lên sheet DummyBox tương ứng. */
 export async function autoRegisterDummyBoxPackagesFromOrder(
   options: AutoRegisterDummyBoxPackagesOptions
 ): Promise<void> {
-  const { order, marketingData, marketingDataBs, onUpdateMarketingRecord, onUpdateMarketingRecordBs } =
-    options;
+  const {
+    order,
+    marketingData,
+    marketingDataBs,
+    marketingData500 = [],
+    onUpdateMarketingRecord,
+    onUpdateMarketingRecordBs,
+    onUpdateMarketingRecord500,
+  } = options;
 
   const code = normalizeCustomerCodeKey(order.customerCode);
   if (!code) return;
@@ -48,6 +60,9 @@ export async function autoRegisterDummyBoxPackagesFromOrder(
     (r) => normalizeCustomerCodeKey(r.CustomerCode) === code
   );
   const bsRec = marketingDataBs.find(
+    (r) => normalizeCustomerCodeKey(r.CustomerCode) === code
+  );
+  const rec500 = marketingData500.find(
     (r) => normalizeCustomerCodeKey(r.CustomerCode) === code
   );
 
@@ -72,6 +87,20 @@ export async function autoRegisterDummyBoxPackagesFromOrder(
     if (bsRec && !isGoiYes(bsRec.GoiImport)) {
       onUpdateMarketingRecordBs(code, { GoiImport: 'YES' });
       tasks.push(registerDummyBoxPackage(code, 'DummyBoxRecordBs', 'GoiImport', 'YES'));
+    }
+  }
+
+  if (order.isDummyBoxLocal500) {
+    if (rec500 && !isGoiYes(rec500.GoiLocal)) {
+      onUpdateMarketingRecord500?.(code, { GoiLocal: 'YES' });
+      tasks.push(registerDummyBoxPackage(code, DUMMY_BOX_500_SHEET, 'GoiLocal', 'YES'));
+    }
+  }
+
+  if (order.isDummyBoxImport500) {
+    if (rec500 && !isGoiYes(rec500.GoiImport)) {
+      onUpdateMarketingRecord500?.(code, { GoiImport: 'YES' });
+      tasks.push(registerDummyBoxPackage(code, DUMMY_BOX_500_SHEET, 'GoiImport', 'YES'));
     }
   }
 

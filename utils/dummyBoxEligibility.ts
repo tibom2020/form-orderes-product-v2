@@ -2,6 +2,7 @@ import type { CartItem } from '../types';
 import {
     DUMMY_BOX_IMPORT_MIN_AMOUNT,
     DUMMY_BOX_LOCAL_MIN_AMOUNT,
+    DUMMY_BOX_500_MIN_AMOUNT,
     DUMMY_BOX_PROMO_TIERS,
     type DummyBoxPromoTier,
     TELFAST_GROUP_IDS,
@@ -27,6 +28,8 @@ export function getDummyBoxEligibilityTotals(items: CartItem[]): {
     importTotalAfterDiscount: number;
     eligibleDummyBoxLocal: boolean;
     eligibleDummyBoxImport: boolean;
+    eligibleDummyBoxLocal500: boolean;
+    eligibleDummyBoxImport500: boolean;
 } {
     const telfastLocalConditionTotal = items
         .filter((item) => TELFAST_GROUP_IDS.includes(item.id))
@@ -55,6 +58,8 @@ export function getDummyBoxEligibilityTotals(items: CartItem[]): {
         importTotalAfterDiscount,
         eligibleDummyBoxLocal: localTotalAfterDiscount >= DUMMY_BOX_LOCAL_MIN_AMOUNT,
         eligibleDummyBoxImport: importTotalAfterDiscount >= DUMMY_BOX_IMPORT_MIN_AMOUNT,
+        eligibleDummyBoxLocal500: localTotalAfterDiscount >= DUMMY_BOX_500_MIN_AMOUNT,
+        eligibleDummyBoxImport500: importTotalAfterDiscount >= DUMMY_BOX_500_MIN_AMOUNT,
     };
 }
 
@@ -62,7 +67,19 @@ export function getDummyBoxEligibilityTotals(items: CartItem[]): {
 export function getDummyBoxAmountEligibility(items: CartItem[]): {
     eligibleDummyBoxLocal: boolean;
     eligibleDummyBoxImport: boolean;
+    eligibleDummyBoxLocal500: boolean;
+    eligibleDummyBoxImport500: boolean;
 } {
-    const { eligibleDummyBoxLocal, eligibleDummyBoxImport } = getDummyBoxEligibilityTotals(items);
-    return { eligibleDummyBoxLocal, eligibleDummyBoxImport };
+    const {
+        eligibleDummyBoxLocal,
+        eligibleDummyBoxImport,
+        eligibleDummyBoxLocal500,
+        eligibleDummyBoxImport500,
+    } = getDummyBoxEligibilityTotals(items);
+    return {
+        eligibleDummyBoxLocal,
+        eligibleDummyBoxImport,
+        eligibleDummyBoxLocal500,
+        eligibleDummyBoxImport500,
+    };
 }

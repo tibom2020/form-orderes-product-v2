@@ -1,5 +1,9 @@
 import type { MarketingRecord } from '../types';
-import { DUMMY_BOX_IMPORT_MIN_AMOUNT, DUMMY_BOX_LOCAL_MIN_AMOUNT } from '../constants';
+import {
+  DUMMY_BOX_IMPORT_MIN_AMOUNT,
+  DUMMY_BOX_LOCAL_MIN_AMOUNT,
+  DUMMY_BOX_500_MIN_AMOUNT,
+} from '../constants';
 
 export type DummyBoxLockReason =
   | 'pending'
@@ -8,6 +12,8 @@ export type DummyBoxLockReason =
   | 'not_eligible_import'
   | 'registered_local'
   | 'registered_import'
+  | 'mutex_150'
+  | 'mutex_500'
   | null;
 
 export interface DummyBoxListGate {
@@ -136,12 +142,34 @@ export function getDummyBoxToggleState(
   gate: DummyBoxListGate | undefined,
   variant: 'local' | 'import',
   eligible: boolean,
-  options?: { amountAfterDiscount?: number }
+  options?: {
+    amountAfterDiscount?: number;
+    minAmount?: number;
+    sheetLabel?: string;
+    needSuffix?: string;
+    mutexBlocked?: boolean;
+    mutexTitle?: string;
+  }
 ): DummyBoxToggleState {
-  const minAmount = variant === 'local' ? DUMMY_BOX_LOCAL_MIN_AMOUNT : DUMMY_BOX_IMPORT_MIN_AMOUNT;
+  const defaultMin = variant === 'local' ? DUMMY_BOX_LOCAL_MIN_AMOUNT : DUMMY_BOX_IMPORT_MIN_AMOUNT;
+  const minAmount = options?.minAmount ?? defaultMin;
+  const sheetLabel = options?.sheetLabel ?? 'DummyBoxRecord';
+  const needSuffix = options?.needSuffix ?? ' — Cần ≥1tr';
   const variantLabel = variant === 'local' ? 'Local' : 'Import';
   const registered =
     variant === 'local' ? gate?.goiLocalRegistered === true : gate?.goiImportRegistered === true;
+
+  if (options?.mutexBlocked) {
+    return {
+      canToggle: false,
+      lockReason: minAmount === DUMMY_BOX_500_MIN_AMOUNT ? 'mutex_150' : 'mutex_500',
+      labelSuffix: '',
+      title: options.mutexTitle
+        ?? (minAmount === DUMMY_BOX_500_MIN_AMOUNT
+          ? 'Đã chọn DummyBox 1tr — không kết hợp gói 500k'
+          : 'Đã chọn DummyBox 500k — không kết hợp gói 1tr'),
+    };
+  }
 
   if (registered) {
     return {
@@ -157,7 +185,7 @@ export function getDummyBoxToggleState(
       canToggle: false,
       lockReason: 'pending',
       labelSuffix: ' — Đang tải DS DummyBox…',
-      title: 'Đang tải danh sách DummyBox (DummyBoxRecord)…',
+      title: `Đang tải danh sách DummyBox (${sheetLabel})…`,
     };
   }
 
@@ -167,7 +195,7 @@ export function getDummyBoxToggleState(
       canToggle: false,
       lockReason: 'not_in_list',
       labelSuffix: ' — Chưa trong DS',
-      title: 'Mã KH chưa có trong danh sách DummyBoxRecord',
+      title: `Mã KH chưa có trong danh sách ${sheetLabel}`,
     };
   }
 
@@ -180,7 +208,7 @@ export function getDummyBoxToggleState(
     return {
       canToggle: false,
       lockReason: variant === 'local' ? 'not_eligible_local' : 'not_eligible_import',
-      labelSuffix: ' — Cần ≥1tr',
+      labelSuffix: needSuffix,
       title: `Chưa đủ điều kiện gói ${variantLabel}: tổng SP ${variantLabel} sau CK cần ≥ ${formatVnd(minAmount)}.${progressHint}`,
     };
   }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { submitMarketingData } from '../services/googleSheetService';
-import { registerDummyBoxPackage } from '../utils/dummyBoxPackage';
+import { registerDummyBoxPackage, type DummyBoxSheetName } from '../utils/dummyBoxPackage';
 
 import { GOOGLE_SCRIPT_URL, DUMMYBOX_TARGET_1, DUMMYBOX_TARGET_2 } from '../constants';
 import { removeVietnameseTones, formatCurrency } from '../utils/formatters';
@@ -544,7 +544,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         try {
             await registerDummyBoxPackage(
                 selectedCustomer.CustomerCode,
-                sheetName as 'DummyBoxRecord' | 'DummyBoxRecordBs',
+                sheetName as DummyBoxSheetName,
                 type,
                 statusValue as 'YES' | 'NO'
             );

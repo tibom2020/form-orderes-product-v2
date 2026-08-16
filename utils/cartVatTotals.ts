@@ -77,6 +77,8 @@ export interface CartVatTotalsInput {
   psTotals?: PsOrderTotals | null;
   applyDummyBoxLocal?: boolean;
   applyDummyBoxImport?: boolean;
+  dummyBoxLocalDiscount?: number;
+  dummyBoxImportDiscount?: number;
   dummyBoxLocalPoolExVat?: number;
   dummyBoxImportPoolExVat?: number;
   ontopLocalPercent?: number;
@@ -97,23 +99,27 @@ export interface CartVatTotalsResult {
 export function getCartDummyBoxPercents(input: {
   applyDummyBoxLocal?: boolean;
   applyDummyBoxImport?: boolean;
+  dummyBoxLocalDiscount?: number;
+  dummyBoxImportDiscount?: number;
   dummyBoxLocalPoolExVat?: number;
   dummyBoxImportPoolExVat?: number;
 }): { dummyLocalPercent: number; dummyImportPercent: number } {
   const {
     applyDummyBoxLocal = false,
     applyDummyBoxImport = false,
+    dummyBoxLocalDiscount = DUMMY_BOX_DISCOUNT,
+    dummyBoxImportDiscount = DUMMY_BOX_DISCOUNT,
     dummyBoxLocalPoolExVat = 0,
     dummyBoxImportPoolExVat = 0,
   } = input;
 
   const dummyLocalPercent =
-    applyDummyBoxLocal && dummyBoxLocalPoolExVat > 0
-      ? DUMMY_BOX_DISCOUNT / dummyBoxLocalPoolExVat
+    applyDummyBoxLocal && dummyBoxLocalPoolExVat > 0 && dummyBoxLocalDiscount > 0
+      ? dummyBoxLocalDiscount / dummyBoxLocalPoolExVat
       : 0;
   const dummyImportPercent =
-    applyDummyBoxImport && dummyBoxImportPoolExVat > 0
-      ? DUMMY_BOX_DISCOUNT / dummyBoxImportPoolExVat
+    applyDummyBoxImport && dummyBoxImportPoolExVat > 0 && dummyBoxImportDiscount > 0
+      ? dummyBoxImportDiscount / dummyBoxImportPoolExVat
       : 0;
 
   return { dummyLocalPercent, dummyImportPercent };
@@ -249,6 +255,8 @@ export function computeCartVatTotals(input: CartVatTotalsInput): CartVatTotalsRe
     psTotals,
     applyDummyBoxLocal = false,
     applyDummyBoxImport = false,
+    dummyBoxLocalDiscount = DUMMY_BOX_DISCOUNT,
+    dummyBoxImportDiscount = DUMMY_BOX_DISCOUNT,
     dummyBoxLocalPoolExVat = 0,
     dummyBoxImportPoolExVat = 0,
     ontopLocalPercent = 0,
@@ -260,6 +268,8 @@ export function computeCartVatTotals(input: CartVatTotalsInput): CartVatTotalsRe
   const { dummyLocalPercent, dummyImportPercent } = getCartDummyBoxPercents({
     applyDummyBoxLocal,
     applyDummyBoxImport,
+    dummyBoxLocalDiscount,
+    dummyBoxImportDiscount,
     dummyBoxLocalPoolExVat,
     dummyBoxImportPoolExVat,
   });

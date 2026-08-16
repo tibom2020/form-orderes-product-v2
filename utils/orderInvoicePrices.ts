@@ -1,4 +1,5 @@
 import type { CartItem, Order } from '../types';
+import { DUMMY_BOX_DISCOUNT, DUMMY_BOX_500_DISCOUNT } from '../constants';
 import { computeCartGroupTotals } from './orderDiscountCaps';
 import { getDummyBoxEligibilityTotals } from './dummyBoxEligibility';
 import { calcChc2606OntopTotals } from './chc2606OntopPromo';
@@ -27,6 +28,8 @@ type OrderInvoiceSource = Pick<
   | 'items'
   | 'isDummyBoxLocal'
   | 'isDummyBoxImport'
+  | 'isDummyBoxLocal500'
+  | 'isDummyBoxImport500'
   | 'isChc2606Ontop'
   | 'isPsOnInvoice25'
   | 'psTierLabel'
@@ -38,9 +41,23 @@ export function buildOrderInvoiceLines(order: OrderInvoiceSource): OrderInvoiceL
   const items = order.items;
   const groupTotals = computeCartGroupTotals(items);
   const { localTotalAfterDiscount, importTotalAfterDiscount } = getDummyBoxEligibilityTotals(items);
+  const applyDummyBoxLocal = !!order.isDummyBoxLocal || !!order.isDummyBoxLocal500;
+  const applyDummyBoxImport = !!order.isDummyBoxImport || !!order.isDummyBoxImport500;
+  const dummyBoxLocalDiscount = order.isDummyBoxLocal
+    ? DUMMY_BOX_DISCOUNT
+    : order.isDummyBoxLocal500
+      ? DUMMY_BOX_500_DISCOUNT
+      : 0;
+  const dummyBoxImportDiscount = order.isDummyBoxImport
+    ? DUMMY_BOX_DISCOUNT
+    : order.isDummyBoxImport500
+      ? DUMMY_BOX_500_DISCOUNT
+      : 0;
   const { dummyLocalPercent, dummyImportPercent } = getCartDummyBoxPercents({
-    applyDummyBoxLocal: !!order.isDummyBoxLocal,
-    applyDummyBoxImport: !!order.isDummyBoxImport,
+    applyDummyBoxLocal,
+    applyDummyBoxImport,
+    dummyBoxLocalDiscount,
+    dummyBoxImportDiscount,
     dummyBoxLocalPoolExVat: localTotalAfterDiscount,
     dummyBoxImportPoolExVat: importTotalAfterDiscount,
   });

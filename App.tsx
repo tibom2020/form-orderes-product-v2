@@ -933,14 +933,14 @@ const App: React.FC = () => {
     [pharmatonViGoiRows, sentOrders]
   );
 
-  /** Khóa tick chỉ khi KH đã mua gói Đợt 2 */
+  /** Khóa ghi nhận Đợt 2 nếu KH đã mua Đợt 1 hoặc Đợt 2 */
   const pharmatonViGoiLocked = useMemo(() => {
     const code = String(customerCode ?? '').trim();
     if (!code) return false;
-    return pharmatonViDot2PurchasedCodeSet.has(code);
-  }, [customerCode, pharmatonViDot2PurchasedCodeSet]);
+    return pharmatonViDot1PurchasedCodeSet.has(code) || pharmatonViDot2PurchasedCodeSet.has(code);
+  }, [customerCode, pharmatonViDot1PurchasedCodeSet, pharmatonViDot2PurchasedCodeSet]);
 
-  /** Ghi chú Cart: KH đã mua Đợt 1 (vẫn cho tick Đợt 2) */
+  /** Ghi chú Cart: KH đã mua Đợt 1 — không tính Đợt 2 */
   const pharmatonViGoiDot1Purchased = useMemo(() => {
     const code = String(customerCode ?? '').trim();
     if (!code) return false;
@@ -1141,7 +1141,7 @@ const App: React.FC = () => {
 
     const finalNote = note;
 
-    // Đợt 2 PMT Vỉ: ≥1 hộp là ghi nhận (không cần tick); bỏ qua nếu đã mua Đợt 2
+    // Đợt 2 PMT Vỉ: ≥1 hộp tự ghi nhận; bỏ qua nếu đã mua Đợt 1 hoặc Đợt 2
     const pharmatonViItem = cart.find(i => i.id === PHARMATON_VI_GOI_PRODUCT_ID);
     let pharmatonViPackages = 0;
     let pharmatonViAmount = 0;

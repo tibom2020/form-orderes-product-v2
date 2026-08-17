@@ -875,7 +875,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                 }`}
                                 title={
                                     pharmatonViGoiDot1Purchased
-                                        ? 'KH đã mua gói PHARMATON VỈ Đợt 1 (sheet PHARMATON_VI_GOI)'
+                                        ? 'KH đã mua gói PHARMATON VỈ Đợt 1 — không ghi nhận Đợt 2'
                                         : 'KH chưa có dòng gói PMT Vỉ Đợt 1 trên sheet'
                                 }
                             >

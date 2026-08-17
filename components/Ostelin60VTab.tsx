@@ -218,11 +218,25 @@ const Ostelin60VTab: React.FC<Props> = ({
       });
   }, [pharmatonRawData]);
 
+  /** KH đã có dòng Đợt 1 — không tính các dòng Đợt 2 của cùng mã KH */
+  const pharmatonDot1Codes = useMemo(() => {
+    const s = new Set<string>();
+    allPharmatonRows.forEach((r) => {
+      if (!r.isDot2 && r.code) s.add(r.code);
+    });
+    return s;
+  }, [allPharmatonRows]);
+
+  const pharmatonRowsCounted = useMemo(
+    () => allPharmatonRows.filter((r) => !(r.isDot2 && pharmatonDot1Codes.has(r.code))),
+    [allPharmatonRows, pharmatonDot1Codes]
+  );
+
   const pharmatonRowsByDotFilter = useMemo(() => {
-    if (pharmatonDot2Filter === 'dot2') return allPharmatonRows.filter(r => r.isDot2);
-    if (pharmatonDot2Filter === 'dot1') return allPharmatonRows.filter(r => !r.isDot2);
-    return allPharmatonRows;
-  }, [allPharmatonRows, pharmatonDot2Filter]);
+    if (pharmatonDot2Filter === 'dot2') return pharmatonRowsCounted.filter(r => r.isDot2);
+    if (pharmatonDot2Filter === 'dot1') return pharmatonRowsCounted.filter(r => !r.isDot2);
+    return pharmatonRowsCounted;
+  }, [pharmatonRowsCounted, pharmatonDot2Filter]);
 
   const filteredPharmatonRows = useMemo(
     () => pharmatonRowsByDotFilter.filter(r => repNameMatchesEmployee(r.rep, currentEmployee)),
@@ -305,7 +319,7 @@ const Ostelin60VTab: React.FC<Props> = ({
                 </>
               ) : (
                 <>
-                  Đợt 2 từ {pharmatonDot2StartLabel}: mua ≥ 1 hộp tự ghi nhận — sheet{' '}
+                  Đợt 2 từ {pharmatonDot2StartLabel}: mua ≥ 1 hộp tự ghi nhận (KH đã mua Đợt 1 không tính Đợt 2) — sheet{' '}
                   <span className="font-mono">{PHARMATON_VI_GOI_SHEET}</span>, cột{' '}
                   <span className="font-mono">Dot_2</span>
                 </>

@@ -63,23 +63,24 @@ export function buildPharmatonViDot2PurchasedCodeSet(
 }
 
 /**
- * Mã KH đã mua gói Đợt 1 (có SL_goi nhưng chưa Dot_2).
- * Dùng hiện ghi chú Cart — vẫn cho tick Đợt 2.
+ * Mã KH đã mua gói Đợt 1 (có SL_goi và không phải dòng Dot_2).
+ * KH này không ghi nhận / không tính Đợt 2, kể cả khi sheet còn dòng Đợt 2.
  */
 export function buildPharmatonViDot1PurchasedCodeSet(
   rows: Record<string, unknown>[],
   sentOrders: PharmatonViGoiOrderRef[]
 ): Set<string> {
-  const dot2 = buildPharmatonViDot2PurchasedCodeSet(rows, sentOrders);
   const purchased = new Set<string>();
   rows.forEach((row) => {
     const code = String(row['CustomerCode'] ?? '').trim();
-    if (!code || dot2.has(code)) return;
-    if (pharmatonViSlGoi(row) > 0) purchased.add(code);
+    if (!code) return;
+    if (pharmatonViSlGoi(row) <= 0) return;
+    if (isPharmatonViRowDot2(row, row.Timestamp ?? row.timestamp)) return;
+    purchased.add(code);
   });
   sentOrders.forEach((o) => {
     const code = String(o.customerCode ?? '').trim();
-    if (!code || dot2.has(code)) return;
+    if (!code) return;
     if ((o.pharmatonViPackages ?? 0) > 0 && !o.pharmatonViDot2) purchased.add(code);
   });
   return purchased;

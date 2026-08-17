@@ -2071,6 +2071,8 @@ const App: React.FC = () => {
               marketingDataBs.some((r) => String(r.CustomerCode ?? '').trim() === String(code).trim())
             }
             onPeerMirrorRecordUpdate={handleUpdateMarketingRecordBs}
+            reportBaseData={marketingData}
+            report500Data={marketingData500}
           />
         )}
 
@@ -2104,6 +2106,8 @@ const App: React.FC = () => {
             onUpdateRecord={handleUpdateMarketingRecord500}
             sheetName={DUMMY_BOX_500_SHEET}
             enableReportTools={true}
+            reportBaseData={marketingData}
+            report500Data={marketingData500}
           />
         )}
 

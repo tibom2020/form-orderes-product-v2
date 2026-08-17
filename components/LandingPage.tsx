@@ -26,6 +26,10 @@ interface LandingPageProps {
     onReminderShown?: () => void;
     sheetName?: string;
     enableReportTools?: boolean;
+    /** Dữ liệu DummyBox 1tr dùng cho báo cáo (mặc định = marketingData của tab). Cả 2 tab 1tr/500k truyền DummyBoxRecord để bảng giống nhau. */
+    reportBaseData?: MarketingRecord[];
+    /** Dữ liệu DummyBox 500k (DummyBoxRecord_1) — cột Gói 500k trên báo cáo */
+    report500Data?: MarketingRecord[];
     /** Sheet còn lại (DummyBoxRecord ↔ DummyBoxRecordBs): nếu cùng mã KH thì ghi chung URL ảnh sau khi upload */
     mirrorPeerSheetName?: string;
     mirrorPeerHasCustomer?: (customerCode: string) => boolean;
@@ -38,11 +42,34 @@ interface LandingPageProps {
 /** Giai đoạn Kanban DummyBox — khớp cột TODO / PROCESSING_1 / PROCESSING_2 / COMPLETE */
 type DummyBoxKanbanStage = 'TODO' | 'PROCESSING_1' | 'PROCESSING_2' | 'COMPLETE';
 
+function uniqueMarketingByCode(records: MarketingRecord[]): MarketingRecord[] {
+    const map = new Map<string, MarketingRecord>();
+    records.forEach(record => {
+        if (!record) return;
+        const code = String(record.CustomerCode ?? '').trim();
+        if (!code) return;
+        map.set(code, record);
+    });
+    return Array.from(map.values());
+}
+
+function isGoiYes(v: unknown): boolean {
+    return String(v ?? '').trim().toUpperCase() === 'YES';
+}
+
+function hasDummyBoxImage(record: MarketingRecord): boolean {
+    const up1 = String(record.UpHinh ?? '').trim();
+    const up2 = String(record.UpHinh2 ?? '').trim();
+    return (up1 !== '' && up1 !== 'NO') || (up2 !== '' && up2 !== 'NO');
+}
+
+function hasDummyBoxPackage(record: MarketingRecord): boolean {
+    return isGoiYes(record.GoiLocal) || isGoiYes(record.GoiImport);
+}
+
 function getDummyBoxKanbanStage(customer: MarketingRecord): DummyBoxKanbanStage {
-    const hasImage =
-        !!(customer.UpHinh && customer.UpHinh !== 'NO' && customer.UpHinh !== '') ||
-        !!(customer.UpHinh2 && customer.UpHinh2 !== 'NO' && customer.UpHinh2 !== '');
-    const hasPackage = customer.GoiLocal === 'YES' || customer.GoiImport === 'YES';
+    const hasImage = hasDummyBoxImage(customer);
+    const hasPackage = hasDummyBoxPackage(customer);
     if (hasImage && hasPackage) return 'COMPLETE';
     if (hasImage) return 'PROCESSING_1';
     if (hasPackage) return 'PROCESSING_2';
@@ -72,6 +99,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
     onReminderShown,
     sheetName = 'DummyBoxRecord',
     enableReportTools = true,
+    reportBaseData,
+    report500Data,
     mirrorPeerSheetName,
     mirrorPeerHasCustomer,
     onPeerMirrorRecordUpdate,
@@ -127,61 +156,77 @@ const LandingPage: React.FC<LandingPageProps> = ({
     const canEditPackages = currentEmployee.code === '20043741';
 
     // --- PRE-PROCESS DATA: DEDUPLICATE CUSTOMERS ---
-    const uniqueMarketingData = useMemo(() => {
-        // Dùng Map để lọc trùng theo CustomerCode, giữ lại record cuối cùng (mới nhất)
-        const map = new Map<string, MarketingRecord>();
-        marketingData.forEach(record => {
-            if (!record) return;
-            const code = String(record.CustomerCode ?? '').trim();
-            if (!code) return;
-            map.set(code, record);
-        });
-        return Array.from(map.values());
-    }, [marketingData]);
+    const uniqueMarketingData = useMemo(
+        () => uniqueMarketingByCode(marketingData),
+        [marketingData]
+    );
 
-    // --- REPORT LOGIC (Dựa trên unique data) ---
+    const uniqueReportBaseData = useMemo(
+        () => uniqueMarketingByCode(reportBaseData ?? marketingData),
+        [reportBaseData, marketingData]
+    );
+
+    const uniqueReport500Data = useMemo(
+        () => uniqueMarketingByCode(report500Data ?? []),
+        [report500Data]
+    );
+
+    // --- REPORT LOGIC (DummyBox 1tr + cột Gói 500k) ---
     const reportData = useMemo(() => {
-        const stats: Record<string, { total: number, upHinh: number, local: number, import: number, dangKyGoi: number }> = {};
+        const empty = () => ({
+            total: 0,
+            upHinh: 0,
+            local: 0,
+            import: 0,
+            codes1tr: new Set<string>(),
+            codes500: new Set<string>(),
+        });
+        const stats: Record<string, ReturnType<typeof empty>> = {};
 
-        uniqueMarketingData.forEach(record => {
-            // Chuẩn hóa tên Rep
+        uniqueReportBaseData.forEach(record => {
             const repName = String(record.Rep ?? '').trim() || 'Chưa phân công';
-            if (!stats[repName]) {
-                stats[repName] = { total: 0, upHinh: 0, local: 0, import: 0, dangKyGoi: 0 };
-            }
+            if (!stats[repName]) stats[repName] = empty();
+            const code = String(record.CustomerCode ?? '').trim();
 
             stats[repName].total += 1;
-
-            // Check conditions
-            const up1 = String(record.UpHinh ?? '').trim();
-            const up2 = String(record.UpHinh2 ?? '').trim();
-            const hasImg1 = up1 !== '' && up1 !== 'NO';
-            const hasImg2 = up2 !== '' && up2 !== 'NO';
-
-            // Chỉ cần có 1 trong 2 ảnh là tính
-            if (hasImg1 || hasImg2) stats[repName].upHinh += 1;
-
-            if (record.GoiLocal === 'YES') stats[repName].local += 1;
-            if (record.GoiImport === 'YES') stats[repName].import += 1;
-            /** Đã mua 1 hoặc 2 gói đều tính 1 KH */
-            if (record.GoiLocal === 'YES' || record.GoiImport === 'YES') stats[repName].dangKyGoi += 1;
+            if (hasDummyBoxImage(record)) stats[repName].upHinh += 1;
+            if (isGoiYes(record.GoiLocal)) stats[repName].local += 1;
+            if (isGoiYes(record.GoiImport)) stats[repName].import += 1;
+            if (code && hasDummyBoxPackage(record)) stats[repName].codes1tr.add(code);
         });
 
-        // Chuyển về mảng và sort: ưu tiên ảnh cao→thấp, rồi tổng đơn hàng (local+import) cao→thấp
+        uniqueReport500Data.forEach(record => {
+            const repName = String(record.Rep ?? '').trim() || 'Chưa phân công';
+            if (!stats[repName]) stats[repName] = empty();
+            const code = String(record.CustomerCode ?? '').trim();
+            if (code && hasDummyBoxPackage(record)) stats[repName].codes500.add(code);
+        });
+
         return Object.entries(stats)
-            .map(([rep, data]) => ({
-                rep,
-                ...data,
-                todoTarget1: Math.max(0, DUMMYBOX_TARGET_1 - data.dangKyGoi),
-                todoTarget2: Math.max(0, DUMMYBOX_TARGET_2 - data.dangKyGoi),
-            }))
+            .map(([rep, data]) => {
+                const dangKyGoi = data.codes1tr.size;
+                const goi500 = data.codes500.size;
+                const tongMua = new Set([...data.codes1tr, ...data.codes500]).size;
+                return {
+                    rep,
+                    total: data.total,
+                    upHinh: data.upHinh,
+                    local: data.local,
+                    import: data.import,
+                    dangKyGoi,
+                    goi500,
+                    tongMua,
+                    todoTarget1: Math.max(0, DUMMYBOX_TARGET_1 - tongMua),
+                    todoTarget2: Math.max(0, DUMMYBOX_TARGET_2 - tongMua),
+                };
+            })
             .sort((a, b) => {
                 const orderA = a.local + a.import;
                 const orderB = b.local + b.import;
-                if (orderB !== orderA) return orderB - orderA; // Ưu tiên Top 1 đơn hàng
-                return b.upHinh - a.upHinh; // Kế Top 1 ảnh
+                if (orderB !== orderA) return orderB - orderA;
+                return b.upHinh - a.upHinh;
             });
-    }, [uniqueMarketingData]);
+    }, [uniqueReportBaseData, uniqueReport500Data]);
 
     // Tổng số cho các ô thống kê phía trên báo cáo (tương tự Forecast)
     const reportTotalStats = useMemo(() => {
@@ -191,9 +236,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 upHinh: acc.upHinh + row.upHinh,
                 local: acc.local + row.local,
                 import: acc.import + row.import,
-                dangKyGoi: acc.dangKyGoi + row.dangKyGoi
+                dangKyGoi: acc.dangKyGoi + row.dangKyGoi,
+                goi500: acc.goi500 + row.goi500,
+                tongMua: acc.tongMua + row.tongMua,
             }),
-            { total: 0, upHinh: 0, local: 0, import: 0, dangKyGoi: 0 }
+            { total: 0, upHinh: 0, local: 0, import: 0, dangKyGoi: 0, goi500: 0, tongMua: 0 }
         );
     }, [reportData]);
 
@@ -687,7 +734,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 Target 1: <span className="font-bold text-indigo-600 dark:text-indigo-400">{DUMMYBOX_TARGET_1}</span>
                                 {' '}KH/Rep · Target 2:{' '}
                                 <span className="font-bold text-indigo-600 dark:text-indigo-400">{DUMMYBOX_TARGET_2}</span>
-                                {' '}KH/Rep (theo KH đã mua gói)
+                                {' '}KH/Rep (so với cột Tổng 1tr + 500k)
                             </p>
                         </div>
                         <button
@@ -700,7 +747,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
                     {/* Ô tổng phía trên (tương tự Thống kê Forecast) */}
                     <div className="px-5 pb-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
                             <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-200 dark:border-slate-600">
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tổng KH</p>
                                 <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{reportTotalStats.total}</p>
@@ -710,8 +757,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                 <p className="text-2xl font-black text-opella-green dark:text-opella-green">{reportTotalStats.upHinh}</p>
                             </div>
                             <div className="bg-violet-50 dark:bg-violet-950/40 p-3 rounded-xl border border-violet-200 dark:border-violet-800">
-                                <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase" title="KH đã mua ít nhất 1 gói (1 hoặc 2 gói đều tính 1 KH)">KH ĐÃ MUA</p>
+                                <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase leading-tight" title="KH đã mua ít nhất 1 gói DummyBox 1tr">KH ĐÃ MUA GÓI 1TR</p>
                                 <p className="text-2xl font-black text-violet-700 dark:text-violet-300">{reportTotalStats.dangKyGoi}</p>
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
+                                <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase leading-tight" title="KH đã mua ít nhất 1 gói DummyBox 500k">KH ĐÃ MUA GÓI 500K</p>
+                                <p className="text-2xl font-black text-amber-800 dark:text-amber-200">{reportTotalStats.goi500}</p>
+                            </div>
+                            <div className="bg-slate-800 dark:bg-slate-900 p-3 rounded-xl border border-slate-700">
+                                <p className="text-[10px] font-bold text-slate-300 uppercase leading-tight" title="Tổng KH đã mua gói 1tr và/hoặc gói 500k (trùng mã KH chỉ tính 1)">TỔNG ĐÃ MUA</p>
+                                <p className="text-2xl font-black text-white">{reportTotalStats.tongMua}</p>
                             </div>
                             <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800">
                                 <p className="text-[10px] font-bold text-green-500 dark:text-green-400 uppercase">Gói Local</p>
@@ -731,32 +786,41 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                     <th className="px-4 py-3">Rep Phụ Trách</th>
                                     <th className="px-4 py-3 text-center">Tổng KH</th>
                                     <th className="px-4 py-3 text-center text-opella-green dark:text-opella-green">Ảnh</th>
-                                    <th className="px-4 py-3 text-center text-violet-600 dark:text-violet-400" title="Số KH đã mua ít nhất 1 gói (Local và/hoặc Import; 2 gói vẫn tính 1 KH)">
-                                        KH ĐÃ MUA
+                                    <th className="px-4 py-3 text-center text-violet-600 dark:text-violet-400 leading-tight" title="Số KH đã mua ít nhất 1 gói DummyBox 1tr (Local và/hoặc Import)">
+                                        <span className="block">KH ĐÃ MUA</span>
+                                        <span className="block text-[9px] font-semibold normal-case opacity-90">Gói 1tr</span>
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-amber-700 dark:text-amber-300 leading-tight" title="Số KH đã mua ít nhất 1 gói DummyBox 500k (Local và/hoặc Import trên DummyBoxRecord_1)">
+                                        <span className="block">KH ĐÃ MUA</span>
+                                        <span className="block text-[9px] font-semibold normal-case opacity-90">Gói 500k</span>
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-slate-700 dark:text-slate-200 leading-tight" title="Tổng KH đã mua gói 1tr và/hoặc gói 500k (trùng mã KH chỉ tính 1)">
+                                        <span className="block">TỔNG</span>
+                                        <span className="block text-[9px] font-semibold normal-case opacity-90">1tr + 500k</span>
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 leading-tight"
-                                        title={`Mục tiêu 1 — ${DUMMYBOX_TARGET_1} KH/Rep đã mua gói`}
+                                        title={`Mục tiêu 1 — ${DUMMYBOX_TARGET_1} KH/Rep so với cột Tổng (1tr + 500k)`}
                                     >
                                         <span className="block">Target 1</span>
                                         <span className="block text-[9px] font-semibold normal-case opacity-90">({DUMMYBOX_TARGET_1} KH)</span>
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-orange-600 dark:text-orange-400"
-                                        title={`Số KH còn thiếu so với Target 1 (${DUMMYBOX_TARGET_1})`}
+                                        title={`Số KH còn thiếu so với Target 1 (${DUMMYBOX_TARGET_1}), tính theo cột Tổng`}
                                     >
                                         TODO T1
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 leading-tight"
-                                        title={`Mục tiêu 2 — ${DUMMYBOX_TARGET_2} KH/Rep đã mua gói`}
+                                        title={`Mục tiêu 2 — ${DUMMYBOX_TARGET_2} KH/Rep so với cột Tổng (1tr + 500k)`}
                                     >
                                         <span className="block">Target 2</span>
                                         <span className="block text-[9px] font-semibold normal-case opacity-90">({DUMMYBOX_TARGET_2} KH)</span>
                                     </th>
                                     <th
                                         className="px-4 py-3 text-center text-orange-600 dark:text-orange-400"
-                                        title={`Số KH còn thiếu so với Target 2 (${DUMMYBOX_TARGET_2})`}
+                                        title={`Số KH còn thiếu so với Target 2 (${DUMMYBOX_TARGET_2}), tính theo cột Tổng`}
                                     >
                                         TODO T2
                                     </th>
@@ -799,12 +863,22 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                         <td className="px-4 py-3 text-center font-bold bg-slate-50 dark:bg-slate-800/50">{row.total}</td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.upHinh > 0 ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'text-slate-400'}`}>
-                                                {row.upHinh} <span className="font-normal text-[10px] opacity-70">({Math.round(row.upHinh / row.total * 100)}%)</span>
+                                                {row.upHinh} <span className="font-normal text-[10px] opacity-70">({row.total > 0 ? Math.round(row.upHinh / row.total * 100) : 0}%)</span>
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.dangKyGoi > 0 ? 'bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400'}`}>
-                                                {row.dangKyGoi} <span className="font-normal text-[10px] opacity-70">({Math.round(row.dangKyGoi / row.total * 100)}%)</span>
+                                                {row.dangKyGoi} <span className="font-normal text-[10px] opacity-70">({row.total > 0 ? Math.round(row.dangKyGoi / row.total * 100) : 0}%)</span>
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${row.goi500 > 0 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200' : 'text-slate-400'}`}>
+                                                {row.goi500} <span className="font-normal text-[10px] opacity-70">({row.total > 0 ? Math.round(row.goi500 / row.total * 100) : 0}%)</span>
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-black ${row.tongMua > 0 ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900' : 'text-slate-400'}`}>
+                                                {row.tongMua}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/20">
@@ -837,18 +911,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.local > 0 ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'text-slate-400'}`}>
-                                                {row.local} <span className="font-normal text-[10px] opacity-70">({Math.round(row.local / row.total * 100)}%)</span>
+                                                {row.local} <span className="font-normal text-[10px] opacity-70">({row.total > 0 ? Math.round(row.local / row.total * 100) : 0}%)</span>
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${row.import > 0 ? 'bg-opella-beige/50 text-opella-green dark:bg-opella-green/20 dark:text-opella-green' : 'text-slate-400'}`}>
-                                                {row.import} <span className="font-normal text-[10px] opacity-70">({Math.round(row.import / row.total * 100)}%)</span>
+                                                {row.import} <span className="font-normal text-[10px] opacity-70">({row.total > 0 ? Math.round(row.import / row.total * 100) : 0}%)</span>
                                             </span>
                                         </td>
                                     </tr>
                                 ))}
                                 {reportData.length === 0 && (
-                                    <tr><td colSpan={10} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
+                                    <tr><td colSpan={12} className="text-center py-6 text-slate-400 italic">Chưa có dữ liệu</td></tr>
                                 )}
                             </tbody>
                         </table>

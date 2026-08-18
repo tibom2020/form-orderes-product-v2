@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Product } from '../types';
-import { PlusIcon, CubeIcon } from './icons';
+import { PlusIcon, CubeIcon, EyeSlashIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
 import { getMaxDiscountPercent, isGigaMonthlyPromoSuspended } from '../utils/calculations';
 import { REBATE_TIERS } from './dashboard/DashboardUtils';
@@ -12,9 +12,10 @@ interface ProductCardProps {
     onAddToCart: (product: Product, quantity: number) => void;
     /** CK PS On Invoice 25% — ẩn % CK tháng, dùng basePrice */
     hideMonthlyPromo?: boolean;
+    onHideProduct?: (productId: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMonthlyPromo = false }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMonthlyPromo = false, onHideProduct }) => {
     const [quantity, setQuantity] = useState<number | string>(product.minOrderQuantity);
     const [error, setError] = useState('');
     const [showBmModal, setShowBmModal] = useState(false);
@@ -101,6 +102,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
+            {onHideProduct && (
+                <button
+                    type="button"
+                    onClick={() => onHideProduct(product.id)}
+                    className="absolute top-1.5 right-1.5 z-20 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-red-600 text-white border border-red-700 hover:bg-red-700 dark:bg-red-500 dark:border-red-400 dark:hover:bg-red-400 shadow-sm"
+                    title="Ẩn sản phẩm khỏi tab đặt hàng"
+                >
+                    <EyeSlashIcon />
+                    <span>Ẩn</span>
+                </button>
+            )}
             {/* Product Image Section */}
             <div className="relative w-full h-32 flex items-center justify-center bg-white rounded-md overflow-hidden mb-3 p-1 border border-slate-100 dark:border-slate-700">
                 {product.nearExpiry && (

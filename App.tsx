@@ -16,7 +16,7 @@ import SaleKhPsTab from './components/SaleKhPsTab';
 import QuarterSalesTrackingTab from './components/QuarterSalesTrackingTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon, EyeSlashIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import Ostelin60VTab from './components/Ostelin60VTab';
 import RepActiveAcemucOstelinTab from './components/RepActiveAcemucOstelinTab';
@@ -26,7 +26,7 @@ import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import EconsentTab from './components/EconsentTab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
-import { getOrders, saveOrders } from './utils/storage';
+import { getOrders, saveOrders, getHiddenProductIds, saveHiddenProductIds } from './utils/storage';
 import { getDiscountPercent } from './utils/calculations';
 import { generateCustomerSummary, buildCustomerSalesNoticePayload } from './utils/customerSummarizer';
 import { buildOrderInvoiceLines } from './utils/orderInvoicePrices';
@@ -152,6 +152,7 @@ const App: React.FC = () => {
   const [note, setNote] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [productTypeFilter, setProductTypeFilter] = useState<'All' | 'Local' | 'Import'>('All');
+  const [hiddenProductIds, setHiddenProductIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -527,6 +528,7 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = (employee: Employee) => {
     setLoggedInEmployee(employee);
+    setHiddenProductIds(getHiddenProductIds(employee.code));
     setPostLoginHydrating(true);
     if (employee.code === ADMIN_CODE) {
       setIsSuperUser(true);
@@ -570,6 +572,7 @@ const App: React.FC = () => {
     setPostLoginHydrating(false);
     setIsSuperUser(false);
     resetOrderState();
+    setHiddenProductIds([]);
     setStorePsTabMounted(false);
     setViewMode('order');
   };
@@ -770,6 +773,7 @@ const App: React.FC = () => {
     const selectedEmp = EMPLOYEES.find(emp => emp.code === selectedCode);
     if (selectedEmp) {
       setLoggedInEmployee(selectedEmp);
+      setHiddenProductIds(getHiddenProductIds(selectedEmp.code));
     }
   };
 
@@ -1371,9 +1375,25 @@ const App: React.FC = () => {
   const filteredProducts = useMemo(() =>
     PRODUCTS
       .filter(p => productTypeFilter === 'All' || p.type === productTypeFilter)
-      .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())),
-    [searchTerm, productTypeFilter]
+      .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter(p => !hiddenProductIds.includes(p.id)),
+    [searchTerm, productTypeFilter, hiddenProductIds]
   );
+
+  const handleHideProduct = (productId: number) => {
+    if (!loggedInEmployee) return;
+    const next = hiddenProductIds.includes(productId)
+      ? hiddenProductIds
+      : [...hiddenProductIds, productId];
+    setHiddenProductIds(next);
+    saveHiddenProductIds(loggedInEmployee.code, next);
+  };
+
+  const handleClearHiddenProducts = () => {
+    if (!loggedInEmployee) return;
+    setHiddenProductIds([]);
+    saveHiddenProductIds(loggedInEmployee.code, []);
+  };
 
   /** Ép tải lại cả 2 sheet Dummy (Record + Bs) — dùng nút Làm mới trên tab Dummy */
   const reloadDummyBoxLists = async () => {
@@ -1922,6 +1942,18 @@ const App: React.FC = () => {
                   </button>
                 ))}
               </div>
+              {hiddenProductIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHiddenProducts}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white/15 hover:bg-white text-white hover:text-opella-green border border-white/30 flex-shrink-0 transition-all"
+                  title="Hiện lại tất cả sản phẩm đã ẩn"
+                >
+                  <EyeSlashIcon />
+                  <span>Xóa ẩn</span>
+                  <span className="opacity-80">({hiddenProductIds.length})</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1941,9 +1973,17 @@ const App: React.FC = () => {
                       product={p}
                       onAddToCart={handleAddToCart}
                       hideMonthlyPromo={isPsOnInvoice25}
+                      onHideProduct={handleHideProduct}
                     />
                   ))}
                 </div>
+                {filteredProducts.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-800/40 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    {hiddenProductIds.length > 0 && !searchTerm
+                      ? 'Đã ẩn hết sản phẩm. Bấm “Xóa ẩn” để hiện lại.'
+                      : 'Không tìm thấy sản phẩm.'}
+                  </div>
+                )}
               </div>
               <div className="lg:w-1/3 lg:order-2">
                 <div className="lg:sticky lg:top-[180px] transition-all">

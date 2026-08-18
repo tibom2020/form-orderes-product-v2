@@ -61,3 +61,28 @@ export const saveOrders = (key: 'draftOrders' | 'sentOrders', orders: Order[]): 
     console.error(`Error saving orders to localStorage (${key}):`, error);
   }
 };
+
+const HIDDEN_PRODUCT_IDS_KEY_PREFIX = 'hiddenProductIds_v1';
+
+export const getHiddenProductIds = (employeeCode: string): number[] => {
+  if (!employeeCode) return [];
+  try {
+    const raw = localStorage.getItem(`${HIDDEN_PRODUCT_IDS_KEY_PREFIX}:${employeeCode}`);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is number => typeof id === 'number' && Number.isFinite(id));
+  } catch (e) {
+    console.error('Error reading hidden product ids:', e);
+    return [];
+  }
+};
+
+export const saveHiddenProductIds = (employeeCode: string, ids: number[]): void => {
+  if (!employeeCode) return;
+  try {
+    localStorage.setItem(`${HIDDEN_PRODUCT_IDS_KEY_PREFIX}:${employeeCode}`, JSON.stringify(ids));
+  } catch (e) {
+    console.error('Error saving hidden product ids:', e);
+  }
+};

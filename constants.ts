@@ -38,9 +38,9 @@ export const PRODUCTS: Product[] = [
   { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.9% (đến 31.08.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
   { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/0yNdx6NP/1814866887484728087.webp' },
   { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167426, type: 'Local', basePrice: 159454, image: 'https://i.postimg.cc/W1rFccKN/calci-5.webp' },
-  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
-  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
-  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
+  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 82911, type: 'Local', basePrice: 78963, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.08.2026)', image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
+  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 91562, type: 'Local', basePrice: 87202, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.08.2026)', image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
+  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 64605, type: 'Local', basePrice: 61529, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.08.2026)', image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
   { id: 5, name: 'MAGNE-B6 Tab B/50 (bao film)', minOrder: '1', minOrderQuantity: 1, price: 101706, type: 'Local', basePrice: 96863, image: 'https://i.postimg.cc/0NnR1znv/magie-B6.webp' },
   { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, promotion: 'Mua 2h ck 4.43%, 3h ck 4.93% (đến 31.08.2026)', image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
   { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 31.08.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
@@ -54,7 +54,7 @@ export const PRODUCTS: Product[] = [
   { id: 31, name: 'PHARMATON VITALITY BLISTER (5X10)', minOrder: '1', minOrderQuantity: 1, price: 382000, type: 'Import', basePrice: 353704, promotion: 'Mua 2h ck 17.73% (đến 31.08.2026)', image: 'https://i.postimg.cc/hjwdphbb/PHARMATON-VI.webp' },
   { id: 18, name: 'PHARMATON ESSENT', minOrder: '1', minOrderQuantity: 1, price: 205286, type: 'Import', basePrice: 190080, nearExpiry: 'HSD: 01/2027', requireApproval: true, image: 'https://i.postimg.cc/zBfmzq2G/pmt-essen.webp' },
   { id: 19, name: 'PHARMATON KIDDI', minOrder: '1', minOrderQuantity: 1, price: 167400, type: 'Import', promotion: 'Mua 2h ck 3.9%, 4h ck 7.9% (đến 31.08.2026)', basePrice: 155000, image: 'https://i.postimg.cc/Qt7zxVkC/pmt-kiddi.webp' },
-  { id: 20, name: 'PHARMATON ENERGY FIZZI SỦI', minOrder: '1', minOrderQuantity: 1, price: 104760, type: 'Import', basePrice: 97000, image: 'https://i.postimg.cc/43PkRYP9/pmt-fizzi.webp' },
+  { id: 20, name: 'PHARMATON ENERGY FIZZI SỦI', minOrder: '1', minOrderQuantity: 1, price: 104760, type: 'Import', basePrice: 97000, promotion: 'Mua 3h ck 12.3% (đến 31.08.2026)', image: 'https://i.postimg.cc/43PkRYP9/pmt-fizzi.webp' },
   { id: 21, name: 'PHOSPHALUGEL 2.47G/20G GEL SC26 M36 VN', minOrder: '1', minOrderQuantity: 1, price: 120558, type: 'Import', basePrice: 114817, image: 'https://i.postimg.cc/N0DqvKDy/phospha.webp' },
   { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 31.08.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
   { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 31.08.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
@@ -926,7 +926,7 @@ export const TELFAST_PRODUCT_IDS: readonly number[] = [6, 7, 8];
 export const ACEMUC_GROUP_IDS: readonly number[] = [2, 3, 4];
 
 /** Tạm ngưng CK tháng Acemuc — đổi false để bật lại */
-export const ACEMUC_PROMO_SUSPENDED = true;
+export const ACEMUC_PROMO_SUSPENDED = false;
 
 /** Tạm ngưng CK tháng Telfast (HD + BD + 30MG) — đổi false để bật lại */
 export const TELFAST_PROMO_SUSPENDED = false;

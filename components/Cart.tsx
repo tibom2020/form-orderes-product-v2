@@ -315,11 +315,13 @@ const Cart: React.FC<CartProps> = (props) => {
             findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');
         const target = psGate?.targetTrungBay || tier?.minMonthlySales || 0;
         if (target <= 0) {
-            return { saleT8, target: 0, status: null as 'dat' | 'chua' | null };
+            return { saleT8, target: 0, todo: null as number | null, status: null as 'dat' | 'chua' | null };
         }
+        const todo = target - saleT8;
         return {
             saleT8,
             target,
+            todo,
             status: (saleT8 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
         };
     }, [psGate, currentSalesRecord]);
@@ -912,6 +914,40 @@ const Cart: React.FC<CartProps> = (props) => {
                                     <span className="font-black tabular-nums text-sky-800 dark:text-sky-100">
                                         {psDisplayMetrics.target > 0
                                             ? formatCurrency(psDisplayMetrics.target)
+                                            : '—'}
+                                    </span>
+                                </div>
+                                <div
+                                    className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 border ${
+                                        psDisplayMetrics.todo == null
+                                            ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700'
+                                            : psDisplayMetrics.todo > 0
+                                              ? 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50'
+                                              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50'
+                                    }`}
+                                >
+                                    <span
+                                        className={`font-bold ${
+                                            psDisplayMetrics.todo == null
+                                                ? 'text-slate-600 dark:text-slate-300'
+                                                : psDisplayMetrics.todo > 0
+                                                  ? 'text-red-800/80 dark:text-red-200/90'
+                                                  : 'text-emerald-800/80 dark:text-emerald-200/90'
+                                        }`}
+                                    >
+                                        Todo
+                                    </span>
+                                    <span
+                                        className={`font-black tabular-nums ${
+                                            psDisplayMetrics.todo == null
+                                                ? 'text-slate-400'
+                                                : psDisplayMetrics.todo > 0
+                                                  ? 'text-red-700 dark:text-red-200'
+                                                  : 'text-emerald-700 dark:text-emerald-200'
+                                        }`}
+                                    >
+                                        {psDisplayMetrics.todo != null
+                                            ? formatCurrency(Math.round(psDisplayMetrics.todo))
                                             : '—'}
                                     </span>
                                 </div>

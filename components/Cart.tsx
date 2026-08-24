@@ -306,10 +306,8 @@ const Cart: React.FC<CartProps> = (props) => {
 
     /** Sale T8 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
     const psDisplayMetrics = useMemo(() => {
-        const fromSheet = psGate?.saleT8Vnd ?? 0;
-        const fromDoanhSo =
-            (Number(currentSalesRecord?.MustWin) || 0) + (Number(currentSalesRecord?.Other) || 0);
-        const saleT8 = fromSheet > 0 ? fromSheet : fromDoanhSo;
+        /** Chỉ cột Sale T8 trên DANGKYTBQ2 — không fallback DOANH_SO (tránh lẫn T7) */
+        const saleT8 = psGate?.saleT8Vnd ?? 0;
         const tier =
             psGate?.tierConfig ||
             findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');

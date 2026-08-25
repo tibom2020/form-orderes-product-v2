@@ -1272,7 +1272,10 @@ const App: React.FC = () => {
     const orderObj = createOrderObject();
 
     // Tạo tóm tắt thông tin khách hàng
-    const currentSalesRecord = allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim());
+    const code = String(customerCode).trim();
+    const currentSalesRecord = allSalesRecords.find(
+      (r) => String(r.CustomerCode).trim() === code || String(r.CodeBuyMed ?? '').trim() === code
+    );
 
     const customerSummary = generateCustomerSummary(currentSalesRecord);
 
@@ -2008,7 +2011,19 @@ const App: React.FC = () => {
                     selectedRebateIds={selectedRebateIds}
                     onToggleRebate={handleToggleRebate}
                     customers={allCustomers}
-                    currentSalesRecord={allSalesRecords.find(r => String(r.CustomerCode).trim() === String(customerCode).trim()) ?? null}
+                    currentSalesRecord={
+                      (() => {
+                        const code = String(customerCode).trim();
+                        if (!code) return null;
+                        return (
+                          allSalesRecords.find(
+                            (r) =>
+                              String(r.CustomerCode).trim() === code ||
+                              String(r.CodeBuyMed ?? '').trim() === code
+                          ) ?? null
+                        );
+                      })()
+                    }
                     onExportSales={handleExportSales}
                     onViewCustomerDetail={handleQuickViewCustomer}
                     dummyBoxListGate={dummyBoxListGate}

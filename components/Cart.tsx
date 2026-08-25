@@ -898,6 +898,20 @@ const Cart: React.FC<CartProps> = (props) => {
                                     {pharmatonViGoiDot1Purchased ? 'ĐÃ MUA' : 'CHƯA MUA'}
                                 </span>
                             </div>
+                            <div
+                                className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 px-2 py-1.5"
+                                title="Cột PMT_QTY trên sheet DOANH_SO — số lượng PMT đã mua tháng 8"
+                            >
+                                <span className="font-bold text-[10px] text-violet-800/90 dark:text-violet-200/90">
+                                    SL PMT đã mua T8
+                                </span>
+                                <span className="font-black tabular-nums text-[10px] text-violet-800 dark:text-violet-100">
+                                    {(() => {
+                                        const qty = Number(currentSalesRecord?.PMT_QTY ?? 0);
+                                        return Number.isFinite(qty) && qty > 0 ? qty : '—';
+                                    })()}
+                                </span>
+                            </div>
                             <div className="grid grid-cols-1 gap-1.5 text-[10px]">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
                                     <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T8 đã đặt</span>

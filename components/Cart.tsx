@@ -263,8 +263,6 @@ interface CartProps {
     dummyBox500ListGate?: DummyBoxListGate;
     /** Sheet OSTELIN_60V_GOI: KH đã gói Đợt 2 — khóa tick tặng máy đo HA */
     ostelin60VTangCanLocked?: boolean;
-    /** KH đã mua gói PMT Vỉ Đợt 1 — hiện cảnh báo dưới Loại PS */
-    pharmatonViGoiDot1Purchased?: boolean;
     /** Perfect Store — CK On Invoice 25% */
     psGate?: PsCustomerGate | null;
     isPsOnInvoice25?: boolean;
@@ -291,7 +289,6 @@ const Cart: React.FC<CartProps> = (props) => {
         dummyBoxListGate,
         dummyBox500ListGate,
         ostelin60VTangCanLocked = false,
-        pharmatonViGoiDot1Purchased = false,
         psGate = null,
         isPsOnInvoice25 = false,
         onIsPsOnInvoice25Change,
@@ -865,37 +862,6 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </span>
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black bg-[#003629]/10 text-[#003629] dark:bg-[#8abda9]/20 dark:text-[#8abda9] border border-[#003629]/15 dark:border-[#8abda9]/30">
                                     {psTierLabel}
-                                </span>
-                            </div>
-                            <div
-                                className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 border ${
-                                    pharmatonViGoiDot1Purchased
-                                        ? 'bg-red-50 dark:bg-red-950/45 border-red-300 dark:border-red-700'
-                                        : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700'
-                                }`}
-                                title={
-                                    pharmatonViGoiDot1Purchased
-                                        ? 'KH đã mua gói PHARMATON VỈ Đợt 1 — không ghi nhận Đợt 2'
-                                        : 'KH chưa có dòng gói PMT Vỉ Đợt 1 trên sheet'
-                                }
-                            >
-                                <span
-                                    className={`font-bold text-[10px] ${
-                                        pharmatonViGoiDot1Purchased
-                                            ? 'text-red-800 dark:text-red-200'
-                                            : 'text-slate-600 dark:text-slate-300'
-                                    }`}
-                                >
-                                    PMT Vỉ Đợt 1
-                                </span>
-                                <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
-                                        pharmatonViGoiDot1Purchased
-                                            ? 'bg-red-600 text-white dark:bg-red-500'
-                                            : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                                    }`}
-                                >
-                                    {pharmatonViGoiDot1Purchased ? 'ĐÃ MUA' : 'CHƯA MUA'}
                                 </span>
                             </div>
                             <div

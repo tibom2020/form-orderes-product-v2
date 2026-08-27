@@ -944,13 +944,6 @@ const App: React.FC = () => {
     return pharmatonViDot1PurchasedCodeSet.has(code) || pharmatonViDot2PurchasedCodeSet.has(code);
   }, [customerCode, pharmatonViDot1PurchasedCodeSet, pharmatonViDot2PurchasedCodeSet]);
 
-  /** Ghi chú Cart: KH đã mua Đợt 1 — không tính Đợt 2 */
-  const pharmatonViGoiDot1Purchased = useMemo(() => {
-    const code = String(customerCode ?? '').trim();
-    if (!code) return false;
-    return pharmatonViDot1PurchasedCodeSet.has(code);
-  }, [customerCode, pharmatonViDot1PurchasedCodeSet]);
-
   const handleToggleRebate = (rebateId: string) => {
     if (isPsOnInvoice25) return;
     const codeStr = String(customerCode ?? '').trim();
@@ -2029,7 +2022,6 @@ const App: React.FC = () => {
                     dummyBoxListGate={dummyBoxListGate}
                     dummyBox500ListGate={dummyBox500ListGate}
                     ostelin60VTangCanLocked={ostelin60VTangCanLocked}
-                    pharmatonViGoiDot1Purchased={pharmatonViGoiDot1Purchased}
                     psGate={psGate}
                     isPsOnInvoice25={isPsOnInvoice25}
                     onIsPsOnInvoice25Change={handlePsOnInvoice25Toggle}

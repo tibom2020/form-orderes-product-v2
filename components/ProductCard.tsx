@@ -96,9 +96,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
     const LEVEL_5_INDEX = 4;
     const giaCuoiThang = useMemo(() => {
         const maxCk = promoSuspended ? null : getMaxDiscountPercent(product.promotion);
-        const giaHD = Math.round((product.basePrice ?? product.price) * (1 - (maxCk ?? 0) / 100));
+        const giaHD = Math.round((hideMonthlyPromo ? (product.basePrice ?? product.price) : product.price) * (1 - (maxCk ?? 0) / 100));
         return Math.round(giaHD * (1 - REBATE_TIERS[LEVEL_5_INDEX].percent / 100));
-    }, [product.price, product.basePrice, product.promotion, promoSuspended]);
+    }, [product.price, product.basePrice, product.promotion, promoSuspended, hideMonthlyPromo]);
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
@@ -168,7 +168,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                     )}
 
                     <p className="text-base font-bold text-opella-green dark:text-opella-green mb-2">
-                        {formatCurrency(product.basePrice ?? product.price)}
+                        {formatCurrency(hideMonthlyPromo ? (product.basePrice ?? product.price) : product.price)}
                         <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 ml-1 uppercase">
                             {hideMonthlyPromo ? '(basePrice · ko CK tháng)' : '(VAT)'}
                         </span>

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, PHARMATON_VI_GOI_PRODUCT_ID, PHARMATON_VI_DOT2_MIN_QTY, PHARMATON_VI_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2, DUMMY_BOX_DISCOUNT, DUMMY_BOX_500_DISCOUNT, DUMMY_BOX_500_SHEET } from './constants';
-import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload } from './types';
+import { PRODUCTS, EMPLOYEES, PROMO_UPDATE_DATE, GOOGLE_SCRIPT_URL, OSTELIN_60V_PRODUCT_ID, OSTELIN_60V_GOI_MIN_QTY, OSTELIN_60V_GOI_SHEET, PHARMATON_VI_GOI_PRODUCT_ID, PHARMATON_VI_DOT2_MIN_QTY, PHARMATON_VI_GOI_SHEET, CALCIPLUS_PROMO_PACK_SIZE, CALCIPLUS_PROMO_DISCOUNT_PERCENT, PACK_476_PRODUCT_IDS, SHEET_DANGKYTBQ2, DUMMY_BOX_DISCOUNT, DUMMY_BOX_500_DISCOUNT, DUMMY_BOX_500_SHEET, SHEET_ACEMUC_SCHEME1, ACEMUC_GROUP_IDS } from './constants';
+import type { Product, CartItem, Employee, Order, Customer, Rebate, RebateBm, SalesRecord, PurchaseHistoryItem, MarketingRecord, ForecastItem, AdminNewsItem, RebateCustomerNoticePayload, AcemucScheme1Record } from './types';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
 import Login, { PostLoginLoadingScreen } from './components/Login';
@@ -16,7 +16,7 @@ import SaleKhPsTab from './components/SaleKhPsTab';
 import QuarterSalesTrackingTab from './components/QuarterSalesTrackingTab';
 import OrderSuccessModal from './components/OrderSuccessModal'; // Import Modal
 import AdminNewsWidget from './components/AdminNewsWidget';
-import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon, EyeSlashIcon } from './components/icons';
+import { ChartBarIcon, ClipboardDocumentListIcon, SunIcon, MoonIcon, SearchIcon, GlobeAmericasIcon, HomeIcon, CubeIcon, StarIcon, TrendingUpIcon, BanknotesIcon, TagIcon, ClockIcon, IdentificationIcon, DeviceTabletIcon, ArrowsRotateIcon, EyeSlashIcon, CameraIcon } from './components/icons';
 import CalciPlusTab from './components/CalciPlusTab';
 import Ostelin60VTab from './components/Ostelin60VTab';
 import RepActiveAcemucOstelinTab from './components/RepActiveAcemucOstelinTab';
@@ -25,6 +25,7 @@ import StoreProgramRegistrationTab, { STORE_PROGRAM_TAB_LABEL } from './componen
 import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import EconsentTab from './components/EconsentTab';
+import AcemucScheme1Tab from './components/AcemucScheme1Tab';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders, getHiddenProductIds, saveHiddenProductIds } from './utils/storage';
 import { getDiscountPercent } from './utils/calculations';
@@ -115,11 +116,13 @@ const SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB = false;
 const SHOW_ECONSENT_TAB = false;
 const SHOW_FORECAST_TAB = false;
 const SHOW_GIA_THAM_KHAO_TAB = false;
+/** Tab theo dõi CTKM Acemuc Scheme 1 (Poster + Wobbler) */
+const SHOW_ACEMUC_SCHEME1_TAB = true;
 
 /** Tải DANH_MUC_KH khi đăng nhập — hủy sau N ms để không kẹt màn “đang tải” vô hạn. */
 const POST_LOGIN_CATALOG_TIMEOUT_MS = 20_000;
 
-type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'landing500' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin' | 'econsent';
+type ViewMode = 'order' | 'dashboard' | 'storeRegistration' | 'landing' | 'landingBsT3' | 'landing500' | 'forecast' | 'rebate' | 'priceList' | 'aoTracking' | 'saleKhPs' | 'quarterSalesTracking' | 'ostelin60v' | 'pharmatonVi' | 'calciPlus' | 'giaThamKhao' | 'aiTuVan' | 'lixi' | 'purchaseHistory' | 'repActiveAcemucOstelin' | 'econsent' | 'acemucScheme1';
 
 const App: React.FC = () => {
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
@@ -135,6 +138,7 @@ const App: React.FC = () => {
   const [marketingData, setMarketingData] = useState<MarketingRecord[]>([]);
   const [marketingDataBs, setMarketingDataBs] = useState<MarketingRecord[]>([]);
   const [marketingData500, setMarketingData500] = useState<MarketingRecord[]>([]);
+  const [acemucScheme1Data, setAcemucScheme1Data] = useState<AcemucScheme1Record[]>([]);
   /** True sau khi loadCriticalData hoàn tất phần DummyBox (kể cả mảng rỗng) */
   const [dummyBoxSheetsReady, setDummyBoxSheetsReady] = useState(false);
   const [forecastData, setForecastData] = useState<ForecastItem[]>([]); // State mới cho Forecast
@@ -283,6 +287,17 @@ const App: React.FC = () => {
       setMarketingDataBs(marketingBs || []);
       setMarketingData500(marketing500 || []);
       setDummyBoxSheetsReady(true);
+
+      try {
+        const acemucScheme1 = await fetchDataFromSheet<AcemucScheme1Record>(
+          GOOGLE_SCRIPT_URL,
+          SHEET_ACEMUC_SCHEME1
+        );
+        setAcemucScheme1Data(acemucScheme1 || []);
+      } catch (e) {
+        console.warn('ACEMUC_SCHEME1 sheet load failed (optional sheet)', e);
+        setAcemucScheme1Data([]);
+      }
 
       const [rebates, sales] = await Promise.all([
         fetchDataFromSheet<Rebate>(GOOGLE_SCRIPT_URL, "REBATE"),
@@ -517,6 +532,7 @@ const App: React.FC = () => {
     if (!SHOW_ECONSENT_TAB && viewMode === 'econsent') setViewMode('order');
     if (!SHOW_FORECAST_TAB && viewMode === 'forecast') setViewMode('order');
     if (!SHOW_GIA_THAM_KHAO_TAB && viewMode === 'giaThamKhao') setViewMode('order');
+    if (!SHOW_ACEMUC_SCHEME1_TAB && viewMode === 'acemucScheme1') setViewMode('order');
   }, [viewMode]);
 
   /** Tab AI Tư vấn chỉ dành cho Admin; tránh kẹt view khi đổi nhân viên trong dropdown */
@@ -1279,6 +1295,7 @@ const App: React.FC = () => {
       appliedRebates: selectedRebateIds,
       customerSummary: customerSummary,
       invoiceLines: buildOrderInvoiceLines(orderObj),
+      registerAcemucScheme1: orderObj.items.some((i) => ACEMUC_GROUP_IDS.includes(i.id)),
       ...(orderObj.isPsOnInvoice25
         ? {
             isPsOnInvoice25: true,
@@ -1306,6 +1323,10 @@ const App: React.FC = () => {
           onUpdateMarketingRecordBs: handleUpdateMarketingRecordBs,
           onUpdateMarketingRecord500: handleUpdateMarketingRecord500,
         });
+      }
+
+      if (orderObj.items.some((i) => ACEMUC_GROUP_IDS.includes(i.id))) {
+        void handleAcemucScheme1Reload();
       }
 
       if (orderObj.isPsOnInvoice25 && (orderObj.psSuatApplied ?? 0) > 0) {
@@ -1427,6 +1448,31 @@ const App: React.FC = () => {
 
   const handleMarketingData500Reload = async () => {
     await reloadDummyBoxLists();
+  };
+
+  const handleAcemucScheme1Reload = async () => {
+    try {
+      const rows = await fetchDataFromSheet<AcemucScheme1Record>(
+        GOOGLE_SCRIPT_URL,
+        SHEET_ACEMUC_SCHEME1
+      );
+      setAcemucScheme1Data(rows || []);
+    } catch (e) {
+      console.warn('ACEMUC_SCHEME1 reload failed', e);
+    }
+  };
+
+  const handleUpdateAcemucScheme1Record = (
+    customerCode: string,
+    updates: Partial<Pick<AcemucScheme1Record, 'UpHinh' | 'UpHinh2' | 'GhiChu1' | 'GhiChu2'>>
+  ) => {
+    setAcemucScheme1Data((prev) =>
+      prev.map((record) =>
+        String(record.CustomerCode).trim() === String(customerCode).trim()
+          ? { ...record, ...updates }
+          : record
+      )
+    );
   };
 
   const handleUpdateMarketingRecord = (customerCode: string, updates: Partial<MarketingRecord>) => {
@@ -1839,6 +1885,20 @@ const App: React.FC = () => {
               <span className="sm:hidden">PMT Vỉ</span>
             </button>
           )}
+          {SHOW_ACEMUC_SCHEME1_TAB && (
+            <button
+              onClick={() => setViewMode('acemucScheme1')}
+              className={`flex-1 min-w-[60px] sm:min-w-[80px] py-2 sm:py-3 text-[10px] sm:text-sm font-bold flex items-center justify-center space-x-1 sm:space-x-2 transition-colors border-b-2 ${
+                viewMode === 'acemucScheme1'
+                  ? 'text-amber-900 border-amber-600 bg-amber-100 dark:bg-amber-950/55 dark:text-amber-50 dark:border-amber-400'
+                  : 'text-amber-800/90 border-transparent bg-amber-50/70 dark:bg-amber-950/30 dark:text-amber-200/90 hover:bg-amber-100/90 dark:hover:bg-amber-900/45'
+              }`}
+            >
+              <CameraIcon />
+              <span className="hidden sm:inline">Acemuc Scheme 1</span>
+              <span className="sm:hidden">Acemuc</span>
+            </button>
+          )}
           {SHOW_CALCI_PLUS_TAB && (
             <button
               onClick={() => setViewMode('calciPlus')}
@@ -1956,7 +2016,7 @@ const App: React.FC = () => {
       </header>
 
       <main
-        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'landingBsT3', 'landing500', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'pharmatonVi', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
+        className={`flex-1 min-w-0 ${viewMode === 'storeRegistration' ? 'w-full max-w-none p-0' : 'container mx-auto p-4'} ${['order', 'dashboard', 'storeRegistration', 'purchaseHistory', 'rebate', 'landing', 'landingBsT3', 'landing500', 'forecast', 'priceList', 'aoTracking', 'saleKhPs', 'quarterSalesTracking', 'ostelin60v', 'pharmatonVi', 'calciPlus', 'giaThamKhao', 'aiTuVan', 'repActiveAcemucOstelin', 'acemucScheme1'].includes(viewMode) ? 'bg-opella-beige dark:bg-[#1a3028]' : ''}`}
       >
         {viewMode === 'order' && (
           <>
@@ -2225,6 +2285,16 @@ const App: React.FC = () => {
         )}
         {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
           <CalciPlusTab />
+        )}
+        {SHOW_ACEMUC_SCHEME1_TAB && viewMode === 'acemucScheme1' && loggedInEmployee && (
+          <AcemucScheme1Tab
+            records={acemucScheme1Data}
+            sentOrders={sentOrders}
+            currentEmployee={loggedInEmployee}
+            isAdmin={loggedInEmployee.code === ADMIN_CODE}
+            onUpdateRecord={handleUpdateAcemucScheme1Record}
+            onReloadData={handleAcemucScheme1Reload}
+          />
         )}
         {SHOW_GIA_THAM_KHAO_TAB && viewMode === 'giaThamKhao' && (
           <GiaThamKhaoTab products={PRODUCTS} />

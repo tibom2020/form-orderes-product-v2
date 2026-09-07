@@ -185,7 +185,12 @@ function handleMarketing(data, ss, output) {
     var contentType = data.mimeType || "image/jpeg";
     var timestampStr = Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd_HHmmss");
     var blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), contentType, customerCode + "_" + targetColumn + "_" + timestampStr + ".jpg");
-    var folder = DriveApp.getFolderById("1bVA1vS04yQzpAMd5iA7EBgEgY4IgMUod");
+    // Acemuc Scheme 1 → folder riêng; DummyBox / marketing khác giữ folder cũ
+    var folderId =
+      String(data.sheetName || "") === "ACEMUC_SCHEME1"
+        ? "1EHfnlf9u052KaPJDx-ebc-vuX7wubTzk"
+        : "1bVA1vS04yQzpAMd5iA7EBgEgY4IgMUod";
+    var folder = DriveApp.getFolderById(folderId);
     var file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var fileUrl = file.getUrl();
@@ -447,10 +452,181 @@ function handleOrder(data, ss, output) {
       incrementPsSuatOnDangKyTBQ2_(ss, String(data.customerCode || "").trim(), psSuatApplied, psMaxSuat);
     }
 
+    // --- ACEMUC Scheme 1: ghi KH mua Acemuc vào sheet theo dõi ---
+    var registerAcemuc = data.registerAcemucScheme1 === true || String(data.registerAcemucScheme1 || "").toLowerCase() === "true";
+    if (!registerAcemuc && items && items.length) {
+      for (var ai = 0; ai < items.length; ai++) {
+        var aName = String(items[ai].name || "").toUpperCase();
+        var aId = Number(items[ai].id) || 0;
+        if (aId === 2 || aId === 3 || aId === 4 || aName.indexOf("ACEMUC") >= 0) {
+          registerAcemuc = true;
+          break;
+        }
+      }
+    }
+    if (registerAcemuc) {
+      upsertAcemucScheme1Row_(ss, data);
+    }
+
     sendTelegramNotification(data);
   }
 
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+/**
+ * DS Acemuc đơn = Σ (basePrice × SL) từng dòng SP Acemuc (id 2/3/4 hoặc tên ACEMUC).
+ */
+function calcAcemucSaleFromItems_(items) {
+  var sum = 0;
+  if (!items || !items.length) return 0;
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var id = Number(it.id) || 0;
+    var name = String(it.name || "").toUpperCase();
+    if (!(id === 2 || id === 3 || id === 4 || name.indexOf("ACEMUC") >= 0)) continue;
+    var unit = Number(it.basePrice);
+    if (!isFinite(unit) || unit <= 0) unit = Number(it.price) || 0;
+    var qty = Number(it.quantity) || 0;
+    sum += Math.round(unit * qty);
+  }
+  return sum;
+}
+
+/** basePrice theo tên SP trên sheet Orders (khi không có id) */
+function acemucBaseFromProductName_(name) {
+  var n = String(name || "").toUpperCase();
+  if (n.indexOf("ACEMUC") < 0) return 0;
+  if (n.indexOf("KIDS") >= 0) return 66451;
+  if (n.indexOf("SAC") >= 0) return 94178;
+  if (n.indexOf("CAP") >= 0) return 85280;
+  return 85280;
+}
+
+/**
+ * Tính lại SaleAcemuc trong tháng hiện tại (GMT+7) từ sheet Orders:
+ * Σ (basePrice × Quantity) mọi ngày trong tháng — cộng dồn đơn khác ngày, không cộng trùng submit.
+ */
+function recalcAcemucSaleFromOrdersSheet_(ss, customerCode) {
+  var sheet = ss.getSheetByName("Orders");
+  if (!sheet) return 0;
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return 0;
+  var hdr = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = hdr.indexOf("CustomerCode");
+  var prodCol = hdr.indexOf("Product");
+  var qtyCol = hdr.indexOf("Quantity");
+  var tsCol = hdr.indexOf("Timestamp");
+  if (codeCol < 0 || prodCol < 0 || qtyCol < 0) return 0;
+  var code = String(customerCode || "").trim();
+  var nowStr = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM");
+  var sum = 0;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() !== code) continue;
+    if (tsCol >= 0) {
+      var ts = values[r][tsCol];
+      var tsDate = ts instanceof Date ? ts : new Date(ts);
+      if (isNaN(tsDate.getTime())) continue;
+      var ym = Utilities.formatDate(tsDate, "GMT+7", "yyyy-MM");
+      if (ym !== nowStr) continue;
+    }
+    var prod = String(values[r][prodCol] || "");
+    var base = acemucBaseFromProductName_(prod);
+    if (base <= 0) continue;
+    var qty = Number(values[r][qtyCol]) || 0;
+    sum += Math.round(base * qty);
+  }
+  return sum;
+}
+
+/**
+ * Sheet ACEMUC_SCHEME1 — tự tạo header nếu chưa có; upsert theo CustomerCode (không ghi đè URL ảnh).
+ * SaleAcemuc = tổng base×SL Acemuc trong tháng (mọi ngày), tính lại từ Orders.
+ */
+function upsertAcemucScheme1Row_(ss, data) {
+  var sheetName = "ACEMUC_SCHEME1";
+  var sheet = ss.getSheetByName(sheetName);
+  var headers = [
+    "Timestamp",
+    "CustomerCode",
+    "CustomerName",
+    "Address",
+    "Rep",
+    "StaffCode",
+    "SaleAcemuc",
+    "UpHinh",
+    "UpHinh2",
+    "GhiChu1",
+    "GhiChu2"
+  ];
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(headers);
+  }
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 1) {
+    sheet.appendRow(headers);
+    values = sheet.getDataRange().getValues();
+  }
+  var hdr = values[0].map(function (h) { return String(h).trim(); });
+  var codeCol = hdr.indexOf("CustomerCode");
+  if (codeCol < 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    hdr = headers;
+    codeCol = 1;
+  }
+  var code = String(data.customerCode || "").trim();
+  if (!code) return;
+  var orderSale = calcAcemucSaleFromItems_(data.items);
+  var totalSale = recalcAcemucSaleFromOrdersSheet_(ss, code);
+  if (totalSale <= 0) totalSale = orderSale;
+  var rowIndex = -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][codeCol]).trim() === code) {
+      rowIndex = r + 1;
+      break;
+    }
+  }
+  var now = new Date();
+  var name = String(data.customerName || "");
+  var address = String(data.customerAddress || data.address || "");
+  var rep = String(data.employeeName || data.Rep || "");
+  var staff = String(data.employeeCode || data.StaffCode || "");
+  function colOf(hname) {
+    var i = hdr.indexOf(hname);
+    return i >= 0 ? i + 1 : -1;
+  }
+  if (rowIndex < 0) {
+    var row = [];
+    for (var c = 0; c < hdr.length; c++) {
+      var h = hdr[c];
+      if (h === "Timestamp") row.push(now);
+      else if (h === "CustomerCode") row.push(code);
+      else if (h === "CustomerName") row.push(name);
+      else if (h === "Address") row.push(address);
+      else if (h === "Rep") row.push(rep);
+      else if (h === "StaffCode") row.push(staff);
+      else if (h === "SaleAcemuc") row.push(totalSale > 0 ? totalSale : "");
+      else if (h === "UpHinh" || h === "UpHinh2") row.push("NO");
+      else row.push("");
+    }
+    sheet.appendRow(row);
+    return;
+  }
+  var tsCol = colOf("Timestamp");
+  var nameCol = colOf("CustomerName");
+  var addrCol = colOf("Address");
+  var repCol = colOf("Rep");
+  var staffCol = colOf("StaffCode");
+  var saleCol = colOf("SaleAcemuc");
+  if (tsCol > 0) sheet.getRange(rowIndex, tsCol).setValue(now);
+  if (nameCol > 0 && name) sheet.getRange(rowIndex, nameCol).setValue(name);
+  if (addrCol > 0 && address) sheet.getRange(rowIndex, addrCol).setValue(address);
+  if (repCol > 0 && rep) sheet.getRange(rowIndex, repCol).setValue(rep);
+  if (staffCol > 0 && staff) sheet.getRange(rowIndex, staffCol).setValue(staff);
+  if (saleCol > 0) {
+    sheet.getRange(rowIndex, saleCol).setValue(totalSale > 0 ? totalSale : orderSale);
+  }
 }
 
 /**
@@ -955,8 +1131,15 @@ function sendDummyBoxNotification(data, fileUrl) {
     var now = new Date();
     var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm");
     var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
-    var imgSlot = (data.targetColumn === "UpHinh") ? "Hình 1" : "Hình 2";
-    var message = "📸 <b>CHECK-IN DUMMYBOX THÀNH CÔNG</b>\n" +
+    var sheetNm = String(data.sheetName || "");
+    var isAcemuc = sheetNm === "ACEMUC_SCHEME1";
+    var imgSlot = (data.targetColumn === "UpHinh")
+      ? (isAcemuc ? "Poster" : "Hình 1")
+      : (isAcemuc ? "Wobbler" : "Hình 2");
+    var title = isAcemuc
+      ? "📸 <b>CHECK-IN ACEMUC SCHEME 1</b>\n"
+      : "📸 <b>CHECK-IN DUMMYBOX THÀNH CÔNG</b>\n";
+    var message = title +
       "--------------------------------\n" +
       "⏰ <b>Thời gian:</b> " + timeStr + " " + dateStr + "\n" +
       "🧑💼 <b>NV:</b> " + clean(data.employeeName) + "\n" +
@@ -974,7 +1157,12 @@ function sendDummyBoxNotification(data, fileUrl) {
     });
     UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
       method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "dummybox_checkin", data: data, image_url: fileUrl, full_message: message }),
+      payload: JSON.stringify({
+        event_type: isAcemuc ? "acemuc_scheme1_checkin" : "dummybox_checkin",
+        data: data,
+        image_url: fileUrl,
+        full_message: message
+      }),
       muteHttpExceptions: true
     });
   } catch (e) { Logger.log("Lỗi sendDummyBoxNotification: " + e.toString()); }

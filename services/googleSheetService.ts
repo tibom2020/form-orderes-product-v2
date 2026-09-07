@@ -60,6 +60,8 @@ interface OrderPayload {
   psSuatApplied?: number;
   psSuatMax?: number;
   psTierLabel?: string;
+  /** Đơn có SP Acemuc → upsert sheet ACEMUC_SCHEME1 */
+  registerAcemucScheme1?: boolean;
 }
 
 export const postOrderToGoogleSheet = async (

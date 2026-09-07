@@ -928,6 +928,10 @@ export const ACEMUC_GROUP_IDS: readonly number[] = [2, 3, 4];
 /** Tạm ngưng CK tháng Acemuc — đổi false để bật lại */
 export const ACEMUC_PROMO_SUSPENDED = true;
 
+/** CTKM Acemuc Scheme 1 (Sep–Oct): POSM Poster+Wobbler, DS ≥ 1tr/tháng → FOC 2 hộp CAP */
+export const SHEET_ACEMUC_SCHEME1 = 'ACEMUC_SCHEME1';
+export const ACEMUC_SCHEME1_MIN_SALE = 1_000_000;
+
 /** Tạm ngưng CK tháng Telfast (HD + BD + 30MG) — đổi false để bật lại */
 export const TELFAST_PROMO_SUSPENDED = false;
 

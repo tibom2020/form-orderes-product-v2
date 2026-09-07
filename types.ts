@@ -213,12 +213,20 @@ export interface MarketingRecord {
   Province?: string;
   Rep?: string;
   StaffCode?: string;
+  Timestamp?: string | number | Date;
 
   UpHinh?: string;      // Trạng thái chụp ảnh 1: YES/NO hoặc Link
   UpHinh2?: string;     // Trạng thái chụp ảnh 2: YES/NO hoặc Link (MỚI)
   GoiLocal?: string;    // Đăng ký gói Local: YES/NO
   GoiImport?: string;   // Đăng ký gói Import: YES/NO
+  GhiChu1?: string;
+  GhiChu2?: string;
+  /** DS Acemuc tháng (optional — thường join từ DOANH_SO) */
+  SaleAcemuc?: number | string;
 }
+
+/** Sheet ACEMUC_SCHEME1 — theo dõi CTKM Scheme 1 (Poster / Wobbler) */
+export type AcemucScheme1Record = MarketingRecord;
 
 export interface Order {
   id: string;

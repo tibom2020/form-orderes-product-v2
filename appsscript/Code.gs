@@ -4,7 +4,7 @@
  */
 
 var BOT_TOKEN = "";
-var CHAT_ID = ""; 
+var CHAT_ID = "-1004380939285"; 
 var N8N_WEBHOOK_URL = "";
 var GEMINI_API_KEY = "";
 var GEMINI_MODEL = "gemini-2.5-flash";

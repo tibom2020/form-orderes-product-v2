@@ -110,7 +110,7 @@ const SHOW_QUARTER_SALES_TRACKING_TAB = false;
 const SHOW_CALCI_PLUS_TAB = false;
 const SHOW_OSTELIN_60V_TAB = false;
 /** Tab theo dõi gói PHARMATON VỈ (Đợt 2 từ 11/08/2026) */
-const SHOW_PHARMATON_VI_TAB = true;
+const SHOW_PHARMATON_VI_TAB = false;
 const SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB = false;
 const SHOW_ECONSENT_TAB = false;
 const SHOW_FORECAST_TAB = false;
@@ -1764,8 +1764,8 @@ const App: React.FC = () => {
             }`}
           >
             <StarIcon />
-            <span className="hidden sm:inline">DummyBox - Bs T3+T4+T5</span>
-            <span className="sm:hidden">T3+T4+T5</span>
+            <span className="hidden sm:inline">DummyBox Bs hình ảnh</span>
+            <span className="sm:hidden">Bs ảnh</span>
           </button>
           {SHOW_AO_TRACKING_TAB && (
             <button

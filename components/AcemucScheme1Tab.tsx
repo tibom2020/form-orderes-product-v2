@@ -9,7 +9,7 @@ import {
 import { submitMarketingData } from '../services/googleSheetService';
 import { formatCurrency } from '../utils/formatters';
 import { salesRecordMatchesEmployee } from '../utils/employeeScope';
-import { CameraIcon, CloudArrowUpIcon, SearchIcon } from './icons';
+import { CameraIcon, SearchIcon } from './icons';
 
 interface AcemucScheme1TabProps {
   records: AcemucScheme1Record[];
@@ -92,8 +92,7 @@ const AcemucScheme1Tab: React.FC<AcemucScheme1TabProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isReloading, setIsReloading] = useState(false);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const repOptions = useMemo(() => {
     const set = new Set<string>();
@@ -166,16 +165,13 @@ const AcemucScheme1Tab: React.FC<AcemucScheme1TabProps> = ({
       reader.readAsDataURL(file);
     });
 
-  const openUpload = (code: string, slot: 1 | 2, source: 'camera' | 'gallery') => {
+  const openUpload = (code: string, slot: 1 | 2) => {
     setSelectedCode(code);
     setActiveSlot(slot);
     setSelectedImage(null);
     setUploadNote('');
     setUploadError(null);
-    setTimeout(() => {
-      if (source === 'camera') cameraInputRef.current?.click();
-      else galleryInputRef.current?.click();
-    }, 0);
+    setTimeout(() => fileInputRef.current?.click(), 0);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,18 +278,9 @@ const AcemucScheme1Tab: React.FC<AcemucScheme1TabProps> = ({
         <span className="text-[10px] font-bold text-slate-500">{filtered.length} KH</span>
       </div>
 
-      {/* Chụp trực tiếp (mobile) */}
+      {/* Không dùng capture → mobile hiện chọn Chụp / Thư viện */}
       <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      {/* Chọn từ thư viện ảnh */}
-      <input
-        ref={galleryInputRef}
+        ref={fileInputRef}
         type="file"
         accept="image/*"
         className="hidden"
@@ -400,24 +387,13 @@ const AcemucScheme1Tab: React.FC<AcemucScheme1TabProps> = ({
                     ) : (
                       <p className="text-[10px] text-slate-400 italic">Chưa up</p>
                     )}
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openUpload(code, 1, 'camera')}
-                        className="inline-flex items-center justify-center gap-0.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[9px] font-black uppercase"
-                        title="Chụp ảnh"
-                      >
-                        <CameraIcon /> Chụp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openUpload(code, 1, 'gallery')}
-                        className="inline-flex items-center justify-center gap-0.5 py-1.5 rounded-md bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-[9px] font-black uppercase"
-                        title="Chọn từ thư viện"
-                      >
-                        <CloudArrowUpIcon /> Thư viện
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openUpload(code, 1)}
+                      className="w-full inline-flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black uppercase"
+                    >
+                      <CameraIcon /> Up Poster
+                    </button>
                   </div>
                   <div className="rounded-lg border border-slate-200 dark:border-slate-600 p-2 space-y-1.5">
                     <p className="text-[9px] font-black uppercase text-amber-800 dark:text-amber-200">
@@ -435,24 +411,13 @@ const AcemucScheme1Tab: React.FC<AcemucScheme1TabProps> = ({
                     ) : (
                       <p className="text-[10px] text-slate-400 italic">Chưa up</p>
                     )}
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openUpload(code, 2, 'camera')}
-                        className="inline-flex items-center justify-center gap-0.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[9px] font-black uppercase"
-                        title="Chụp ảnh"
-                      >
-                        <CameraIcon /> Chụp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openUpload(code, 2, 'gallery')}
-                        className="inline-flex items-center justify-center gap-0.5 py-1.5 rounded-md bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-[9px] font-black uppercase"
-                        title="Chọn từ thư viện"
-                      >
-                        <CloudArrowUpIcon /> Thư viện
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openUpload(code, 2)}
+                      className="w-full inline-flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black uppercase"
+                    >
+                      <CameraIcon /> Up Wobbler
+                    </button>
                   </div>
                 </div>
               </div>

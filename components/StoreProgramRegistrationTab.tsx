@@ -6,8 +6,6 @@ import {
   normalizeDangKyTbq2Row,
   isRegisteredRow,
   repMatchesEmployee,
-  buildSaleT4ByCustomerCodeMap,
-  lookupSaleT4Vnd,
   setGoiPs25CellInRow,
   type DangKyTbq2RowView,
 } from '../utils/displayTbq2Sheet';
@@ -430,36 +428,56 @@ function resolveSaleT7Vnd(row: DangKyTbq2RowView): number {
   return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
 }
 
-/** Sale T8: ưu tiên cột sheet DANGKYTBQ2; nếu trống → DOANH_SO (MustWin+Other) theo CustomerCode hoặc Code BM */
-function displaySaleT8Cell(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): string {
+/** Sale T8: chỉ lấy từ cột sheet DANGKYTBQ2 */
+function displaySaleT8Cell(row: DangKyTbq2RowView): string {
   if (row.saleT8.trim()) return formatSheetSaleQ1Display(row.saleT8);
-  let v = lookupSaleT4Vnd(doanhSoMap, row.customerCode);
-  if (v == null && row.codeBm.trim()) v = lookupSaleT4Vnd(doanhSoMap, row.codeBm);
-  if (v != null && Number.isFinite(v)) return formatCurrency(Math.round(v));
   return '—';
 }
 
-/** Giá trị Sale T8 (VNĐ) — cùng nguồn với ô hiển thị */
-function resolveSaleT8Vnd(row: DangKyTbq2RowView, doanhSoMap: Map<string, number>): number {
+/** Giá trị Sale T8 (VNĐ) — chỉ từ sheet */
+function resolveSaleT8Vnd(row: DangKyTbq2RowView): number {
   const fromSheet = parseSheetSalesAmount(row.saleT8);
-  if (fromSheet != null && Number.isFinite(fromSheet)) return fromSheet;
-  let v = lookupSaleT4Vnd(doanhSoMap, row.customerCode);
-  if (v == null && row.codeBm.trim()) v = lookupSaleT4Vnd(doanhSoMap, row.codeBm);
-  return v != null && Number.isFinite(v) ? v : 0;
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
 }
 
-/** Todo T8: ĐẠT nếu Sale T8 ≥ target tháng theo FinalStoreTypeQ2 */
-function todoT8Status(
-  row: DangKyTbq2RowView,
-  doanhSoMap: Map<string, number>
+/** Sale T9: chỉ lấy từ cột sheet DANGKYTBQ2; trống = 0 */
+function displaySaleT9Cell(row: DangKyTbq2RowView): string {
+  if (row.saleT9.trim()) return formatSheetSaleQ1Display(row.saleT9);
+  return '—';
+}
+
+/** Giá trị Sale T9 (VNĐ) — chỉ từ sheet; trống = 0 */
+function resolveSaleT9Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT9);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
+/** Todo tháng: ĐẠT nếu Sale T9 ≥ target tháng theo FinalStoreTypeQ2 */
+function todoT9Status(
+  row: DangKyTbq2RowView
 ): { reached: boolean; target: number; actual: number } | null {
   const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
   if (!cfg || cfg.minMonthlySales <= 0) return null;
-  const actual = resolveSaleT8Vnd(row, doanhSoMap);
+  const actual = resolveSaleT9Vnd(row);
   return {
     target: cfg.minMonthlySales,
     actual,
     reached: actual >= cfg.minMonthlySales,
+  };
+}
+
+/** Target Q3 = 3 × target tháng; Todo Q3: ĐẠT nếu Sale Q3 ≥ target Q3 */
+function todoQ3Status(
+  row: DangKyTbq2RowView
+): { reached: boolean; target: number; actual: number } | null {
+  const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+  if (!cfg || cfg.minMonthlySales <= 0) return null;
+  const targetQ3 = cfg.minMonthlySales * 3;
+  const actual = parseSheetSalesAmount(row.saleQ3) ?? 0;
+  return {
+    target: targetQ3,
+    actual: Number.isFinite(actual) ? actual : 0,
+    reached: (Number.isFinite(actual) ? actual : 0) >= targetQ3,
   };
 }
 
@@ -574,8 +592,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     [isAdmin, budgetRows]
   );
 
-  const saleT4ByCustomerCode = useMemo(() => buildSaleT4ByCustomerCodeMap(doanhSoRows), [doanhSoRows]);
-
   /** Phí Rebate Import/Local/ALL còn lại theo mã KH (cộng RemainAmount theo Group). */
   const rebateByCustomerCode = useMemo(() => {
     const m = new Map<string, { import: number; local: number; all: number }>();
@@ -608,16 +624,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     };
   }, [myRows, isAdmin]);
 
-  /** Tháng hiện tại theo dõi doanh số (T8/T7/T5/T6) */
-  const currentMonthKey = useMemo<'saleT8' | 'saleT7' | 'saleT5' | 'saleT6'>(() => {
+  /** Tháng hiện tại theo dõi doanh số (T9/T8/T7/…) */
+  const currentMonthKey = useMemo<'saleT9' | 'saleT8' | 'saleT7' | 'saleT5' | 'saleT6'>(() => {
     const m = new Date().getMonth() + 1;
+    if (m === 9) return 'saleT9';
     if (m === 8) return 'saleT8';
     if (m === 7) return 'saleT7';
     if (m === 5) return 'saleT5';
     if (m === 6) return 'saleT6';
-    return 'saleT8';
+    return 'saleT9';
   }, []);
   const currentMonthLabel = useMemo(() => {
+    if (currentMonthKey === 'saleT9') return 'T9';
     if (currentMonthKey === 'saleT8') return 'T8';
     if (currentMonthKey === 'saleT7') return 'T7';
     if (currentMonthKey === 'saleT5') return 'T5';
@@ -640,11 +658,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       const n = parseSheetSalesAmount(r.saleQ3);
       if (n != null && Number.isFinite(n)) m[cfg.label].saleQ3Sum += n;
       const monthVal =
-        currentMonthKey === 'saleT8'
-          ? resolveSaleT8Vnd(r, saleT4ByCustomerCode)
-          : currentMonthKey === 'saleT7'
-            ? resolveSaleT7Vnd(r)
-            : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+        currentMonthKey === 'saleT9'
+          ? resolveSaleT9Vnd(r)
+          : currentMonthKey === 'saleT8'
+            ? resolveSaleT8Vnd(r)
+            : currentMonthKey === 'saleT7'
+              ? resolveSaleT7Vnd(r)
+              : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
       if (Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
         m[cfg.label].achievedMonth += 1;
       }
@@ -652,7 +672,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
       else if (isGoiPs25No(r.goiPs25)) m[cfg.label].ps25ChuaDat += 1;
     });
     return m;
-  }, [myRows, currentMonthKey, saleT4ByCustomerCode]);
+  }, [myRows, currentMonthKey]);
 
   /** Thống kê đăng ký theo Rep × Tier (cùng phạm vi dữ liệu với bảng: myRows) */
   const repTierRegistrationRows = useMemo(() => buildRepTierRegistrationRows(myRows), [myRows]);
@@ -759,11 +779,13 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
         if (!cfg) return false;
         const monthVal =
-          currentMonthKey === 'saleT8'
-            ? resolveSaleT8Vnd(r, saleT4ByCustomerCode)
-            : currentMonthKey === 'saleT7'
-              ? resolveSaleT7Vnd(r)
-              : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+          currentMonthKey === 'saleT9'
+            ? resolveSaleT9Vnd(r)
+            : currentMonthKey === 'saleT8'
+              ? resolveSaleT8Vnd(r)
+              : currentMonthKey === 'saleT7'
+                ? resolveSaleT7Vnd(r)
+                : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
         const achieved = Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
         return monthAchievementFilter === 'achieved' ? achieved : !achieved;
       });
@@ -781,14 +803,6 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter(r => {
-      const saleT8DoanhSo = lookupSaleT4Vnd(saleT4ByCustomerCode, r.customerCode);
-      const saleT8DoanhSoBm =
-        r.codeBm.trim() ? lookupSaleT4Vnd(saleT4ByCustomerCode, r.codeBm) : undefined;
-      const saleT8Fallback = saleT8DoanhSo ?? saleT8DoanhSoBm;
-      const saleT8Search =
-        (saleT8Fallback != null && Number.isFinite(saleT8Fallback)
-          ? `${saleT8Fallback} ${formatCurrency(Math.round(saleT8Fallback))} `.toLowerCase()
-          : '') + r.saleT8.toLowerCase();
       const hay = (s: string) => s.toLowerCase().includes(q);
       return (
         hay(r.customerName) ||
@@ -808,11 +822,11 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         hay(r.countertop) ||
         hay(r.saleT7) ||
         hay(r.saleT8) ||
-        hay(r.saleQ3) ||
-        saleT8Search.includes(q)
+        hay(r.saleT9) ||
+        hay(r.saleQ3)
       );
     });
-  }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, goiPs25Filter, currentMonthKey, saleT4ByCustomerCode]);
+  }, [myRows, searchQuery, tierRegisteredFilter, monthAchievementFilter, goiPs25Filter, currentMonthKey]);
 
   /** Một Rep duy nhất trong kết quả lọc → cột Rep thừa, ẩn đi */
   const hideRepColumn = useMemo(() => {
@@ -935,8 +949,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedSalesRecord]);
 
-  /** CustomerCode … Sale Q3 + Sale T8 + Todo T8; có thể ẩn Rep */
-  const tableColSpan = (hideRepColumn ? 18 : 19) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+  /** CustomerCode … Sale T9 + Todo T9 + Sale Q3 + Todo Q3; có thể ẩn Rep */
+  const tableColSpan = (hideRepColumn ? 20 : 21) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -1405,18 +1419,30 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-rose-100/90 dark:bg-rose-950/45 border-r border-rose-200/60 dark:border-rose-900/45 text-rose-950 dark:text-rose-100"
-                          title="Ưu tiên cột Sale T8 trên DANGKYTBQ2; ô trống thì MustWin+Other (DOANH_SO)"
+                          title="Cột Sale T8 trên DANGKYTBQ2"
                         >
                           Sale T8
                         </th>
                         <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-fuchsia-100/90 dark:bg-fuchsia-950/45 border-r border-fuchsia-200/60 dark:border-fuchsia-900/45 text-fuchsia-950 dark:text-fuchsia-100"
+                          title="Cột Sale T9 trên DANGKYTBQ2; trống = 0"
+                        >
+                          Sale T9
+                        </th>
+                        <th
                           className="py-3 px-2 text-center min-w-[5.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
-                          title="ĐẠT nếu Sale T8 ≥ target tháng theo FinalStoreTypeQ2 (Flagship/Platinum/Gold: 15tr · Silver: 6tr · Bronze: 3tr)"
+                          title="ĐẠT nếu Sale T9 ≥ target tháng theo FinalStoreTypeQ2 (Flagship/Platinum/Gold: 15tr · Silver: 6tr · Bronze: 3tr)"
                         >
                           Todo
                         </th>
                         <th className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-orange-50/90 dark:bg-orange-950/35 border-r border-orange-200/50 dark:border-orange-900/35">
                           Sale Q3
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[5.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight"
+                          title="ĐẠT nếu Sale Q3 ≥ target Q3 (= 3 × target tháng theo FinalStoreTypeQ2)"
+                        >
+                          Todo Q3
                         </th>
                       </tr>
                     </thead>
@@ -1606,16 +1632,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               </td>
                               <td
                                 className={`${base} text-right font-semibold tabular-nums ${tc.saleT8} ${tc.saleT8Hover} text-rose-900 dark:text-rose-100`}
-                                title={
-                                  row.saleT8.trim()
-                                    ? 'Từ sheet DANGKYTBQ2'
-                                    : 'Bổ sung từ DOANH_SO (MustWin+Other) khi ô sheet trống'
-                                }
+                                title="Từ sheet DANGKYTBQ2"
                               >
-                                {displaySaleT8Cell(row, saleT4ByCustomerCode)}
+                                {displaySaleT8Cell(row)}
+                              </td>
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-fuchsia-50/70 dark:bg-fuchsia-950/28 text-fuchsia-900 dark:text-fuchsia-100`}
+                                title="Từ sheet DANGKYTBQ2; trống = 0"
+                              >
+                                {displaySaleT9Cell(row)}
                               </td>
                               {(() => {
-                                const todo = todoT8Status(row, saleT4ByCustomerCode);
+                                const todo = todoT9Status(row);
                                 if (!todo) {
                                   return (
                                     <td className="py-2.5 px-2 text-[10px] text-center bg-violet-50/40 dark:bg-violet-950/20 text-slate-400 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
@@ -1633,8 +1661,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                     }`}
                                     title={
                                       todo.reached
-                                        ? `Đã đạt target ${formatCurrency(todo.target)} (Sale T8)`
-                                        : `Còn thiếu ${formatCurrency(thieu)} (target ${formatCurrency(todo.target)} · Sale T8)`
+                                        ? `Đã đạt target ${formatCurrency(todo.target)} (Sale T9)`
+                                        : `Còn thiếu ${formatCurrency(thieu)} (target ${formatCurrency(todo.target)} · Sale T9)`
                                     }
                                   >
                                     {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}
@@ -1646,6 +1674,33 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               >
                                 {formatSheetSaleQ1Display(row.saleQ3)}
                               </td>
+                              {(() => {
+                                const todo = todoQ3Status(row);
+                                if (!todo) {
+                                  return (
+                                    <td className="py-2.5 px-2 text-[10px] text-center bg-amber-50/40 dark:bg-amber-950/20 text-slate-400 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
+                                      —
+                                    </td>
+                                  );
+                                }
+                                const thieu = Math.max(todo.target - todo.actual, 0);
+                                return (
+                                  <td
+                                    className={`py-2.5 px-2 text-[10px] text-center font-black border-r border-[#c0c9c3]/15 dark:border-slate-600/35 ${
+                                      todo.reached
+                                        ? 'bg-emerald-100/70 dark:bg-emerald-900/35 text-emerald-800 dark:text-emerald-200'
+                                        : 'bg-amber-100/70 dark:bg-amber-900/35 text-amber-900 dark:text-amber-100'
+                                    }`}
+                                    title={
+                                      todo.reached
+                                        ? `Đã đạt target Q3 ${formatCurrency(todo.target)} (= 3× tháng · Sale Q3)`
+                                        : `Còn thiếu ${formatCurrency(thieu)} (target Q3 ${formatCurrency(todo.target)} = 3× tháng · Sale Q3)`
+                                    }
+                                  >
+                                    {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                                  </td>
+                                );
+                              })()}
                             </tr>
                           );
                         })

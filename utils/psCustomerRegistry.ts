@@ -20,8 +20,8 @@ export interface PsCustomerGate {
   suatMax: number;
   suatRemaining: number;
   isMultiSuat: boolean;
-  /** Sale T8 từ sheet DANGKYTBQ2 (VNĐ) — tháng hiện tại trên Cart */
-  saleT8Vnd: number;
+  /** Sale T9 từ sheet DANGKYTBQ2 (VNĐ) — tháng hiện tại trên Cart; trống = 0 */
+  saleT9Vnd: number;
   /** Target trưng bày tháng = minMonthlySales theo tier */
   targetTrungBay: number;
 }
@@ -42,8 +42,8 @@ function registerGate(
   const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
   /** Còn suất PS → được tick SPECIAL_PS0526 (không chặn riêng theo cột Gói PS 25% = YES) */
   const canShowCk25 = inPsList && suatRemaining > 0;
-  const saleT8Parsed = parseSheetSalesAmount(row.saleT8);
-  const saleT8Vnd = saleT8Parsed != null && Number.isFinite(saleT8Parsed) ? saleT8Parsed : 0;
+  const saleT9Parsed = parseSheetSalesAmount(row.saleT9);
+  const saleT9Vnd = saleT9Parsed != null && Number.isFinite(saleT9Parsed) ? saleT9Parsed : 0;
 
   map.set(k, {
     customerCode: code.trim(),
@@ -56,7 +56,7 @@ function registerGate(
     suatMax,
     suatRemaining,
     isMultiSuat: multi,
-    saleT8Vnd,
+    saleT9Vnd,
     targetTrungBay: tier.minMonthlySales,
   });
 }

@@ -301,23 +301,23 @@ const Cart: React.FC<CartProps> = (props) => {
         (currentSalesRecord?.FinalStoreTypeQ2?.trim() || '') ||
         '—';
 
-    /** Sale T8 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
+    /** Sale T9 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
     const psDisplayMetrics = useMemo(() => {
-        /** Chỉ cột Sale T8 trên DANGKYTBQ2 — không fallback DOANH_SO (tránh lẫn T7) */
-        const saleT8 = psGate?.saleT8Vnd ?? 0;
+        /** Chỉ cột Sale T9 trên DANGKYTBQ2 — trống = 0 */
+        const saleT9 = psGate?.saleT9Vnd ?? 0;
         const tier =
             psGate?.tierConfig ||
             findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');
         const target = psGate?.targetTrungBay || tier?.minMonthlySales || 0;
         if (target <= 0) {
-            return { saleT8, target: 0, todo: null as number | null, status: null as 'dat' | 'chua' | null };
+            return { saleT9, target: 0, todo: null as number | null, status: null as 'dat' | 'chua' | null };
         }
-        const todo = target - saleT8;
+        const todo = target - saleT9;
         return {
-            saleT8,
+            saleT9,
             target,
             todo,
-            status: (saleT8 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
+            status: (saleT9 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
         };
     }, [psGate, currentSalesRecord]);
     const psTotals = useMemo(() => {
@@ -864,26 +864,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                     {psTierLabel}
                                 </span>
                             </div>
-                            <div
-                                className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 px-2 py-1.5"
-                                title="Cột PMT_QTY trên sheet DOANH_SO — số lượng PMT đã mua tháng 8"
-                            >
-                                <span className="font-bold text-[10px] text-violet-800/90 dark:text-violet-200/90">
-                                    SL PMT đã mua T8
-                                </span>
-                                <span className="font-black tabular-nums text-[10px] text-violet-800 dark:text-violet-100">
-                                    {(() => {
-                                        const qty = Number(currentSalesRecord?.PMT_QTY ?? 0);
-                                        return Number.isFinite(qty) && qty > 0 ? qty : '—';
-                                    })()}
-                                </span>
-                            </div>
                             <div className="grid grid-cols-1 gap-1.5 text-[10px]">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
-                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T8 đã đặt</span>
+                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T9 đã đặt</span>
                                     <span className="font-black tabular-nums text-red-700 dark:text-red-200">
-                                        {psDisplayMetrics.saleT8 > 0
-                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT8))
+                                        {psDisplayMetrics.saleT9 > 0
+                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT9))
                                             : '—'}
                                     </span>
                                 </div>

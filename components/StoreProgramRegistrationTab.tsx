@@ -552,6 +552,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [loading, setLoading] = useState(true);
   /** Tải lại sheet khi đã có dữ liệu — không ẩn cả trang */
   const [refreshing, setRefreshing] = useState(false);
+  /** Cột POSM (Frame OTC … Countertop) — mặc định ẩn, bật khi cần */
+  const [showPosmColumns, setShowPosmColumns] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [imagePreviewModal, setImagePreviewModal] = useState<{
@@ -949,8 +951,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedSalesRecord]);
 
-  /** CustomerCode … Sale T9 + Todo T9 + Sale Q3 + Todo Q3; có thể ẩn Rep */
-  const tableColSpan = (hideRepColumn ? 20 : 21) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+  /** CustomerCode … Sale T9 + Todo + Sale Q3 + Todo Q3; ± Rep; ± 5 cột POSM */
+  const tableColSpan =
+    (hideRepColumn ? 15 : 16) + (showPosmColumns ? 5 : 0) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -967,6 +970,22 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           CT Trưng Bày 2026{isAdmin ? ' · Admin' : ''}
         </h1>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowPosmColumns(v => !v)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold border transition-all active:scale-[0.98] ${
+              showPosmColumns
+                ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/50 dark:text-amber-100 dark:border-amber-700'
+                : 'bg-white dark:bg-slate-800 text-[#003629] dark:text-[#8abda9] border-[#c0c9c3]/50 dark:border-slate-600 hover:bg-[#edeeed] dark:hover:bg-slate-700'
+            }`}
+            title={
+              showPosmColumns
+                ? 'Ẩn cột Frame OTC, Frame FS, Topboard, Front Counter, Countertop'
+                : 'Hiện cột Frame OTC, Frame FS, Topboard, Front Counter, Countertop'
+            }
+          >
+            {showPosmColumns ? 'Ẩn cột POSM' : 'Hiện cột POSM'}
+          </button>
           <button
             type="button"
             onClick={() => void loadTbq2Data('refresh')}
@@ -1299,7 +1318,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                     className={`tbq2-sticky-table w-full text-left text-xs ${
                       SHOW_PS_TABLE_COLUMNS
                         ? 'min-w-[1920px] sm:min-w-[2030px]'
-                        : 'min-w-[1020px] sm:min-w-[1120px]'
+                        : showPosmColumns
+                          ? 'min-w-[1020px] sm:min-w-[1120px]'
+                          : 'min-w-[820px] sm:min-w-[900px]'
                     }`}
                   >
                     <thead>
@@ -1327,21 +1348,25 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         <th className="py-3 px-2 min-w-[5.5rem] bg-violet-100/88 dark:bg-violet-950/42 border-r border-violet-200/50 dark:border-violet-900/40 leading-tight">
                           FinalStoreTypeQ2
                         </th>
-                        <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
-                          Frame OTC
-                        </th>
-                        <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
-                          Frame FS
-                        </th>
-                        <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
-                          Topboard
-                        </th>
-                        <th className="py-3 px-1.5 text-center min-w-[4.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight">
-                          Front Counter
-                        </th>
-                        <th className="py-3 px-1.5 text-center min-w-[4.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight">
-                          Countertop
-                        </th>
+                        {showPosmColumns && (
+                          <>
+                            <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
+                              Frame OTC
+                            </th>
+                            <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
+                              Frame FS
+                            </th>
+                            <th className="py-3 px-1.5 text-center min-w-[4.25rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35">
+                              Topboard
+                            </th>
+                            <th className="py-3 px-1.5 text-center min-w-[4.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight">
+                              Front Counter
+                            </th>
+                            <th className="py-3 px-1.5 text-center min-w-[4.5rem] bg-amber-50/90 dark:bg-amber-950/30 border-r border-amber-200/50 dark:border-amber-900/35 leading-tight">
+                              Countertop
+                            </th>
+                          </>
+                        )}
                         {SHOW_PS_TABLE_COLUMNS && (
                           <>
                         <th
@@ -1520,21 +1545,25 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                               >
                                 {row.finalStoreTypeQ2 || '—'}
                               </td>
-                              <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
-                                {posm(row.frameOtc)}
-                              </td>
-                              <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
-                                {posm(row.frameFs)}
-                              </td>
-                              <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
-                                {posm(row.topboard)}
-                              </td>
-                              <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
-                                {posm(row.frontCounter)}
-                              </td>
-                              <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
-                                {posm(row.countertop)}
-                              </td>
+                              {showPosmColumns && (
+                                <>
+                                  <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
+                                    {posm(row.frameOtc)}
+                                  </td>
+                                  <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
+                                    {posm(row.frameFs)}
+                                  </td>
+                                  <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
+                                    {posm(row.topboard)}
+                                  </td>
+                                  <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
+                                    {posm(row.frontCounter)}
+                                  </td>
+                                  <td className={`${base} text-center text-[9px] ${tc.posm} ${tc.posmHover}`}>
+                                    {posm(row.countertop)}
+                                  </td>
+                                </>
+                              )}
                               {SHOW_PS_TABLE_COLUMNS && (
                                 <>
                               {(() => {

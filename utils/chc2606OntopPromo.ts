@@ -6,14 +6,12 @@ import {
   CHC2606_ONTOP_IMPORT_PRODUCT_IDS,
   CHC2606_ONTOP_LOCAL_PRODUCT_IDS,
   CHC2606_ONTOP_NOTE_IMPORT,
+  CHC2606_ONTOP_NOTE_IMPORT_LEGACY,
   CHC2606_ONTOP_NOTE_LOCAL,
+  CHC2606_ONTOP_NOTE_LOCAL_LEGACY,
   CHC2606_ONTOP_PERCENT_BASE,
-  CHC2606_ONTOP_PERCENT_HIGH,
-  CHC2606_ONTOP_PERCENT_LOW,
   CHC2606_ONTOP_START_MS,
-  CHC2606_ONTOP_THRESHOLD_BASE,
-  CHC2606_ONTOP_THRESHOLD_HIGH,
-  CHC2606_ONTOP_THRESHOLD_LOW,
+  CHC2606_ONTOP_THRESHOLD,
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
 } from '../constants';
@@ -25,11 +23,9 @@ export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
   return nowMs >= CHC2606_ONTOP_START_MS && nowMs <= CHC2606_ONTOP_END_MS;
 }
 
-/** Mốc 10tr / 25tr / 50tr: tổng basePrice × SL trong pool (chưa trừ CK tháng) */
+/** ≥ 3tr basePrice trong pool → 2.46%; dưới ngưỡng = 0 */
 export function getChc2606OntopTierPercent(poolBaseExVat: number): number {
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_BASE) return CHC2606_ONTOP_PERCENT_BASE;
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD) return CHC2606_ONTOP_PERCENT_BASE;
   return 0;
 }
 
@@ -84,7 +80,7 @@ export function getChc2606OntopPoolTotals(
 }
 
 export interface Chc2606OntopTotals {
-  /** Tổng basePrice pool — dùng xét mốc 10tr/25tr/50tr */
+  /** Tổng basePrice pool — xét ngưỡng 3tr */
   localPoolBase: number;
   importPoolBase: number;
   /** Tổng sau CK tháng — dùng tính tiền giảm ONTOP */
@@ -95,22 +91,32 @@ export interface Chc2606OntopTotals {
   discountLocal: number;
   discountImport: number;
   discountTotal: number;
+  eligibleLocal: boolean;
+  eligibleImport: boolean;
+  /** true nếu ít nhất một nhóm đạt ngưỡng */
   eligible: boolean;
 }
 
 export function calcChc2606OntopTotals(
   items: CartItem[],
   groupTotals: CartGroupTotals,
-  applyOntop: boolean
+  apply: boolean | { applyLocal?: boolean; applyImport?: boolean }
 ): Chc2606OntopTotals {
   const { localPoolBase, importPoolBase, localPoolExVat, importPoolExVat } =
     getChc2606OntopPoolTotals(items, groupTotals);
   const localPercent = getChc2606OntopTierPercent(localPoolBase);
   const importPercent = getChc2606OntopTierPercent(importPoolBase);
-  const eligible = localPercent > 0 || importPercent > 0;
+  const eligibleLocal = localPercent > 0;
+  const eligibleImport = importPercent > 0;
+  const eligible = eligibleLocal || eligibleImport;
 
-  const effectiveLocalPercent = applyOntop ? localPercent : 0;
-  const effectiveImportPercent = applyOntop ? importPercent : 0;
+  const applyLocal =
+    typeof apply === 'boolean' ? apply : !!apply.applyLocal;
+  const applyImport =
+    typeof apply === 'boolean' ? apply : !!apply.applyImport;
+
+  const effectiveLocalPercent = applyLocal ? localPercent : 0;
+  const effectiveImportPercent = applyImport ? importPercent : 0;
 
   const discountLocal = localPoolExVat * effectiveLocalPercent;
   const discountImport = importPoolExVat * effectiveImportPercent;
@@ -125,14 +131,14 @@ export function calcChc2606OntopTotals(
     discountLocal,
     discountImport,
     discountTotal: discountLocal + discountImport,
+    eligibleLocal,
+    eligibleImport,
     eligible,
   };
 }
 
 export function formatChc2606OntopPercent(percent: number): string {
   if (percent <= 0) return '0%';
-  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_HIGH) < 0.000001) return '3.94%';
-  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_LOW) < 0.000001) return '2.96%';
   if (Math.abs(percent - CHC2606_ONTOP_PERCENT_BASE) < 0.000001) return '2.46%';
   return `${(percent * 100).toFixed(2)}%`;
 }
@@ -142,13 +148,19 @@ export function buildChc2606OntopNoteLine(kind: 'local' | 'import', percent: num
   return `${label} ${formatChc2606OntopPercent(percent)}`;
 }
 
+function isOntopNoteLine(line: string): boolean {
+  return (
+    line.includes(CHC2606_ONTOP_NOTE_LOCAL) ||
+    line.includes(CHC2606_ONTOP_NOTE_IMPORT) ||
+    line.includes(CHC2606_ONTOP_NOTE_LOCAL_LEGACY) ||
+    line.includes(CHC2606_ONTOP_NOTE_IMPORT_LEGACY)
+  );
+}
+
 export function stripChc2606OntopNoteLines(note: string): string {
   return note
     .split('\n')
-    .filter(
-      line =>
-        !line.includes(CHC2606_ONTOP_NOTE_LOCAL) && !line.includes(CHC2606_ONTOP_NOTE_IMPORT)
-    )
+    .filter(line => !isOntopNoteLine(line))
     .join('\n');
 }
 

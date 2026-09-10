@@ -970,23 +970,28 @@ export type DummyBoxPromoTier = (typeof DUMMY_BOX_PROMO_TIERS)[number];
 /** Mức thấp nhất (500k) — dùng gợi ý điều kiện trên modal */
 export const DUMMY_BOX_TIER_MIN_AMOUNT = DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].minAmount;
 
-/** CTKM CHC2606-ONTOP — 15/06–30/06/2026, pool Local/Import riêng */
-/** Tạm ngưng — đổi false để bật lại CHC2606-ONTOP */
-export const CHC2606_ONTOP_SUSPENDED = true;
-export const CHC2606_ONTOP_START_MS = new Date('2026-06-15T00:00:00+07:00').getTime();
-export const CHC2606_ONTOP_END_MS = new Date('2026-06-30T23:59:59+07:00').getTime();
+/** CTKM ONTOP Local/Import — 01/09–30/09/2026, pool riêng, ≥3tr base → CK 2.46% */
+export const CHC2606_ONTOP_SUSPENDED = false;
+export const CHC2606_ONTOP_START_MS = new Date('2026-09-01T00:00:00+07:00').getTime();
+export const CHC2606_ONTOP_END_MS = new Date('2026-09-30T23:59:59+07:00').getTime();
 export const CHC2606_ONTOP_LOCAL_PRODUCT_IDS: readonly number[] = [1, 28, 26, 7, 6, 8, 10, 2, 3, 4];
 export const CHC2606_ONTOP_IMPORT_PRODUCT_IDS: readonly number[] = [
   30, 12, 13, 20, 19, 18, 27, 31, 14, 22, 23, 24, 25,
 ];
-export const CHC2606_ONTOP_THRESHOLD_BASE = 10_000_000;
-export const CHC2606_ONTOP_THRESHOLD_LOW = 25_000_000;
-export const CHC2606_ONTOP_THRESHOLD_HIGH = 50_000_000;
+/** Ngưỡng duy nhất: tổng basePrice × SL trong pool ≥ 3tr → 2.46% */
+export const CHC2606_ONTOP_THRESHOLD = 3_000_000;
+/** @deprecated giữ alias — không còn mốc 10/25/50tr */
+export const CHC2606_ONTOP_THRESHOLD_BASE = CHC2606_ONTOP_THRESHOLD;
+export const CHC2606_ONTOP_THRESHOLD_LOW = CHC2606_ONTOP_THRESHOLD;
+export const CHC2606_ONTOP_THRESHOLD_HIGH = CHC2606_ONTOP_THRESHOLD;
 export const CHC2606_ONTOP_PERCENT_BASE = 0.0246;
-export const CHC2606_ONTOP_PERCENT_LOW = 0.0296;
-export const CHC2606_ONTOP_PERCENT_HIGH = 0.0394;
-export const CHC2606_ONTOP_NOTE_LOCAL = 'CHC2606-ONTOP - LOCAL';
-export const CHC2606_ONTOP_NOTE_IMPORT = 'CHC2606-ONTOP - IMPORT';
+export const CHC2606_ONTOP_PERCENT_LOW = 0.0246;
+export const CHC2606_ONTOP_PERCENT_HIGH = 0.0246;
+export const CHC2606_ONTOP_NOTE_LOCAL = 'ONTOP - LOCAL';
+export const CHC2606_ONTOP_NOTE_IMPORT = 'ONTOP - IMPORT';
+/** Marker cũ — strip để dọn note sót */
+export const CHC2606_ONTOP_NOTE_LOCAL_LEGACY = 'CHC2606-ONTOP - LOCAL';
+export const CHC2606_ONTOP_NOTE_IMPORT_LEGACY = 'CHC2606-ONTOP - IMPORT';
 
 // CTKM CORBIERE CALCIUM PLUS: cứ mỗi 21 hộp được giảm trực tiếp 4.76%
 export const CALCIPLUS_PROMO_PACK_SIZE = 21;

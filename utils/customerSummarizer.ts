@@ -326,7 +326,7 @@ export const buildCustomerSalesNoticePayload = (
         message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
         message += `+ Todo TB: ${signedTodo > 0 ? '+' : ''}${formatCurrency(signedTodo)}\n`;
 
-        message += `\n🎯 DOANH SỐ TRƯNG BÀY Q2:\n`;
+        message += `\n🎯 DOANH SỐ TRƯNG BÀY Q3:\n`;
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
         message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
         message += `+ Doanh số đã đặt: ${formatCurrency(totalQuarterDS)}\n`;

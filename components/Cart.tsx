@@ -247,8 +247,10 @@ interface CartProps {
     onIsDummyBoxImport500Change?: (isChecked: boolean) => void;
     isCalciPlusPack476?: boolean;
     onIsCalciPlusPack476Change?: (isChecked: boolean) => void;
-    isChc2606Ontop?: boolean;
-    onIsChc2606OntopChange?: (isChecked: boolean) => void;
+    isOntopLocal?: boolean;
+    onIsOntopLocalChange?: (isChecked: boolean) => void;
+    isOntopImport?: boolean;
+    onIsOntopImportChange?: (isChecked: boolean) => void;
     activeDraftId: string | null;
     rebates: Rebate[];
     selectedRebateIds: string[];
@@ -280,7 +282,8 @@ const Cart: React.FC<CartProps> = (props) => {
         isOnTopLiXi, isDummyBoxLocal, onIsDummyBoxLocalChange, isDummyBoxImport, onIsDummyBoxImportChange,
         isDummyBoxLocal500, onIsDummyBoxLocal500Change, isDummyBoxImport500, onIsDummyBoxImport500Change,
         isCalciPlusPack476, onIsCalciPlusPack476Change,
-        isChc2606Ontop, onIsChc2606OntopChange,
+        isOntopLocal, onIsOntopLocalChange,
+        isOntopImport, onIsOntopImportChange,
         activeDraftId, rebates, selectedRebateIds, onToggleRebate,
         customers = [],
         currentSalesRecord,
@@ -591,20 +594,22 @@ const Cart: React.FC<CartProps> = (props) => {
         () => calcChc2606OntopTotals(items, cartGroupTotals, false),
         [items, cartGroupTotals]
     );
-    const canToggleChc2606Ontop =
-        ontopPromoActive && !isPsOnInvoice25 && ontopPreview.eligible;
-    const effectiveChc2606Ontop = canToggleChc2606Ontop && !!isChc2606Ontop;
-    const ontopLocalPercent = effectiveChc2606Ontop ? ontopPreview.localPercent : 0;
-    const ontopImportPercent = effectiveChc2606Ontop ? ontopPreview.importPercent : 0;
+    const canToggleOntopLocal =
+        ontopPromoActive && !isPsOnInvoice25 && ontopPreview.eligibleLocal;
+    const canToggleOntopImport =
+        ontopPromoActive && !isPsOnInvoice25 && ontopPreview.eligibleImport;
+    const effectiveOntopLocal = canToggleOntopLocal && !!isOntopLocal;
+    const effectiveOntopImport = canToggleOntopImport && !!isOntopImport;
+    const ontopLocalPercent = effectiveOntopLocal ? ontopPreview.localPercent : 0;
+    const ontopImportPercent = effectiveOntopImport ? ontopPreview.importPercent : 0;
     const ontopAppliedTotals = useMemo(
-        () => calcChc2606OntopTotals(items, cartGroupTotals, effectiveChc2606Ontop),
-        [items, cartGroupTotals, effectiveChc2606Ontop]
+        () =>
+            calcChc2606OntopTotals(items, cartGroupTotals, {
+                applyLocal: effectiveOntopLocal,
+                applyImport: effectiveOntopImport,
+            }),
+        [items, cartGroupTotals, effectiveOntopLocal, effectiveOntopImport]
     );
-
-    useEffect(() => {
-        if (!onIsChc2606OntopChange || !isChc2606Ontop) return;
-        if (!canToggleChc2606Ontop) onIsChc2606OntopChange(false);
-    }, [canToggleChc2606Ontop, isChc2606Ontop, onIsChc2606OntopChange]);
 
     const calciPlusPack476Discount = 0;
 
@@ -1206,43 +1211,76 @@ const Cart: React.FC<CartProps> = (props) => {
                                 </label>
                             </div>
                         )}
-                        {ontopPromoActive && !isPsOnInvoice25 && onIsChc2606OntopChange && (
-                            <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center space-x-1.5">
-                                    <input
-                                        type="checkbox"
-                                        id="chc2606-ontop"
-                                        checked={!!isChc2606Ontop && canToggleChc2606Ontop}
-                                        onChange={e => onIsChc2606OntopChange(e.target.checked)}
-                                        disabled={!canToggleChc2606Ontop}
-                                        className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
-                                    />
-                                    <label
-                                        htmlFor="chc2606-ontop"
-                                        className={`text-[11px] font-bold ${
-                                            canToggleChc2606Ontop
-                                                ? 'cursor-pointer text-slate-600 dark:text-slate-300'
-                                                : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
-                                        }`}
-                                        title="CHC2606-ONTOP: tổng basePrice pool Local/Import ≥10M +2.46%; ≥25M +2.96%; ≥50M +3.94% (CK áp sau CK tháng)"
-                                    >
-                                        Gói ONTOP
-                                        {effectiveChc2606Ontop && ontopAppliedTotals.discountTotal > 0
-                                            ? ` (-${formatCurrency(ontopAppliedTotals.discountTotal)})`
-                                            : ''}
-                                    </label>
-                                </div>
-                                <p className="ml-5 mr-0.5 rounded-md border border-red-300/80 dark:border-red-700/60 bg-red-50 dark:bg-red-950/45 px-2 py-1 text-[9px] font-bold leading-snug text-red-800 dark:text-red-200">
-                                    Local (base): {formatCurrency(ontopPreview.localPoolBase)}
-                                    {ontopPreview.localPercent > 0
-                                        ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
-                                        : ' · chưa đủ 10M'}
-                                    {' · '}
-                                    Import (base): {formatCurrency(ontopPreview.importPoolBase)}
-                                    {ontopPreview.importPercent > 0
-                                        ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`
-                                        : ' · chưa đủ 10M'}
-                                </p>
+                        {ontopPromoActive && !isPsOnInvoice25 && (onIsOntopLocalChange || onIsOntopImportChange) && (
+                            <div className="flex flex-col gap-1 col-span-full sm:col-span-2">
+                                {onIsOntopLocalChange && (
+                                    <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center space-x-1.5">
+                                            <input
+                                                type="checkbox"
+                                                id="ontop-local"
+                                                checked={!!isOntopLocal && canToggleOntopLocal}
+                                                onChange={e => onIsOntopLocalChange(e.target.checked)}
+                                                disabled={!canToggleOntopLocal && !isOntopLocal}
+                                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                            />
+                                            <label
+                                                htmlFor="ontop-local"
+                                                className={`text-[11px] font-bold ${
+                                                    canToggleOntopLocal || isOntopLocal
+                                                        ? 'cursor-pointer text-slate-600 dark:text-slate-300'
+                                                        : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                                                }`}
+                                                title="ONTOP LOCAL: tổng basePrice pool Local ≥ 3.000.000 → CK thêm 2.46% (sau CK tháng)"
+                                            >
+                                                ONTOP - LOCAL
+                                                {effectiveOntopLocal && ontopAppliedTotals.discountLocal > 0
+                                                    ? ` (-${formatCurrency(ontopAppliedTotals.discountLocal)})`
+                                                    : ''}
+                                            </label>
+                                        </div>
+                                        <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
+                                            Local (base): {formatCurrency(ontopPreview.localPoolBase)}
+                                            {ontopPreview.eligibleLocal
+                                                ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
+                                                : ' · chưa đủ 3tr'}
+                                        </p>
+                                    </div>
+                                )}
+                                {onIsOntopImportChange && (
+                                    <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center space-x-1.5">
+                                            <input
+                                                type="checkbox"
+                                                id="ontop-import"
+                                                checked={!!isOntopImport && canToggleOntopImport}
+                                                onChange={e => onIsOntopImportChange(e.target.checked)}
+                                                disabled={!canToggleOntopImport && !isOntopImport}
+                                                className="h-3.5 w-3.5 rounded text-opella-green border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-opella-green disabled:opacity-50 disabled:cursor-not-allowed"
+                                            />
+                                            <label
+                                                htmlFor="ontop-import"
+                                                className={`text-[11px] font-bold ${
+                                                    canToggleOntopImport || isOntopImport
+                                                        ? 'cursor-pointer text-slate-600 dark:text-slate-300'
+                                                        : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                                                }`}
+                                                title="ONTOP IMPORT: tổng basePrice pool Import ≥ 3.000.000 → CK thêm 2.46% (sau CK tháng)"
+                                            >
+                                                ONTOP - IMPORT
+                                                {effectiveOntopImport && ontopAppliedTotals.discountImport > 0
+                                                    ? ` (-${formatCurrency(ontopAppliedTotals.discountImport)})`
+                                                    : ''}
+                                            </label>
+                                        </div>
+                                        <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
+                                            Import (base): {formatCurrency(ontopPreview.importPoolBase)}
+                                            {ontopPreview.eligibleImport
+                                                ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`
+                                                : ' · chưa đủ 3tr'}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {CART_OSTELIN_TANG_CAN_VISIBLE && (
@@ -1284,7 +1322,7 @@ const Cart: React.FC<CartProps> = (props) => {
                     </div>
 
                     {/* Deductions - Chỉ hiện khi có số */}
-                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || applyDummyBoxLocal150 || applyDummyBoxImport150 || applyDummyBoxLocal500 || applyDummyBoxImport500 || effectiveChc2606Ontop || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
+                    {(isPsOnInvoice25 && psDiscountGross > 0) || (isOnTopLiXi || applyDummyBoxLocal150 || applyDummyBoxImport150 || applyDummyBoxLocal500 || applyDummyBoxImport500 || effectiveOntopLocal || effectiveOntopImport || calciPlusPack476Discount > 0 || rebateDiscount > 0) && (
                         <div className="space-y-0.5 py-0.5 border-t border-slate-50 dark:border-slate-700 mt-0.5">
                             {isPsOnInvoice25 && psDiscountGross > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-600 dark:text-red-400 italic">
@@ -1328,13 +1366,13 @@ const Cart: React.FC<CartProps> = (props) => {
                                     <span>-{formatCurrency(DUMMY_BOX_500_DISCOUNT)}</span>
                                 </div>
                             )}
-                            {effectiveChc2606Ontop && ontopAppliedTotals.discountLocal > 0 && (
+                            {effectiveOntopLocal && ontopAppliedTotals.discountLocal > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- CK ONTOP Local ({formatChc2606OntopPercent(ontopPreview.localPercent)}):</span>
                                     <span>-{formatCurrency(ontopAppliedTotals.discountLocal)}</span>
                                 </div>
                             )}
-                            {effectiveChc2606Ontop && ontopAppliedTotals.discountImport > 0 && (
+                            {effectiveOntopImport && ontopAppliedTotals.discountImport > 0 && (
                                 <div className="flex justify-between text-[10px] font-bold text-red-500 dark:text-red-400 italic">
                                     <span>- CK ONTOP Import ({formatChc2606OntopPercent(ontopPreview.importPercent)}):</span>
                                     <span>-{formatCurrency(ontopAppliedTotals.discountImport)}</span>

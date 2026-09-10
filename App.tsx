@@ -166,7 +166,8 @@ const App: React.FC = () => {
   const [isDummyBoxLocal500, setIsDummyBoxLocal500] = useState(false);
   const [isDummyBoxImport500, setIsDummyBoxImport500] = useState(false);
   const [isCalciPlusPack476, setIsCalciPlusPack476] = useState(false);
-  const [isChc2606Ontop, setIsChc2606Ontop] = useState(false);
+  const [isOntopLocal, setIsOntopLocal] = useState(false);
+  const [isOntopImport, setIsOntopImport] = useState(false);
   const [isPsOnInvoice25, setIsPsOnInvoice25] = useState(false);
   const [psSuatSelected, setPsSuatSelected] = useState(0);
   const [psCustomerByCode, setPsCustomerByCode] = useState(
@@ -563,7 +564,8 @@ const App: React.FC = () => {
     setIsDummyBoxLocal500(false);
     setIsDummyBoxImport500(false);
     setIsCalciPlusPack476(false);
-    setIsChc2606Ontop(false);
+    setIsOntopLocal(false);
+    setIsOntopImport(false);
     setIsPsOnInvoice25(false);
     setPsSuatSelected(0);
     setSelectedRebateIds([]);
@@ -655,32 +657,90 @@ const App: React.FC = () => {
     }
   };
 
-  const handleChc2606OntopToggle = (checked: boolean) => {
-    setIsChc2606Ontop(checked);
+  const handleOntopLocalToggle = (checked: boolean) => {
     if (!checked) {
-      setNote(prev => stripChc2606OntopNoteLines(prev));
+      setIsOntopLocal(false);
+      setNote(prev => {
+        const groupTotals = computeCartGroupTotals(cart);
+        const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+        return mergeChc2606OntopNoteLines(
+          prev,
+          0,
+          isOntopImport ? preview.importPercent : 0
+        );
+      });
       return;
     }
     const groupTotals = computeCartGroupTotals(cart);
     const preview = calcChc2606OntopTotals(cart, groupTotals, false);
-    setNote(prev => mergeChc2606OntopNoteLines(prev, preview.localPercent, preview.importPercent));
+    if (!preview.eligibleLocal) return;
+    setIsOntopLocal(true);
+    setNote(prev =>
+      mergeChc2606OntopNoteLines(
+        prev,
+        preview.localPercent,
+        isOntopImport ? preview.importPercent : 0
+      )
+    );
   };
 
-  useEffect(() => {
-    if (!isChc2606Ontop || isPsOnInvoice25 || !isChc2606OntopPromoActive()) return;
-    const groupTotals = computeCartGroupTotals(cart);
-    const preview = calcChc2606OntopTotals(cart, groupTotals, false);
-    if (!preview.eligible) {
-      setIsChc2606Ontop(false);
-      setNote(prev => stripChc2606OntopNoteLines(prev));
+  const handleOntopImportToggle = (checked: boolean) => {
+    if (!checked) {
+      setIsOntopImport(false);
+      setNote(prev => {
+        const groupTotals = computeCartGroupTotals(cart);
+        const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+        return mergeChc2606OntopNoteLines(
+          prev,
+          isOntopLocal ? preview.localPercent : 0,
+          0
+        );
+      });
       return;
     }
-    setNote(prev => mergeChc2606OntopNoteLines(prev, preview.localPercent, preview.importPercent));
-  }, [cart, isChc2606Ontop, isPsOnInvoice25]);
+    const groupTotals = computeCartGroupTotals(cart);
+    const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+    if (!preview.eligibleImport) return;
+    setIsOntopImport(true);
+    setNote(prev =>
+      mergeChc2606OntopNoteLines(
+        prev,
+        isOntopLocal ? preview.localPercent : 0,
+        preview.importPercent
+      )
+    );
+  };
+
+  /** Tự tích / bỏ tích ONTOP theo ngưỡng 3tr base từng nhóm + đồng bộ ghi chú */
+  useEffect(() => {
+    if (isPsOnInvoice25 || !isChc2606OntopPromoActive()) {
+      if (isOntopLocal || isOntopImport) {
+        setIsOntopLocal(false);
+        setIsOntopImport(false);
+        setNote(prev => stripChc2606OntopNoteLines(prev));
+      }
+      return;
+    }
+    const groupTotals = computeCartGroupTotals(cart);
+    const preview = calcChc2606OntopTotals(cart, groupTotals, false);
+    const nextLocal = preview.eligibleLocal;
+    const nextImport = preview.eligibleImport;
+    if (nextLocal !== isOntopLocal) setIsOntopLocal(nextLocal);
+    if (nextImport !== isOntopImport) setIsOntopImport(nextImport);
+    setNote(prev => {
+      const next = mergeChc2606OntopNoteLines(
+        prev,
+        nextLocal ? preview.localPercent : 0,
+        nextImport ? preview.importPercent : 0
+      );
+      return next === prev ? prev : next;
+    });
+  }, [cart, isPsOnInvoice25]);
 
   useEffect(() => {
     if (!isPsOnInvoice25) return;
-    setIsChc2606Ontop(false);
+    setIsOntopLocal(false);
+    setIsOntopImport(false);
     setNote(prev => stripChc2606OntopNoteLines(prev));
   }, [isPsOnInvoice25]);
   const psGate = useMemo(
@@ -755,7 +815,8 @@ const App: React.FC = () => {
       );
       setIsOnTopLiXi(false);
       setIsCalciPlusPack476(false);
-      setIsChc2606Ontop(false);
+      setIsOntopLocal(false);
+      setIsOntopImport(false);
       setNote(prev => stripChc2606OntopNoteLines(prev));
     } else {
       setPsSuatSelected(0);
@@ -1093,13 +1154,19 @@ const App: React.FC = () => {
     const { localTotalAfterDiscount, importTotalAfterDiscount } = getDummyBoxEligibilityTotals(cart);
 
     const ontopPreviewForOrder = calcChc2606OntopTotals(cart, groupTotals, false);
-    const effectiveChc2606Ontop =
+    const effectiveOntopLocal =
       !psTotalsForOrder &&
       isChc2606OntopPromoActive() &&
-      isChc2606Ontop &&
-      ontopPreviewForOrder.eligible;
-    const ontopLocalPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.localPercent : 0;
-    const ontopImportPercent = effectiveChc2606Ontop ? ontopPreviewForOrder.importPercent : 0;
+      isOntopLocal &&
+      ontopPreviewForOrder.eligibleLocal;
+    const effectiveOntopImport =
+      !psTotalsForOrder &&
+      isChc2606OntopPromoActive() &&
+      isOntopImport &&
+      ontopPreviewForOrder.eligibleImport;
+    const effectiveChc2606Ontop = effectiveOntopLocal || effectiveOntopImport;
+    const ontopLocalPercent = effectiveOntopLocal ? ontopPreviewForOrder.localPercent : 0;
+    const ontopImportPercent = effectiveOntopImport ? ontopPreviewForOrder.importPercent : 0;
 
     const applyDummyBoxLocal = effectiveDummyBoxLocal || effectiveDummyBoxLocal500;
     const applyDummyBoxImport = effectiveDummyBoxImport || effectiveDummyBoxImport500;
@@ -1366,7 +1433,18 @@ const App: React.FC = () => {
     setIsDummyBoxLocal500(!!d.isDummyBoxLocal500);
     setIsDummyBoxImport500(!!d.isDummyBoxImport500);
     setIsCalciPlusPack476(!!d.isCalciPlusPack476);
-    setIsChc2606Ontop(!!d.isChc2606Ontop);
+    {
+      const n = String(d.note || '');
+      const hasLocal = /ONTOP\s*-\s*LOCAL/i.test(n) || /CHC2606-ONTOP\s*-\s*LOCAL/i.test(n);
+      const hasImport = /ONTOP\s*-\s*IMPORT/i.test(n) || /CHC2606-ONTOP\s*-\s*IMPORT/i.test(n);
+      if (hasLocal || hasImport) {
+        setIsOntopLocal(hasLocal);
+        setIsOntopImport(hasImport);
+      } else {
+        setIsOntopLocal(!!d.isChc2606Ontop);
+        setIsOntopImport(!!d.isChc2606Ontop);
+      }
+    }
     setIsPsOnInvoice25(psDraft);
     setPsSuatSelected(psDraft ? Math.max(0, d.psSuatApplied ?? 0) : 0);
     if (d.isDummyBoxLocal === undefined && d.isDummyBoxImport === undefined && d.isDummyBox) {
@@ -2058,7 +2136,8 @@ const App: React.FC = () => {
                     isDummyBoxLocal500={isDummyBoxLocal500} onIsDummyBoxLocal500Change={handleDummyBoxLocal500Toggle}
                     isDummyBoxImport500={isDummyBoxImport500} onIsDummyBoxImport500Change={handleDummyBoxImport500Toggle}
                     isCalciPlusPack476={isCalciPlusPack476} onIsCalciPlusPack476Change={handleCalciPlusPack476Toggle}
-                    isChc2606Ontop={isChc2606Ontop} onIsChc2606OntopChange={handleChc2606OntopToggle}
+                    isOntopLocal={isOntopLocal} onIsOntopLocalChange={handleOntopLocalToggle}
+                    isOntopImport={isOntopImport} onIsOntopImportChange={handleOntopImportToggle}
                     activeDraftId={activeDraftId}
                     rebates={currentCustomerRebates}
                     selectedRebateIds={selectedRebateIds}

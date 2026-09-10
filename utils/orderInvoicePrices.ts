@@ -26,6 +26,7 @@ export type OrderInvoiceLine = {
 type OrderInvoiceSource = Pick<
   Order,
   | 'items'
+  | 'note'
   | 'isDummyBoxLocal'
   | 'isDummyBoxImport'
   | 'isDummyBoxLocal500'
@@ -66,8 +67,13 @@ export function buildOrderInvoiceLines(order: OrderInvoiceSource): OrderInvoiceL
   let ontopImportPercent = 0;
   if (order.isChc2606Ontop) {
     const ontop = calcChc2606OntopTotals(items, groupTotals, false);
-    ontopLocalPercent = ontop.localPercent;
-    ontopImportPercent = ontop.importPercent;
+    const n = String(order.note || '');
+    const noteLocal = /ONTOP\s*-\s*LOCAL/i.test(n) || /CHC2606-ONTOP\s*-\s*LOCAL/i.test(n);
+    const noteImport = /ONTOP\s*-\s*IMPORT/i.test(n) || /CHC2606-ONTOP\s*-\s*IMPORT/i.test(n);
+    const useLocal = noteLocal || noteImport ? noteLocal : true;
+    const useImport = noteLocal || noteImport ? noteImport : true;
+    ontopLocalPercent = useLocal ? ontop.localPercent : 0;
+    ontopImportPercent = useImport ? ontop.importPercent : 0;
   }
 
   let psTotals = null as ReturnType<typeof calcPsOrderTotals> | null;

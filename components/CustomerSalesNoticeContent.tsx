@@ -92,7 +92,7 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                     </div>
                     <div className="h-1.5" />
 
-                    <div className="font-bold text-slate-600 dark:text-slate-300">🎯 DOANH SỐ TRƯNG BÀY Q2:</div>
+                    <div className="font-bold text-slate-600 dark:text-slate-300">🎯 DOANH SỐ TRƯNG BÀY Q3:</div>
                     <div className="pl-2 space-y-0.5">
                         <div>
                             <span className="text-slate-500 dark:text-slate-400">+ Trạng thái:</span>{' '}

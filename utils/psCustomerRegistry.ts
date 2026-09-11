@@ -1,6 +1,5 @@
 import type { DangKyTbq2RowView } from './displayTbq2Sheet';
-import { isRegisteredRow } from './displayTbq2Sheet';
-import { parseSheetSalesAmount } from './formatters';
+import { isRegisteredRow, resolveSaleMonthVndFromTbq2Row } from './displayTbq2Sheet';
 import {
   findTierConfigByFinalStoreTypeQ2,
   getPsMultiSuatRules,
@@ -20,6 +19,10 @@ export interface PsCustomerGate {
   suatMax: number;
   suatRemaining: number;
   isMultiSuat: boolean;
+  /** Sale T7 từ sheet DANGKYTBQ2 (VNĐ) */
+  saleT7Vnd: number;
+  /** Sale T8 từ sheet DANGKYTBQ2 (VNĐ) */
+  saleT8Vnd: number;
   /** Sale T9 từ sheet DANGKYTBQ2 (VNĐ) — tháng hiện tại trên Cart; trống = 0 */
   saleT9Vnd: number;
   /** Target trưng bày tháng = minMonthlySales theo tier */
@@ -42,8 +45,8 @@ function registerGate(
   const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
   /** Còn suất PS → được tick SPECIAL_PS0526 (không chặn riêng theo cột Gói PS 25% = YES) */
   const canShowCk25 = inPsList && suatRemaining > 0;
-  const saleT9Parsed = parseSheetSalesAmount(row.saleT9);
-  const saleT9Vnd = saleT9Parsed != null && Number.isFinite(saleT9Parsed) ? saleT9Parsed : 0;
+  const { SaleT7: saleT7Vnd, SaleT8: saleT8Vnd, SaleT9: saleT9Vnd } =
+    resolveSaleMonthVndFromTbq2Row(row);
 
   map.set(k, {
     customerCode: code.trim(),
@@ -56,6 +59,8 @@ function registerGate(
     suatMax,
     suatRemaining,
     isMultiSuat: multi,
+    saleT7Vnd,
+    saleT8Vnd,
     saleT9Vnd,
     targetTrungBay: tier.minMonthlySales,
   });

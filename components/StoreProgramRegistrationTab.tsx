@@ -1494,13 +1494,24 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                 const dsRow = doanhSoRows.find(
                                   r => String(r.CustomerCode || r.Code || '').trim() === row.customerCode.trim()
                                 );
+                                const monthSales = {
+                                  SaleT7: resolveSaleT7Vnd(row),
+                                  SaleT8: resolveSaleT8Vnd(row),
+                                  SaleT9: resolveSaleT9Vnd(row),
+                                };
                                 if (dsRow) {
-                                  setSelectedSalesRecord(dsRow as unknown as SalesRecord);
+                                  setSelectedSalesRecord({
+                                    ...(dsRow as unknown as SalesRecord),
+                                    FinalStoreType: row.finalStoreTypeQ1 || String(dsRow.FinalStoreType ?? dsRow['Final Store Type'] ?? ''),
+                                    FinalStoreTypeQ2: row.finalStoreTypeQ2 || String(dsRow.FinalStoreTypeQ2 ?? ''),
+                                    ...monthSales,
+                                  });
                                 } else {
                                   // Fallback: nếu không tìm thấy trong DOANH_SO, tạo record giả từ row hiện tại
                                   setSelectedSalesRecord({
                                     CustomerCode: row.customerCode,
                                     CustomerName: row.customerName,
+                                    FinalStoreType: row.finalStoreTypeQ1,
                                     FinalStoreTypeQ2: row.finalStoreTypeQ2,
                                     District: row.district,
                                     Rep: row.rep,
@@ -1509,6 +1520,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                     ActualImport: 0,
                                     TargetLocal: 0,
                                     ActualLocal: 0,
+                                    ...monthSales,
                                   } as SalesRecord);
                                 }
                               }}

@@ -297,6 +297,10 @@ export const buildCustomerSalesNoticePayload = (
     const quarterStatusLabel = quarterTarget > 0
         ? (isQuarterPassed ? 'ĐẠT' : 'CHƯA ĐẠT')
         : 'THAM GIA TB QUÝ';
+    const showQuarterMonthSales = r.SaleT7 != null || r.SaleT8 != null || r.SaleT9 != null;
+    const saleT7 = safeNum(r, 'SaleT7');
+    const saleT8 = safeNum(r, 'SaleT8');
+    const saleT9 = safeNum(r, 'SaleT9');
 
     let message = `📊 THÔNG TIN DOANH SỐ KHÁCH HÀNG\n`;
     message += `--------------------------------\n`;
@@ -330,6 +334,11 @@ export const buildCustomerSalesNoticePayload = (
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
         message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
         message += `+ Doanh số đã đặt: ${formatCurrency(totalQuarterDS)}\n`;
+        if (showQuarterMonthSales) {
+            message += `+ Doanh số T7: ${formatCurrency(saleT7)}\n`;
+            message += `+ Doanh số T8: ${formatCurrency(saleT8)}\n`;
+            message += `+ Doanh số T9: ${formatCurrency(saleT9)}\n`;
+        }
         message += `+ TODO: ${quarterTodo > 0 ? '+' : ''}${formatCurrency(quarterTodo)}\n`;
     }
 
@@ -382,6 +391,11 @@ export interface CustomerSalesDisplayData {
     isCheckPassed: boolean;
     /** false khi không có Loại TB và không có ĐK TB Q2 — ẩn block trưng bày tháng & quý */
     showTrungBayTbSections: boolean;
+    /** Có doanh số T7/T8/T9 từ sheet DANGKYTBQ2 (tab PS 2026) */
+    showQuarterMonthSales: boolean;
+    saleT7: number;
+    saleT8: number;
+    saleT9: number;
 }
 
 export const getCustomerSalesDisplayData = (
@@ -424,6 +438,10 @@ export const getCustomerSalesDisplayData = (
     const quarterStatusLabel = quarterTarget > 0
         ? (isQuarterPassed ? 'ĐẠT' : 'CHƯA ĐẠT')
         : 'THAM GIA TB QUÝ';
+    const showQuarterMonthSales = r.SaleT7 != null || r.SaleT8 != null || r.SaleT9 != null;
+    const saleT7 = safeNum(r, 'SaleT7');
+    const saleT8 = safeNum(r, 'SaleT8');
+    const saleT9 = safeNum(r, 'SaleT9');
     return {
         codeGiga: safeStr(r, 'CustomerCode', 'Customer Code', 'Code'),
         codeBM: safeStr(r, 'CodeBuyMed', 'Code BM', 'BM'),
@@ -456,5 +474,9 @@ export const getCustomerSalesDisplayData = (
         signedTodoTotal,
         isCheckPassed,
         showTrungBayTbSections,
+        showQuarterMonthSales,
+        saleT7,
+        saleT8,
+        saleT9,
     };
 };

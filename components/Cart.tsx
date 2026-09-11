@@ -331,6 +331,18 @@ const Cart: React.FC<CartProps> = (props) => {
         });
     }, [isPsOnInvoice25, psGate, items, psSuatSelected]);
 
+    /** Gắn Sale T7/T8/T9 từ DANGKYTBQ2 (psGate) — luôn ưu tiên nguồn PS khi có */
+    const salesNoticeRecord = useMemo(() => {
+        if (!currentSalesRecord) return null;
+        if (!psGate) return currentSalesRecord;
+        return {
+            ...currentSalesRecord,
+            SaleT7: psGate.saleT7Vnd,
+            SaleT8: psGate.saleT8Vnd,
+            SaleT9: psGate.saleT9Vnd,
+        };
+    }, [currentSalesRecord, psGate]);
+
     const psSuatPickMax = psTotals
         ? Math.min(psTotals.suatFromCart, psTotals.suatRemaining)
         : 0;
@@ -1567,8 +1579,8 @@ const Cart: React.FC<CartProps> = (props) => {
                             <h3 className="font-bold text-slate-800 dark:text-white uppercase text-sm">Thông tin doanh số khách hàng</h3>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1">
-                            {currentSalesRecord
-                                ? <CustomerSalesNoticeContent record={currentSalesRecord} employeeName={employeeName ?? ''} />
+                            {salesNoticeRecord
+                                ? <CustomerSalesNoticeContent record={salesNoticeRecord} employeeName={employeeName ?? ''} />
                                 : <span className="text-slate-400 italic">Không tìm thấy thông tin khách hàng. Vui lòng kiểm tra mã KH.</span>}
                         </div>
                         <div className="p-4 border-t border-slate-200 dark:border-slate-600 flex gap-2 justify-end">
@@ -1594,12 +1606,12 @@ const Cart: React.FC<CartProps> = (props) => {
                             </button>
                             <button
                                 type="button"
-                                disabled={!currentSalesRecord || !onExportSales || isExporting}
+                                disabled={!salesNoticeRecord || !onExportSales || isExporting}
                                 onClick={async () => {
-                                    if (!currentSalesRecord || !onExportSales) return;
+                                    if (!salesNoticeRecord || !onExportSales) return;
                                     setIsExporting(true);
                                     try {
-                                        await onExportSales(currentSalesRecord);
+                                        await onExportSales(salesNoticeRecord);
                                         alert('Đã gửi thông tin doanh số qua n8n/Telegram.');
                                         setShowCustomerDetailModal(false);
                                     } catch {

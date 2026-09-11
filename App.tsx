@@ -57,7 +57,7 @@ import {
   buildPharmatonViDot2PurchasedCodeSet,
   buildPharmatonViDot1PurchasedCodeSet,
 } from './utils/pharmatonVi';
-import { normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
+import { buildTbq2SalesMonthByCodeMap, normalizeDangKyTbq2Row } from './utils/displayTbq2Sheet';
 import { buildPsCustomerMap, lookupPsCustomerGate } from './utils/psCustomerRegistry';
 import {
   calcPsOrderTotals,
@@ -318,32 +318,24 @@ const App: React.FC = () => {
 
       try {
         const dangKyRows = await fetchDataFromSheet<Record<string, unknown>>(GOOGLE_SCRIPT_URL, "DANGKYTBQ2");
-        const byCode = new Map<string, string>();
-        (dangKyRows || []).forEach((row) => {
-          const code = String(
-            row['CustomerCode'] ??
-            row['Customer Code'] ??
-            row['MaKH'] ??
-            row['Mã KH'] ??
-            ''
-          ).trim();
-          if (!code) return;
-          const finalStoreTypeQ2 = String(
-            row['FinalStoreTypeQ2'] ??
-            row['Final Store Type Q2'] ??
-            row['FinalStoreType Q2'] ??
-            ''
-          ).trim();
-          byCode.set(code, finalStoreTypeQ2);
-        });
-        setAllSalesRecords(
-          (sales || []).map((s) => ({
-            ...s,
-            FinalStoreTypeQ2: byCode.get(String(s.CustomerCode || '').trim()) || '',
-          }))
-        );
         const normalizedDk = (dangKyRows || []).map(r =>
           normalizeDangKyTbq2Row(r as Record<string, unknown>)
+        );
+        const monthByCode = buildTbq2SalesMonthByCodeMap(normalizedDk);
+        setAllSalesRecords(
+          (sales || []).map((s) => {
+            const code = String(s.CustomerCode || '').trim().toLowerCase();
+            const codeBm = String(s.CodeBuyMed || '').trim().toLowerCase();
+            const month = monthByCode.get(code) || (codeBm ? monthByCode.get(codeBm) : undefined);
+            if (!month) return { ...s, FinalStoreTypeQ2: s.FinalStoreTypeQ2 || '' };
+            return {
+              ...s,
+              FinalStoreTypeQ2: month.FinalStoreTypeQ2 || s.FinalStoreTypeQ2 || '',
+              SaleT7: month.SaleT7,
+              SaleT8: month.SaleT8,
+              SaleT9: month.SaleT9,
+            };
+          })
         );
         setPsCustomerByCode(buildPsCustomerMap(normalizedDk));
       } catch (e) {
@@ -578,7 +570,23 @@ const App: React.FC = () => {
       const normalizedDk = (dangKyRows || []).map(r =>
         normalizeDangKyTbq2Row(r as Record<string, unknown>)
       );
+      const monthByCode = buildTbq2SalesMonthByCodeMap(normalizedDk);
       setPsCustomerByCode(buildPsCustomerMap(normalizedDk));
+      setAllSalesRecords(prev =>
+        prev.map(s => {
+          const code = String(s.CustomerCode || '').trim().toLowerCase();
+          const codeBm = String(s.CodeBuyMed || '').trim().toLowerCase();
+          const month = monthByCode.get(code) || (codeBm ? monthByCode.get(codeBm) : undefined);
+          if (!month) return s;
+          return {
+            ...s,
+            FinalStoreTypeQ2: month.FinalStoreTypeQ2 || s.FinalStoreTypeQ2 || '',
+            SaleT7: month.SaleT7,
+            SaleT8: month.SaleT8,
+            SaleT9: month.SaleT9,
+          };
+        })
+      );
     } catch (e) {
       console.warn('DANGKYTBQ2 reload after PS order failed', e);
     }

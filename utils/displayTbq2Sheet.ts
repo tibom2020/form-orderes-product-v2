@@ -1,5 +1,7 @@
 /** Chuẩn hóa dòng sheet DANGKYTBQ2 (header có thể khác mẫu Excel) */
 
+import { parseSheetSalesAmount } from './formatters';
+
 export interface DangKyTbq2RowView {
   customerCode: string;
   /** Cột sheet Code BM / BuyMed */
@@ -245,4 +247,52 @@ export function lookupSaleT4Vnd(map: Map<string, number>, customerCode: string):
   const k = customerCode.trim().toLowerCase();
   if (!k) return undefined;
   return map.get(k);
+}
+
+/** Parse Sale T7/T8/T9 từ dòng DANGKYTBQ2 (ô trống = 0) */
+export function resolveSaleMonthVndFromTbq2Row(row: DangKyTbq2RowView): {
+  SaleT7: number;
+  SaleT8: number;
+  SaleT9: number;
+} {
+  const toVnd = (raw: string): number => {
+    const n = parseSheetSalesAmount(raw);
+    return n != null && Number.isFinite(n) ? n : 0;
+  };
+  return {
+    SaleT7: toVnd(row.saleT7),
+    SaleT8: toVnd(row.saleT8),
+    SaleT9: toVnd(row.saleT9),
+  };
+}
+
+/**
+ * Map CustomerCode / Code BM → Sale T7/T8/T9 + FinalStoreTypeQ2 từ DANGKYTBQ2
+ * (dùng gắn vào SalesRecord cho modal Cart / notice).
+ */
+export function buildTbq2SalesMonthByCodeMap(
+  rows: DangKyTbq2RowView[]
+): Map<string, { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }> {
+  const map = new Map<
+    string,
+    { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }
+  >();
+  const setVal = (
+    codeRaw: string,
+    vals: { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }
+  ) => {
+    const k = codeRaw.trim().toLowerCase();
+    if (k) map.set(k, vals);
+  };
+  for (const row of rows) {
+    const vals = {
+      ...resolveSaleMonthVndFromTbq2Row(row),
+      FinalStoreTypeQ2: row.finalStoreTypeQ2.trim(),
+    };
+    setVal(row.customerCode, vals);
+    if (row.codeBm.trim() && row.codeBm.trim().toLowerCase() !== row.customerCode.trim().toLowerCase()) {
+      setVal(row.codeBm, vals);
+    }
+  }
+  return map;
 }

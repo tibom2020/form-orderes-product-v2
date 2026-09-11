@@ -57,7 +57,12 @@ export const formatVndDong = (value: number): string => {
  * Không khớp → null (giữ nguyên chuỗi khi hiển thị).
  */
 export const parseSheetSalesAmount = (raw: string): number | null => {
-    const s = String(raw ?? '').trim().replace(/\s/g, '');
+    const s = String(raw ?? '')
+        .trim()
+        .replace(/\s/g, '')
+        .replace(/[₫đĐ]/gi, '')
+        .replace(/vnd/gi, '')
+        .replace(/vnđ/gi, '');
     if (!s) return null;
     if (/^-?\d+$/.test(s)) {
         const n = Number(s);
@@ -68,6 +73,11 @@ export const parseSheetSalesAmount = (raw: string): number | null => {
     }
     if (/^-?\d{1,3}(,\d{3})+$/.test(s)) {
         return Number(s.replace(/,/g, ''));
+    }
+    // 15.5 / 15,5 (triệu) hoặc số thập phân thường
+    if (/^-?\d+[.,]\d+$/.test(s)) {
+        const n = Number(s.replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
     }
     const n = Number(s);
     return Number.isFinite(n) ? n : null;

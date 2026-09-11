@@ -167,6 +167,11 @@ export interface SalesRecord {
   // --- DỮ LIỆU TỶ TRỌNG KÊNH ---
   GIGAMED?: number | string;
   BM?: number | string;
+
+  /** Doanh số tháng 7/8/9 KH đã mua (sheet DANGKYTBQ2 — modal PS 2026) */
+  SaleT7?: number;
+  SaleT8?: number;
+  SaleT9?: number;
   GIGAMEDImport?: number | string;
   BMImport?: number | string;
 

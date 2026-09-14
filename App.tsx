@@ -719,7 +719,7 @@ const App: React.FC = () => {
     );
   };
 
-  /** Tự tích / bỏ tích ONTOP theo ngưỡng 3tr base từng nhóm + đồng bộ ghi chú */
+  /** Tự tích / bỏ tích ONTOP theo ngưỡng ≥3tr base từng nhóm (CK 2.46% / 2.96% nếu ≥5tr) + đồng bộ ghi chú */
   useEffect(() => {
     if (isPsOnInvoice25 || !isChc2606OntopPromoActive()) {
       if (isOntopLocal || isOntopImport) {

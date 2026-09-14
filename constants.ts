@@ -970,7 +970,7 @@ export type DummyBoxPromoTier = (typeof DUMMY_BOX_PROMO_TIERS)[number];
 /** Mức thấp nhất (500k) — dùng gợi ý điều kiện trên modal */
 export const DUMMY_BOX_TIER_MIN_AMOUNT = DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].minAmount;
 
-/** CTKM ONTOP Local/Import — 01/09–30/09/2026, pool riêng, ≥3tr base → CK 2.46% */
+/** CTKM ONTOP Local/Import — 01/09–30/09/2026, pool riêng: ≥3tr → 2.46%, ≥5tr → 2.96% */
 export const CHC2606_ONTOP_SUSPENDED = false;
 export const CHC2606_ONTOP_START_MS = new Date('2026-09-01T00:00:00+07:00').getTime();
 export const CHC2606_ONTOP_END_MS = new Date('2026-09-30T23:59:59+07:00').getTime();
@@ -978,15 +978,15 @@ export const CHC2606_ONTOP_LOCAL_PRODUCT_IDS: readonly number[] = [1, 28, 26, 7,
 export const CHC2606_ONTOP_IMPORT_PRODUCT_IDS: readonly number[] = [
   30, 12, 13, 20, 19, 18, 27, 31, 14, 22, 23, 24, 25,
 ];
-/** Ngưỡng duy nhất: tổng basePrice × SL trong pool ≥ 3tr → 2.46% */
+/** Ngưỡng tối thiểu để bật tick (≥3tr → 2.46%) */
 export const CHC2606_ONTOP_THRESHOLD = 3_000_000;
-/** @deprecated giữ alias — không còn mốc 10/25/50tr */
-export const CHC2606_ONTOP_THRESHOLD_BASE = CHC2606_ONTOP_THRESHOLD;
-export const CHC2606_ONTOP_THRESHOLD_LOW = CHC2606_ONTOP_THRESHOLD;
-export const CHC2606_ONTOP_THRESHOLD_HIGH = CHC2606_ONTOP_THRESHOLD;
-export const CHC2606_ONTOP_PERCENT_BASE = 0.0246;
+export const CHC2606_ONTOP_THRESHOLD_LOW = 3_000_000;
+export const CHC2606_ONTOP_THRESHOLD_HIGH = 5_000_000;
 export const CHC2606_ONTOP_PERCENT_LOW = 0.0246;
-export const CHC2606_ONTOP_PERCENT_HIGH = 0.0246;
+export const CHC2606_ONTOP_PERCENT_HIGH = 0.0296;
+/** Alias: mức thấp = ngưỡng bật tick / % mặc định 2.46% */
+export const CHC2606_ONTOP_THRESHOLD_BASE = CHC2606_ONTOP_THRESHOLD_LOW;
+export const CHC2606_ONTOP_PERCENT_BASE = CHC2606_ONTOP_PERCENT_LOW;
 export const CHC2606_ONTOP_NOTE_LOCAL = 'ONTOP - LOCAL';
 export const CHC2606_ONTOP_NOTE_IMPORT = 'ONTOP - IMPORT';
 /** Marker cũ — strip để dọn note sót */

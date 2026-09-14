@@ -9,9 +9,11 @@ import {
   CHC2606_ONTOP_NOTE_IMPORT_LEGACY,
   CHC2606_ONTOP_NOTE_LOCAL,
   CHC2606_ONTOP_NOTE_LOCAL_LEGACY,
-  CHC2606_ONTOP_PERCENT_BASE,
+  CHC2606_ONTOP_PERCENT_HIGH,
+  CHC2606_ONTOP_PERCENT_LOW,
   CHC2606_ONTOP_START_MS,
-  CHC2606_ONTOP_THRESHOLD,
+  CHC2606_ONTOP_THRESHOLD_HIGH,
+  CHC2606_ONTOP_THRESHOLD_LOW,
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
 } from '../constants';
@@ -23,9 +25,10 @@ export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
   return nowMs >= CHC2606_ONTOP_START_MS && nowMs <= CHC2606_ONTOP_END_MS;
 }
 
-/** ≥ 3tr basePrice trong pool → 2.46%; dưới ngưỡng = 0 */
+/** ≥ 5tr → 2.96%; ≥ 3tr → 2.46%; dưới ngưỡng = 0 */
 export function getChc2606OntopTierPercent(poolBaseExVat: number): number {
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD) return CHC2606_ONTOP_PERCENT_BASE;
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
+  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
   return 0;
 }
 
@@ -80,7 +83,7 @@ export function getChc2606OntopPoolTotals(
 }
 
 export interface Chc2606OntopTotals {
-  /** Tổng basePrice pool — xét ngưỡng 3tr */
+  /** Tổng basePrice pool — xét ngưỡng 3tr / 5tr */
   localPoolBase: number;
   importPoolBase: number;
   /** Tổng sau CK tháng — dùng tính tiền giảm ONTOP */
@@ -139,7 +142,8 @@ export function calcChc2606OntopTotals(
 
 export function formatChc2606OntopPercent(percent: number): string {
   if (percent <= 0) return '0%';
-  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_BASE) < 0.000001) return '2.46%';
+  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_HIGH) < 0.000001) return '2.96%';
+  if (Math.abs(percent - CHC2606_ONTOP_PERCENT_LOW) < 0.000001) return '2.46%';
   return `${(percent * 100).toFixed(2)}%`;
 }
 

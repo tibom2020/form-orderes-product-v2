@@ -1243,7 +1243,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                         ? 'cursor-pointer text-slate-600 dark:text-slate-300'
                                                         : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
                                                 }`}
-                                                title="ONTOP LOCAL: tổng basePrice pool Local ≥ 3.000.000 → CK thêm 2.46% (sau CK tháng)"
+                                                title="ONTOP LOCAL: ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96% (sau CK tháng)"
                                             >
                                                 ONTOP - LOCAL
                                                 {effectiveOntopLocal && ontopAppliedTotals.discountLocal > 0
@@ -1277,7 +1277,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                         ? 'cursor-pointer text-slate-600 dark:text-slate-300'
                                                         : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
                                                 }`}
-                                                title="ONTOP IMPORT: tổng basePrice pool Import ≥ 3.000.000 → CK thêm 2.46% (sau CK tháng)"
+                                                title="ONTOP IMPORT: ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96% (sau CK tháng)"
                                             >
                                                 ONTOP - IMPORT
                                                 {effectiveOntopImport && ontopAppliedTotals.discountImport > 0

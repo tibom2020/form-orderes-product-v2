@@ -25,10 +25,10 @@ export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
   return nowMs >= CHC2606_ONTOP_START_MS && nowMs <= CHC2606_ONTOP_END_MS;
 }
 
-/** ≥ 5tr → 2.96%; ≥ 3tr → 2.46%; dưới ngưỡng = 0 */
-export function getChc2606OntopTierPercent(poolBaseExVat: number): number {
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
-  if (poolBaseExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
+/** ≥ 5tr → 2.96%; ≥ 3tr → 2.46%; dưới ngưỡng = 0 (pool = basePrice sau CK tháng) */
+export function getChc2606OntopTierPercent(poolAfterMonthlyExVat: number): number {
+  if (poolAfterMonthlyExVat >= CHC2606_ONTOP_THRESHOLD_HIGH) return CHC2606_ONTOP_PERCENT_HIGH;
+  if (poolAfterMonthlyExVat >= CHC2606_ONTOP_THRESHOLD_LOW) return CHC2606_ONTOP_PERCENT_LOW;
   return 0;
 }
 
@@ -83,10 +83,10 @@ export function getChc2606OntopPoolTotals(
 }
 
 export interface Chc2606OntopTotals {
-  /** Tổng basePrice pool — xét ngưỡng 3tr / 5tr */
+  /** Tổng basePrice pool (trước CK tháng) — tham chiếu */
   localPoolBase: number;
   importPoolBase: number;
-  /** Tổng sau CK tháng — dùng tính tiền giảm ONTOP */
+  /** Tổng basePrice sau CK tháng — xét ngưỡng 3tr / 5tr + tính tiền giảm ONTOP */
   localPoolExVat: number;
   importPoolExVat: number;
   localPercent: number;
@@ -107,8 +107,9 @@ export function calcChc2606OntopTotals(
 ): Chc2606OntopTotals {
   const { localPoolBase, importPoolBase, localPoolExVat, importPoolExVat } =
     getChc2606OntopPoolTotals(items, groupTotals);
-  const localPercent = getChc2606OntopTierPercent(localPoolBase);
-  const importPercent = getChc2606OntopTierPercent(importPoolBase);
+  /** Ngưỡng 3tr / 5tr theo tổng basePrice sau CK tháng */
+  const localPercent = getChc2606OntopTierPercent(localPoolExVat);
+  const importPercent = getChc2606OntopTierPercent(importPoolExVat);
   const eligibleLocal = localPercent > 0;
   const eligibleImport = importPercent > 0;
   const eligible = eligibleLocal || eligibleImport;

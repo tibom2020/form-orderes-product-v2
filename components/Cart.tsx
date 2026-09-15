@@ -1243,7 +1243,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                         ? 'cursor-pointer text-slate-600 dark:text-slate-300'
                                                         : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
                                                 }`}
-                                                title="ONTOP LOCAL: ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96% (sau CK tháng)"
+                                                title="ONTOP LOCAL: tổng basePrice sau CK tháng ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96%"
                                             >
                                                 ONTOP - LOCAL
                                                 {effectiveOntopLocal && ontopAppliedTotals.discountLocal > 0
@@ -1252,7 +1252,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                             </label>
                                         </div>
                                         <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
-                                            Local (base): {formatCurrency(ontopPreview.localPoolBase)}
+                                            Local (sau CK tháng): {formatCurrency(ontopPreview.localPoolExVat)}
                                             {ontopPreview.eligibleLocal
                                                 ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
                                                 : ' · chưa đủ 3tr'}
@@ -1277,7 +1277,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                         ? 'cursor-pointer text-slate-600 dark:text-slate-300'
                                                         : 'cursor-not-allowed text-slate-400 dark:text-slate-500'
                                                 }`}
-                                                title="ONTOP IMPORT: ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96% (sau CK tháng)"
+                                                title="ONTOP IMPORT: tổng basePrice sau CK tháng ≥3.000.000 → CK 2.46%; ≥5.000.000 → CK 2.96%"
                                             >
                                                 ONTOP - IMPORT
                                                 {effectiveOntopImport && ontopAppliedTotals.discountImport > 0
@@ -1286,7 +1286,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                             </label>
                                         </div>
                                         <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
-                                            Import (base): {formatCurrency(ontopPreview.importPoolBase)}
+                                            Import (sau CK tháng): {formatCurrency(ontopPreview.importPoolExVat)}
                                             {ontopPreview.eligibleImport
                                                 ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`
                                                 : ' · chưa đủ 3tr'}

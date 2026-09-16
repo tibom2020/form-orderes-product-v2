@@ -1251,7 +1251,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                     : ''}
                                             </label>
                                         </div>
-                                        <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
+                                        <p className="ml-5 text-[9px] font-bold leading-snug text-red-500 dark:text-red-400">
                                             Local (sau CK tháng): {formatCurrency(ontopPreview.localPoolExVat)}
                                             {ontopPreview.eligibleLocal
                                                 ? ` · ${formatChc2606OntopPercent(ontopPreview.localPercent)}`
@@ -1285,7 +1285,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                                     : ''}
                                             </label>
                                         </div>
-                                        <p className="ml-5 text-[9px] font-bold leading-snug text-slate-500 dark:text-slate-400">
+                                        <p className="ml-5 text-[9px] font-bold leading-snug text-red-500 dark:text-red-400">
                                             Import (sau CK tháng): {formatCurrency(ontopPreview.importPoolExVat)}
                                             {ontopPreview.eligibleImport
                                                 ? ` · ${formatChc2606OntopPercent(ontopPreview.importPercent)}`

@@ -172,6 +172,9 @@ export interface SalesRecord {
   SaleT7?: number;
   SaleT8?: number;
   SaleT9?: number;
+  /** Phí trưng bày T7/T8 (sheet DANGKYTBQ2) */
+  PhiTbT7?: number;
+  PhiTbT8?: number;
   GIGAMEDImport?: number | string;
   BMImport?: number | string;
 

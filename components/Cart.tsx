@@ -340,6 +340,8 @@ const Cart: React.FC<CartProps> = (props) => {
             SaleT7: psGate.saleT7Vnd,
             SaleT8: psGate.saleT8Vnd,
             SaleT9: psGate.saleT9Vnd,
+            PhiTbT7: psGate.phiTbT7Vnd,
+            PhiTbT8: psGate.phiTbT8Vnd,
         };
     }, [currentSalesRecord, psGate]);
 

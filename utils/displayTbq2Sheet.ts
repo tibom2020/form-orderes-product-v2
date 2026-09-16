@@ -30,6 +30,9 @@ export interface DangKyTbq2RowView {
   saleT8: string;
   /** Doanh số tháng 9 theo sheet DANGKYTBQ2 */
   saleT9: string;
+  /** Phí trưng bày tháng 7 / 8 — cột sheet DANGKYTBQ2 */
+  phiTbT7: string;
+  phiTbT8: string;
   saleT5: string;
   saleT6: string;
   saleQ3: string;
@@ -90,11 +93,20 @@ export function setGoiPs25CellInRow(
   return next;
 }
 
+function normalizeHeaderKey(s: string): string {
+  return String(s ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 function pickCell(row: Record<string, unknown>, keys: readonly string[]): string {
   const rowKeys = Object.keys(row);
   for (const k of keys) {
     if (row[k] != null && String(row[k]).trim() !== '') return String(row[k]).trim();
-    const found = rowKeys.find(rk => rk.trim().toLowerCase() === k.trim().toLowerCase());
+    const want = normalizeHeaderKey(k);
+    const found = rowKeys.find(rk => normalizeHeaderKey(rk) === want);
     if (found != null && row[found] != null && String(row[found]).trim() !== '') {
       return String(row[found]).trim();
     }
@@ -151,6 +163,8 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
     saleT7: pickCell(row, ['Sale T7', 'sale T7', 'SaleT7', 'T7 Sale', 'Sale T4', 'SaleT4', 'T4 Sale']),
     saleT8: pickCell(row, ['Sale T8', 'sale T8', 'SaleT8', 'T8 Sale']),
     saleT9: pickCell(row, ['Sale T9', 'sale T9', 'SaleT9', 'T9 Sale']),
+    phiTbT7: pickCell(row, ['Phi TB T7']),
+    phiTbT8: pickCell(row, ['Phi TB T8']),
     saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
     saleT6: pickCell(row, ['Sale T6', 'SaleT6', 'T6 Sale']),
     saleQ3: pickCell(row, [
@@ -249,44 +263,60 @@ export function lookupSaleT4Vnd(map: Map<string, number>, customerCode: string):
   return map.get(k);
 }
 
+function sheetAmountToVnd(raw: string): number {
+  const n = parseSheetSalesAmount(raw);
+  return n != null && Number.isFinite(n) ? n : 0;
+}
+
 /** Parse Sale T7/T8/T9 từ dòng DANGKYTBQ2 (ô trống = 0) */
 export function resolveSaleMonthVndFromTbq2Row(row: DangKyTbq2RowView): {
   SaleT7: number;
   SaleT8: number;
   SaleT9: number;
 } {
-  const toVnd = (raw: string): number => {
-    const n = parseSheetSalesAmount(raw);
-    return n != null && Number.isFinite(n) ? n : 0;
-  };
   return {
-    SaleT7: toVnd(row.saleT7),
-    SaleT8: toVnd(row.saleT8),
-    SaleT9: toVnd(row.saleT9),
+    SaleT7: sheetAmountToVnd(row.saleT7),
+    SaleT8: sheetAmountToVnd(row.saleT8),
+    SaleT9: sheetAmountToVnd(row.saleT9),
   };
 }
 
+/** Parse Phi TB T7/T8 từ dòng DANGKYTBQ2 (ô trống = 0) */
+export function resolvePhiTbVndFromTbq2Row(row: DangKyTbq2RowView): {
+  PhiTbT7: number;
+  PhiTbT8: number;
+} {
+  return {
+    PhiTbT7: sheetAmountToVnd(row.phiTbT7),
+    PhiTbT8: sheetAmountToVnd(row.phiTbT8),
+  };
+}
+
+export type Tbq2SalesMonthByCode = {
+  SaleT7: number;
+  SaleT8: number;
+  SaleT9: number;
+  PhiTbT7: number;
+  PhiTbT8: number;
+  FinalStoreTypeQ2: string;
+};
+
 /**
- * Map CustomerCode / Code BM → Sale T7/T8/T9 + FinalStoreTypeQ2 từ DANGKYTBQ2
+ * Map CustomerCode / Code BM → Sale T7/T8/T9 + Phi TB T7/T8 + FinalStoreTypeQ2 từ DANGKYTBQ2
  * (dùng gắn vào SalesRecord cho modal Cart / notice).
  */
 export function buildTbq2SalesMonthByCodeMap(
   rows: DangKyTbq2RowView[]
-): Map<string, { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }> {
-  const map = new Map<
-    string,
-    { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }
-  >();
-  const setVal = (
-    codeRaw: string,
-    vals: { SaleT7: number; SaleT8: number; SaleT9: number; FinalStoreTypeQ2: string }
-  ) => {
+): Map<string, Tbq2SalesMonthByCode> {
+  const map = new Map<string, Tbq2SalesMonthByCode>();
+  const setVal = (codeRaw: string, vals: Tbq2SalesMonthByCode) => {
     const k = codeRaw.trim().toLowerCase();
     if (k) map.set(k, vals);
   };
   for (const row of rows) {
     const vals = {
       ...resolveSaleMonthVndFromTbq2Row(row),
+      ...resolvePhiTbVndFromTbq2Row(row),
       FinalStoreTypeQ2: row.finalStoreTypeQ2.trim(),
     };
     setVal(row.customerCode, vals);

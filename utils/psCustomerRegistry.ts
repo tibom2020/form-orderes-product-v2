@@ -1,5 +1,5 @@
 import type { DangKyTbq2RowView } from './displayTbq2Sheet';
-import { isRegisteredRow, resolveSaleMonthVndFromTbq2Row } from './displayTbq2Sheet';
+import { isRegisteredRow, resolvePhiTbVndFromTbq2Row, resolveSaleMonthVndFromTbq2Row } from './displayTbq2Sheet';
 import {
   findTierConfigByFinalStoreTypeQ2,
   getPsMultiSuatRules,
@@ -25,6 +25,9 @@ export interface PsCustomerGate {
   saleT8Vnd: number;
   /** Sale T9 từ sheet DANGKYTBQ2 (VNĐ) — tháng hiện tại trên Cart; trống = 0 */
   saleT9Vnd: number;
+  /** Phí trưng bày T7/T8 từ sheet DANGKYTBQ2 (VNĐ) */
+  phiTbT7Vnd: number;
+  phiTbT8Vnd: number;
   /** Target trưng bày tháng = minMonthlySales theo tier */
   targetTrungBay: number;
 }
@@ -47,6 +50,7 @@ function registerGate(
   const canShowCk25 = inPsList && suatRemaining > 0;
   const { SaleT7: saleT7Vnd, SaleT8: saleT8Vnd, SaleT9: saleT9Vnd } =
     resolveSaleMonthVndFromTbq2Row(row);
+  const { PhiTbT7: phiTbT7Vnd, PhiTbT8: phiTbT8Vnd } = resolvePhiTbVndFromTbq2Row(row);
 
   map.set(k, {
     customerCode: code.trim(),
@@ -62,6 +66,8 @@ function registerGate(
     saleT7Vnd,
     saleT8Vnd,
     saleT9Vnd,
+    phiTbT7Vnd,
+    phiTbT8Vnd,
     targetTrungBay: tier.minMonthlySales,
   });
 }

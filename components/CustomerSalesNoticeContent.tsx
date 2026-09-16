@@ -126,6 +126,18 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                                 </div>
                             </>
                         )}
+                        {data.showPhiTb && (
+                            <>
+                                <div>
+                                    <span className="text-slate-500 dark:text-slate-400">+ Phi TB T7:</span>{' '}
+                                    <span className="font-bold text-teal-700 dark:text-teal-300">{formatCurrency(data.phiTbT7)}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 dark:text-slate-400">+ Phi TB T8:</span>{' '}
+                                    <span className="font-bold text-teal-700 dark:text-teal-300">{formatCurrency(data.phiTbT8)}</span>
+                                </div>
+                            </>
+                        )}
                         <div>
                             <span className="text-slate-500 dark:text-slate-400">+ TODO:</span>{' '}
                             <span className={`font-bold ${data.isQuarterPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>

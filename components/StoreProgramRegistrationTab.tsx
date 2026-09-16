@@ -446,6 +446,26 @@ function displaySaleT9Cell(row: DangKyTbq2RowView): string {
   return '—';
 }
 
+function displayPhiTbT7Cell(row: DangKyTbq2RowView): string {
+  if (row.phiTbT7.trim()) return formatSheetSaleQ1Display(row.phiTbT7);
+  return '—';
+}
+
+function displayPhiTbT8Cell(row: DangKyTbq2RowView): string {
+  if (row.phiTbT8.trim()) return formatSheetSaleQ1Display(row.phiTbT8);
+  return '—';
+}
+
+function resolvePhiTbT7Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.phiTbT7);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
+function resolvePhiTbT8Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.phiTbT8);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
 /** Giá trị Sale T9 (VNĐ) — chỉ từ sheet; trống = 0 */
 function resolveSaleT9Vnd(row: DangKyTbq2RowView): number {
   const fromSheet = parseSheetSalesAmount(row.saleT9);
@@ -825,6 +845,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         hay(r.saleT7) ||
         hay(r.saleT8) ||
         hay(r.saleT9) ||
+        hay(r.phiTbT7) ||
+        hay(r.phiTbT8) ||
         hay(r.saleQ3)
       );
     });
@@ -951,9 +973,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedSalesRecord]);
 
-  /** CustomerCode … Sale T9 + Todo + Sale Q3 + Todo Q3; ± Rep; ± 5 cột POSM */
+  /** CustomerCode … Sale T9 + Todo + Sale Q3 + Todo Q3 + Phi TB T7/T8; ± Rep; ± 5 cột POSM */
   const tableColSpan =
-    (hideRepColumn ? 15 : 16) + (showPosmColumns ? 5 : 0) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+    (hideRepColumn ? 17 : 18) + (showPosmColumns ? 5 : 0) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -1469,6 +1491,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         >
                           Todo Q3
                         </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-teal-100/90 dark:bg-teal-950/45 border-r border-teal-200/60 dark:border-teal-900/45 text-teal-950 dark:text-teal-100"
+                          title="Cột Phi TB T7 trên DANGKYTBQ2"
+                        >
+                          Phi TB T7
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-cyan-100/90 dark:bg-cyan-950/45 border-r border-cyan-200/60 dark:border-cyan-900/45 text-cyan-950 dark:text-cyan-100"
+                          title="Cột Phi TB T8 trên DANGKYTBQ2"
+                        >
+                          Phi TB T8
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#c0c9c3]/20 dark:divide-slate-600/40">
@@ -1498,6 +1532,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   SaleT7: resolveSaleT7Vnd(row),
                                   SaleT8: resolveSaleT8Vnd(row),
                                   SaleT9: resolveSaleT9Vnd(row),
+                                  PhiTbT7: resolvePhiTbT7Vnd(row),
+                                  PhiTbT8: resolvePhiTbT8Vnd(row),
                                 };
                                 if (dsRow) {
                                   setSelectedSalesRecord({
@@ -1742,6 +1778,18 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   </td>
                                 );
                               })()}
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-teal-50/80 dark:bg-teal-950/28 text-teal-900 dark:text-teal-100`}
+                                title="Từ sheet DANGKYTBQ2"
+                              >
+                                {displayPhiTbT7Cell(row)}
+                              </td>
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-cyan-50/80 dark:bg-cyan-950/28 text-cyan-900 dark:text-cyan-100`}
+                                title="Từ sheet DANGKYTBQ2"
+                              >
+                                {displayPhiTbT8Cell(row)}
+                              </td>
                             </tr>
                           );
                         })

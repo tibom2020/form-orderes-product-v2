@@ -301,6 +301,9 @@ export const buildCustomerSalesNoticePayload = (
     const saleT7 = safeNum(r, 'SaleT7');
     const saleT8 = safeNum(r, 'SaleT8');
     const saleT9 = safeNum(r, 'SaleT9');
+    const showPhiTb = r.PhiTbT7 != null || r.PhiTbT8 != null;
+    const phiTbT7 = safeNum(r, 'PhiTbT7');
+    const phiTbT8 = safeNum(r, 'PhiTbT8');
 
     let message = `📊 THÔNG TIN DOANH SỐ KHÁCH HÀNG\n`;
     message += `--------------------------------\n`;
@@ -338,6 +341,10 @@ export const buildCustomerSalesNoticePayload = (
             message += `+ Doanh số T7: ${formatCurrency(saleT7)}\n`;
             message += `+ Doanh số T8: ${formatCurrency(saleT8)}\n`;
             message += `+ Doanh số T9: ${formatCurrency(saleT9)}\n`;
+        }
+        if (showPhiTb) {
+            message += `+ Phi TB T7: ${formatCurrency(phiTbT7)}\n`;
+            message += `+ Phi TB T8: ${formatCurrency(phiTbT8)}\n`;
         }
         message += `+ TODO: ${quarterTodo > 0 ? '+' : ''}${formatCurrency(quarterTodo)}\n`;
     }
@@ -396,6 +403,9 @@ export interface CustomerSalesDisplayData {
     saleT7: number;
     saleT8: number;
     saleT9: number;
+    showPhiTb: boolean;
+    phiTbT7: number;
+    phiTbT8: number;
 }
 
 export const getCustomerSalesDisplayData = (
@@ -442,6 +452,9 @@ export const getCustomerSalesDisplayData = (
     const saleT7 = safeNum(r, 'SaleT7');
     const saleT8 = safeNum(r, 'SaleT8');
     const saleT9 = safeNum(r, 'SaleT9');
+    const showPhiTb = r.PhiTbT7 != null || r.PhiTbT8 != null;
+    const phiTbT7 = safeNum(r, 'PhiTbT7');
+    const phiTbT8 = safeNum(r, 'PhiTbT8');
     return {
         codeGiga: safeStr(r, 'CustomerCode', 'Customer Code', 'Code'),
         codeBM: safeStr(r, 'CodeBuyMed', 'Code BM', 'BM'),
@@ -478,5 +491,8 @@ export const getCustomerSalesDisplayData = (
         saleT7,
         saleT8,
         saleT9,
+        showPhiTb,
+        phiTbT7,
+        phiTbT8,
     };
 };

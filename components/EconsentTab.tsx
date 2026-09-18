@@ -8,8 +8,6 @@ type CoverFilter = 'YES' | 'NO';
 
 interface EconsentTabProps {
   currentEmployee: Employee;
-  /** Tăng khi bấm Làm mới trên header App */
-  reloadKey?: number;
 }
 
 const COVER_HEADER = 'Cover Q3-2026';
@@ -59,7 +57,7 @@ function mrMatchesEmployee(record: EconsentRecord, employee: Employee): boolean 
   return Boolean(mr && name && mr === name);
 }
 
-const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee, reloadKey = 0 }) => {
+const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee }) => {
   const [rows, setRows] = useState<EconsentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -91,7 +89,7 @@ const EconsentTab: React.FC<EconsentTabProps> = ({ currentEmployee, reloadKey = 
 
   useEffect(() => {
     void loadData();
-  }, [reloadKey]);
+  }, []);
 
   const validRows = useMemo(
     () => rows.filter((r) => String(r.LocationID ?? '').trim()),

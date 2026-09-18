@@ -80,8 +80,6 @@ interface Props {
   showOstelinProgram?: boolean;
   /** Hiện switcher / nội dung Pharmaton (mặc định true) */
   showPharmatonProgram?: boolean;
-  /** Tăng khi bấm Làm mới trên header App */
-  reloadKey?: number;
 }
 
 const Ostelin60VTab: React.FC<Props> = ({
@@ -90,7 +88,6 @@ const Ostelin60VTab: React.FC<Props> = ({
   onProgramTabChange,
   showOstelinProgram = true,
   showPharmatonProgram = true,
-  reloadKey = 0,
 }) => {
   const [programTabInternal, setProgramTabInternal] = useState<GoiHangProgramTab>(
     showOstelinProgram ? 'ostelin' : 'pharmaton'
@@ -129,7 +126,7 @@ const Ostelin60VTab: React.FC<Props> = ({
 
   useEffect(() => {
     loadData();
-  }, [loadData, reloadKey]);
+  }, [loadData]);
 
   const allRows = useMemo(() => {
     return rawData

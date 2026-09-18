@@ -174,8 +174,6 @@ const App: React.FC = () => {
   const [psCustomerByCode, setPsCustomerByCode] = useState(
     () => new Map<string, import('./utils/psCustomerRegistry').PsCustomerGate>()
   );
-  /** Ép tải Google Sheets từ header — tăng khi bấm Làm mới (tab tự fetch lắng nghe) */
-  const [sheetReloadKey, setSheetReloadKey] = useState(0);
   const [isSheetReloading, setIsSheetReloading] = useState(false);
 
   const [selectedRebateIds, setSelectedRebateIds] = useState<string[]>([]);
@@ -262,7 +260,12 @@ const App: React.FC = () => {
   const hasLoadedGppComments = useRef(false);
   const hasLoadedForecast = useRef(false);
 
-  /** Phase 1: DANH_MUC_KH (nếu cần) → DummyBox ưu tiên → rồi REBATE/DOANH_SO → sheet phụ. */
+  /**
+   * Phase 1 — thứ tự bắt buộc:
+   * 1) DANH_MUC_KH (await xong mới sang bước 2; trừ khi đã tải OK lúc đăng nhập)
+   * 2) DummyBox (+ Acemuc)
+   * 3) REBATE / DOANH_SO → sheet phụ
+   */
   const loadCriticalData = async (options?: { skipDangMucKh?: boolean }) => {
     setDummyBoxSheetsReady(false);
     try {
@@ -277,12 +280,13 @@ const App: React.FC = () => {
           return [] as MarketingRecord[];
         });
 
+      // Bước 1: luôn ưu tiên DANH_MUC_KH — không song song với Dummy/REBATE/DOANH_SO
       if (!options?.skipDangMucKh) {
         const customers = await fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH");
-        setAllCustomers(customers);
+        setAllCustomers(customers || []);
       }
 
-      // Ưu tiên Dummy ngay sau danh sách KH — không chờ REBATE / DOANH_SO
+      // Bước 2: Dummy ngay sau KH — không chờ REBATE / DOANH_SO
       const [marketing, marketingBs, marketing500] = await Promise.all([
         fetchDataFromSheet<MarketingRecord>(GOOGLE_SCRIPT_URL, "DummyBoxRecord"),
         fetchDummyBoxBs(),
@@ -444,16 +448,21 @@ const App: React.FC = () => {
     }
   };
 
-  /** Sau đăng nhập: chặn UI tải DANH_MUC_KH; nền ưu tiên DummyBox rồi mới REBATE/DOANH_SO/… */
+  /** Sau đăng nhập: chặn UI đến khi DANH_MUC_KH xong (hoặc timeout); nền mới tải Dummy → REBATE/… */
   useEffect(() => {
     if (!loggedInEmployee || !postLoginHydrating) return;
     let cancelled = false;
     const run = async () => {
+      /** Chỉ skip KH ở nền khi đã nhận được danh mục (có dòng). Timeout/rỗng → loadCriticalData tải lại KH trước. */
+      let danhMucKhReady = false;
       try {
         const customers = await fetchDataFromSheet<Customer>(GOOGLE_SCRIPT_URL, "DANH_MUC_KH", {
           timeoutMs: POST_LOGIN_CATALOG_TIMEOUT_MS,
         });
-        if (!cancelled) setAllCustomers(customers);
+        if (!cancelled) {
+          setAllCustomers(customers || []);
+          danhMucKhReady = Array.isArray(customers) && customers.length > 0;
+        }
       } catch (e) {
         console.error("Danh mục KH (post-login) load failed", e);
       } finally {
@@ -461,7 +470,7 @@ const App: React.FC = () => {
           setPostLoginHydrating(false);
           void (async () => {
             try {
-              await loadCriticalData({ skipDangMucKh: true });
+              await loadCriticalData({ skipDangMucKh: danhMucKhReady });
               await loadSecondaryData();
             } catch (e) {
               console.error("Background sheet sync after login failed", e);
@@ -503,7 +512,7 @@ const App: React.FC = () => {
     if (['dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
   };
 
-  /** Nút header: ép tải App sheets + báo tab tự-fetch reload */
+  /** Nút header: ép tải lại — DANH_MUC_KH trước, rồi Dummy/REBATE/DOANH_SO… */
   const handleForceReloadSheets = async () => {
     if (isSheetReloading) return;
     setIsSheetReloading(true);
@@ -519,7 +528,6 @@ const App: React.FC = () => {
       if (viewMode === 'acemucScheme1') {
         await handleAcemucScheme1Reload();
       }
-      setSheetReloadKey(k => k + 1);
     } catch (e) {
       console.error('Force reload Google Sheets failed', e);
     } finally {
@@ -2257,7 +2265,6 @@ const App: React.FC = () => {
               isAdmin={loggedInEmployee.code === ADMIN_CODE}
               rebates={allRebates}
               onStartOrder={handleCustomerSelectFromDashboard}
-              reloadKey={sheetReloadKey}
             />
           </div>
         )}
@@ -2355,7 +2362,7 @@ const App: React.FC = () => {
         )}
 
         {SHOW_ECONSENT_TAB && viewMode === 'econsent' && loggedInEmployee && (
-          <EconsentTab currentEmployee={loggedInEmployee} reloadKey={sheetReloadKey} />
+          <EconsentTab currentEmployee={loggedInEmployee} />
         )}
 
         {SHOW_PRICE_LIST_TAB && viewMode === 'priceList' && (
@@ -2400,7 +2407,6 @@ const App: React.FC = () => {
             }}
             showOstelinProgram={SHOW_OSTELIN_60V_TAB}
             showPharmatonProgram={SHOW_PHARMATON_VI_TAB}
-            reloadKey={sheetReloadKey}
           />
         )}
         {SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && viewMode === 'repActiveAcemucOstelin' && (
@@ -2410,7 +2416,7 @@ const App: React.FC = () => {
           />
         )}
         {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
-          <CalciPlusTab reloadKey={sheetReloadKey} />
+          <CalciPlusTab />
         )}
         {SHOW_ACEMUC_SCHEME1_TAB && viewMode === 'acemucScheme1' && loggedInEmployee && (
           <AcemucScheme1Tab

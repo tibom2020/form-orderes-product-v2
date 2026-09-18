@@ -26,6 +26,7 @@ import AiTuVanTab from './components/AiTuVanTab';
 import PurchaseHistoryTab from './components/PurchaseHistoryTab';
 import EconsentTab from './components/EconsentTab';
 import AcemucScheme1Tab from './components/AcemucScheme1Tab';
+import SheetReloadButton from './components/SheetReloadButton';
 import { postOrderToGoogleSheet, fetchDataFromSheet, submitAdminNews, submitRebateCustomerNotice, submitCustomerSalesNotice } from './services/googleSheetService';
 import { getOrders, saveOrders, getHiddenProductIds, saveHiddenProductIds } from './utils/storage';
 import { getDiscountPercent } from './utils/calculations';
@@ -173,6 +174,9 @@ const App: React.FC = () => {
   const [psCustomerByCode, setPsCustomerByCode] = useState(
     () => new Map<string, import('./utils/psCustomerRegistry').PsCustomerGate>()
   );
+  /** Ép tải Google Sheets từ header — tăng khi bấm Làm mới (tab tự fetch lắng nghe) */
+  const [sheetReloadKey, setSheetReloadKey] = useState(0);
+  const [isSheetReloading, setIsSheetReloading] = useState(false);
 
   const [selectedRebateIds, setSelectedRebateIds] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Order[]>([]);
@@ -497,6 +501,30 @@ const App: React.FC = () => {
     if (viewMode === 'dashboard' || viewMode === 'purchaseHistory') await loadPurchaseHistory();
     if (viewMode === 'rebate') await loadGppComments();
     if (['dashboard', 'forecast'].includes(viewMode)) await loadForecastData();
+  };
+
+  /** Nút header: ép tải App sheets + báo tab tự-fetch reload */
+  const handleForceReloadSheets = async () => {
+    if (isSheetReloading) return;
+    setIsSheetReloading(true);
+    try {
+      await handleReloadAllData();
+      if (
+        viewMode === 'landing' ||
+        viewMode === 'landingBsT3' ||
+        viewMode === 'landing500'
+      ) {
+        await reloadDummyBoxLists();
+      }
+      if (viewMode === 'acemucScheme1') {
+        await handleAcemucScheme1Reload();
+      }
+      setSheetReloadKey(k => k + 1);
+    } catch (e) {
+      console.error('Force reload Google Sheets failed', e);
+    } finally {
+      setIsSheetReloading(false);
+    }
   };
 
   // Khi đăng nhập: nếu tab Sale KH PS bật — sang PS + báo cáo; nếu tạm ẩn — ở Đặt hàng
@@ -1796,6 +1824,11 @@ const App: React.FC = () => {
                 title="Phóng to giao diện"
               >+</button>
             </div>
+            <SheetReloadButton
+              onClick={handleForceReloadSheets}
+              loading={isSheetReloading}
+              title="Ép tải lại dữ liệu từ Google Sheets (áp dụng mọi tab)"
+            />
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
@@ -2224,6 +2257,7 @@ const App: React.FC = () => {
               isAdmin={loggedInEmployee.code === ADMIN_CODE}
               rebates={allRebates}
               onStartOrder={handleCustomerSelectFromDashboard}
+              reloadKey={sheetReloadKey}
             />
           </div>
         )}
@@ -2321,7 +2355,7 @@ const App: React.FC = () => {
         )}
 
         {SHOW_ECONSENT_TAB && viewMode === 'econsent' && loggedInEmployee && (
-          <EconsentTab currentEmployee={loggedInEmployee} />
+          <EconsentTab currentEmployee={loggedInEmployee} reloadKey={sheetReloadKey} />
         )}
 
         {SHOW_PRICE_LIST_TAB && viewMode === 'priceList' && (
@@ -2366,6 +2400,7 @@ const App: React.FC = () => {
             }}
             showOstelinProgram={SHOW_OSTELIN_60V_TAB}
             showPharmatonProgram={SHOW_PHARMATON_VI_TAB}
+            reloadKey={sheetReloadKey}
           />
         )}
         {SHOW_REP_ACTIVE_ACEMUC_OSTELIN_TAB && viewMode === 'repActiveAcemucOstelin' && (
@@ -2375,7 +2410,7 @@ const App: React.FC = () => {
           />
         )}
         {SHOW_CALCI_PLUS_TAB && viewMode === 'calciPlus' && (
-          <CalciPlusTab />
+          <CalciPlusTab reloadKey={sheetReloadKey} />
         )}
         {SHOW_ACEMUC_SCHEME1_TAB && viewMode === 'acemucScheme1' && loggedInEmployee && (
           <AcemucScheme1Tab

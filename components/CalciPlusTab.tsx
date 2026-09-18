@@ -64,7 +64,7 @@ const ENTERO_PACK_TARGET = 40;
 const COMPANY_CALCI_PACKS_TOTAL_TARGET = 210;
 const COMPANY_ENTERO_PACKS_TOTAL_TARGET = 270;
 
-const CalciPlusTab: React.FC = () => {
+const CalciPlusTab: React.FC<{ reloadKey?: number }> = ({ reloadKey = 0 }) => {
   const [rawData, setRawData] = useState<OrderSheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ const CalciPlusTab: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, reloadKey]);
 
   const rows = useMemo(() => {
     return rawData.map((row, idx) => {

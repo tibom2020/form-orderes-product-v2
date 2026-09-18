@@ -556,6 +556,8 @@ interface StoreProgramRegistrationTabProps {
   rebates?: Rebate[];
   /** Chuyển sang tab Đặt hàng và chọn mã KH (Code Giga) */
   onStartOrder?: (customerCode: string) => void;
+  /** Tăng khi bấm Làm mới trên header App — ép tải lại sheet */
+  reloadKey?: number;
 }
 
 const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = ({
@@ -564,6 +566,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   isAdmin = false,
   rebates = [],
   onStartOrder,
+  reloadKey = 0,
 }) => {
   const [sheetRows, setSheetRows] = useState<Record<string, unknown>[]>([]);
   const [budgetRows, setBudgetRows] = useState<Record<string, unknown>[]>([]);
@@ -896,6 +899,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     didInitialLoadRef.current = true;
     void loadTbq2Data('initial');
   }, [loadTbq2Data]);
+
+  useEffect(() => {
+    if (!didInitialLoadRef.current) return;
+    if (reloadKey <= 0) return;
+    void loadTbq2Data('refresh');
+  }, [reloadKey, loadTbq2Data]);
 
   const handleGoiPs25Toggle = useCallback(
     async (customerCode: string, next: 'YES' | 'NO') => {

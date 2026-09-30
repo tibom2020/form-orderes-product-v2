@@ -2,7 +2,7 @@
 import type { Product, Employee, Customer } from './types';
 
 // NGÀY CẬP NHẬT CTKM - Bạn có thể sửa ngày này thủ công tại đây
-export const PROMO_UPDATE_DATE = '30/09/2026';
+export const PROMO_UPDATE_DATE = '31/10/2026';
 
 // Đường dẫn Web App (triển khai / deploy mới) — dán URL đuôi /exec từ Apps Script.
 // Bắt buộc: Truy cập = "Bất kỳ ai" (hoặc người dùng đã đăng nhập Google) — GET ?sheet= mới tải được dữ liệu.
@@ -35,36 +35,35 @@ export const EMPLOYEES: Employee[] = [
 export const CUSTOMERS: Customer[] = [];
 
 export const PRODUCTS: Product[] = [
-  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.9% (đến 30.09.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
+  { id: 1, name: 'CORBIERE CALCIUM PLUS', minOrder: '1', minOrderQuantity: 1, price: 223435, type: 'Local', basePrice: 206884, promotion: 'Mua 3h ck 4.9%, 5h ck 5.9% (đến 31.10.2026)', image: 'https://i.postimg.cc/JnN6Jvyg/corbiere-calcium-plus-5-3lrp-gh.webp' },
   { id: 28, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 10ML VN', minOrder: '1', minOrderQuantity: 1, price: 206884, type: 'Local', basePrice: 197032, requireApproval: true, image: 'https://i.postimg.cc/0yNdx6NP/1814866887484728087.webp' },
   { id: 26, name: 'CALCIUM CORBIERE EXTRA 3SUPx10 5ML VN', minOrder: '1', minOrderQuantity: 1, price: 167426, type: 'Local', basePrice: 159454, image: 'https://i.postimg.cc/W1rFccKN/calci-5.webp' },
-  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 89544, type: 'Local', basePrice: 85280, image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
-  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 98887, type: 'Local', basePrice: 94178, image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
-  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 69774, type: 'Local', basePrice: 66451, image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
+  { id: 2, name: 'ACEMUC 200 CAP_BL3X10_VN', minOrder: '1', minOrderQuantity: 1, price: 89544, type: 'Local', basePrice: 85280, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.10.2026)', image: 'https://i.postimg.cc/Zq4tQ8rX/199562697843785922.webp' },
+  { id: 3, name: 'ACEMUC 200mg SAC 1g_SC30_VN', minOrder: '1', minOrderQuantity: 1, price: 98887, type: 'Local', basePrice: 94178, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.10.2026)', image: 'https://i.postimg.cc/TwV7mFyF/acemuc-200.webp' },
+  { id: 4, name: 'ACEMUC Kids 100mg_0,5g_SC30 VN', minOrder: '1', minOrderQuantity: 1, price: 69774, type: 'Local', basePrice: 66451, promotion: 'Mua đơn >= 300k ck 2.96%, 450k ck 3.45% (đến 31.10.2026)', image: 'https://i.postimg.cc/FKN56yjM/Acemuc-Kids-2.webp' },
   { id: 5, name: 'MAGNE-B6 Tab B/50 (bao film)', minOrder: '1', minOrderQuantity: 1, price: 101706, type: 'Local', basePrice: 96863, image: 'https://i.postimg.cc/0NnR1znv/magie-B6.webp' },
-  { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, promotion: 'Mua 2h ck 4.43%, 3h ck 4.93% (đến 30.09.2026)', image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
-  { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 30.09.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
-  { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 30.09.2026)', image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
-  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 43812, type: 'Local', basePrice: 41726, promotion: 'Mua 1h ck 1.48% (đến 30.09.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
-  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, requireApproval: true, promotion: 'Mua 3h ck 2.96% (đến 30.09.2026)', image: 'https://i.postimg.cc/htwjVtX6/ENTERO-2B-(1).webp' },
-  { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 314284, type: 'Import', basePrice: 299318, nearExpiry: 'HSD: 11/2026', requireApproval: true, promotion: 'Mua 3h ck 2.96% (đến 30.09.2026)', image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
-  { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 10.48% (đến 30.09.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },
-  { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 67096, type: 'Import', basePrice: 63901, nearExpiry: 'HSD: 03/2027', promotion: 'Mua 1h ck 2.46% (đến 30.09.2026)', image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
-  { id: 27, name: 'PHARMATON VITALITY', minOrder: '1', minOrderQuantity: 1, price: 228614, type: 'Import', originalPrice: 228614, basePrice: 211680, promotion: 'Mua 1h ck 6.4%, 3h ck 12.3% (đến 30.09.2026)', image: 'https://i.postimg.cc/rmp6VqZs/pmt-vita.webp' },
-  { id: 31, name: 'PHARMATON VITALITY BLISTER (5X10)', minOrder: '1', minOrderQuantity: 1, price: 382000, type: 'Import', basePrice: 353704, promotion: 'Mua 2h ck 14.80% (đến 30.09.2026)', image: 'https://i.postimg.cc/hjwdphbb/PHARMATON-VI.webp' },
-  { id: 18, name: 'PHARMATON ESSENT', minOrder: '1', minOrderQuantity: 1, price: 205286, type: 'Import', basePrice: 190080, nearExpiry: 'HSD: 01/2027', requireApproval: true, promotion: 'Mua 2h ck 4.93% (đến 30.09.2026)', image: 'https://i.postimg.cc/zBfmzq2G/pmt-essen.webp' },
-  { id: 19, name: 'PHARMATON KIDDI', minOrder: '1', minOrderQuantity: 1, price: 167400, type: 'Import', promotion: 'Mua 2h ck 3.9%, 4h ck 7.9% (đến 30.09.2026)', basePrice: 155000, image: 'https://i.postimg.cc/Qt7zxVkC/pmt-kiddi.webp' },
-  { id: 20, name: 'PHARMATON ENERGY FIZZI SỦI', minOrder: '1', minOrderQuantity: 1, price: 104760, type: 'Import', basePrice: 97000, promotion: 'Mua 3h ck 12.3% (đến 30.09.2026)', image: 'https://i.postimg.cc/43PkRYP9/pmt-fizzi.webp' },
+  { id: 6, name: 'TELFAST HD 180MG', minOrder: '1', minOrderQuantity: 1, price: 280760, type: 'Local', basePrice: 267390, promotion: 'Mua 2h ck 4.43%, 3h ck 4.93% (đến 31.10.2026)', image: 'https://i.postimg.cc/50tc4fKF/telfast-180.webp' },
+  { id: 7, name: 'TELFAST BD 60MG', minOrder: '1', minOrderQuantity: 1, price: 128931, type: 'Local', basePrice: 122791, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 31.10.2026)', image: 'https://i.postimg.cc/B6vWSJ7L/telfast-60.webp' },
+  { id: 8, name: 'TELFAST 30MG', minOrder: '1', minOrderQuantity: 1, price: 30293, type: 'Local', basePrice: 28850, promotion: 'Mua đơn >= 300k ck 2.46%, 560k ck 2.96% (đến 31.10.2026)', image: 'https://i.postimg.cc/pTdNWPc9/telfast-30.webp' },
+  { id: 10, name: 'BISOLVON KIDS 60ML BOTx1 VN', minOrder: '1', minOrderQuantity: 1, price: 43812, type: 'Local', basePrice: 41726, promotion: 'Mua 1h ck 1.48% (đến 31.10.2026)', nearExpiry: 'HSD: 3/2027', requireApproval: true, image: 'https://i.postimg.cc/SKkFP6Ww/bi-siro.webp' },
+  { id: 30, name: 'ENTEROGERMINA 2 billion/5ml B/20 bottle', minOrder: '1', minOrderQuantity: 1, price: 182779, type: 'Import', basePrice: 174075, requireApproval: true, image: 'https://i.postimg.cc/htwjVtX6/ENTERO-2B-(1).webp' },
+  { id: 12, name: 'ENTEROGERMINA GUT RESTORE ( 4B)', minOrder: '1', minOrderQuantity: 1, price: 314284, type: 'Import', basePrice: 299318, nearExpiry: 'HSD: 11/2026', requireApproval: true, image: 'https://i.postimg.cc/pdRbSffx/entero-4b.webp' },
+  { id: 13, name: 'ENTEROGERMINA BABY COMFORT', minOrder: '1', minOrderQuantity: 1, price: 460000, type: 'Import', basePrice: 425926, promotion: 'Mua 1h ck 10.48% (đến 31.10.2026)', image: 'https://i.postimg.cc/xd5DVXR4/entero-bb.webp' },
+  { id: 14, name: 'BISOLVON 8MG TAB', minOrder: '1', minOrderQuantity: 1, price: 67096, type: 'Import', basePrice: 63901, nearExpiry: 'HSD: 03/2027', promotion: 'Mua 1h ck 2.46% (đến 31.10.2026)', image: 'https://i.postimg.cc/xdnDZvvr/bi-vien.webp' },
+  { id: 27, name: 'PHARMATON VITALITY', minOrder: '1', minOrderQuantity: 1, price: 228614, type: 'Import', originalPrice: 228614, basePrice: 211680, promotion: 'Mua 1h ck 6.4%, 3h ck 12.3% (đến 31.10.2026)', image: 'https://i.postimg.cc/rmp6VqZs/pmt-vita.webp' },
+  { id: 31, name: 'PHARMATON VITALITY BLISTER (5X10)', minOrder: '1', minOrderQuantity: 1, price: 382000, type: 'Import', basePrice: 353704, promotion: 'Mua 2h ck 14.80% (đến 31.10.2026)', image: 'https://i.postimg.cc/hjwdphbb/PHARMATON-VI.webp' },
+  { id: 20, name: 'PHARMATON ENERGY FIZZI SỦI', minOrder: '1', minOrderQuantity: 1, price: 104760, type: 'Import', basePrice: 97000, promotion: 'Mua 3h ck 12.3% (đến 31.10.2026)', image: 'https://i.postimg.cc/43PkRYP9/pmt-fizzi.webp' },
   { id: 21, name: 'PHOSPHALUGEL 2.47G/20G GEL SC26 M36 VN', minOrder: '1', minOrderQuantity: 1, price: 120558, type: 'Import', basePrice: 114817, image: 'https://i.postimg.cc/N0DqvKDy/phospha.webp' },
-  { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.09.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
-  { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.09.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
-  { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 30.09.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
-  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 17.73%, 4h ck 19.7% (đến 30.09.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
+  { id: 22, name: 'OSTELIN VIT D & CALCI CHAI 130V', minOrder: '1', minOrderQuantity: 1, price: 300000, type: 'Import', basePrice: 277778, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 31.10.2026)', image: 'https://i.postimg.cc/zf7ZYy7f/ostelin-60-1.webp' },
+  { id: 23, name: 'OSTELIN VIT D & CALCI CHAI 275V', minOrder: '1', minOrderQuantity: 1, price: 540000, type: 'Import', basePrice: 500000, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 31.10.2026)', image: 'https://i.postimg.cc/KYfSh1fj/ostelin-275.webp' },
+  { id: 24, name: 'OSTELIN VIT D & CALCI CHAI 30V', minOrder: '1', minOrderQuantity: 1, price: 130000, type: 'Import', basePrice: 120370, promotion: 'Mua 700k ck 5.42%, 1000k ck 5.91% (đến 31.10.2026)', image: 'https://i.postimg.cc/R0d5xWdC/ostelin-30.webp' },
+  { id: 25, name: 'OSTELIN VIT D & CALCI CHAI 60V', minOrder: '1', minOrderQuantity: 1, price: 230000, type: 'Import', basePrice: 212963, promotion: 'Mua 2h ck 17.73%, 4h ck 19.7% (đến 31.10.2026)', image: 'https://i.postimg.cc/TP0MvK0w/ostelin-60.webp' }
 ];
 
 /**
  * Giá gốc BM CVM (VNĐ / hộp) — dùng tab Giá tham khảo & đối chiếu BuyMed.
- * Id 19 (PHARMATON KIDDI): 0 = không bán.
+ * Id 18/19 (PHARMATON ESSENT / KIDDI): đã gỡ khỏi catalog Giga; giữ map BM tham khảo.
+ * Id 19: 0 = không bán BM.
  */
 export const BM_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
   1: 211500,
@@ -98,7 +97,7 @@ export const BM_CVM_NOT_SOLD_IDS: readonly number[] = [19];
 
 /**
  * Giá gốc BM NO CVM (VNĐ / hộp) — kênh không áp mức CVM.
- * Id 19 (PHARMATON KIDDI): không có giá trong bảng → 0.
+ * Id 18/19 (ESSENT / KIDDI): giữ map BM; id 19 không có giá → 0.
  */
 export const BM_NON_CVM_BASE_PRICE_VND: Readonly<Record<number, number>> = {
   1: 223200,
@@ -925,8 +924,8 @@ export const TELFAST_PRODUCT_IDS: readonly number[] = [6, 7, 8];
 // Nhóm ACEMUC: mốc 300k / 450k theo tổng (basePrice × SL) cả 3 mã
 export const ACEMUC_GROUP_IDS: readonly number[] = [2, 3, 4];
 
-/** Tạm ngưng CK tháng Acemuc — đổi false để bật lại */
-export const ACEMUC_PROMO_SUSPENDED = true;
+/** Tạm ngưng CK tháng Acemuc — đổi true để tắt */
+export const ACEMUC_PROMO_SUSPENDED = false;
 
 /** CTKM Acemuc Scheme 1 (Sep–Oct): POSM Poster+Wobbler, DS ≥ 1tr/tháng → FOC 2 hộp CAP */
 export const SHEET_ACEMUC_SCHEME1 = 'ACEMUC_SCHEME1';
@@ -941,7 +940,7 @@ export const DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID = 1; // CORBIERE CALCIUM PLUS 3
 export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
 
 // CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
-export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [18, 20, 27, 31, 12, 30] as const; // Essent, Fizzi, Vitality, Vỉ + Enterogermina (GUT 4B, 2B/20)
+export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [20, 27, 31, 12, 30] as const; // Fizzi, Vitality, Vỉ + Enterogermina (GUT 4B, 2B/20)
 export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
 
 /** Mục tiêu số KH đã mua gói DummyBox / Rep — 2 mức (báo cáo tiến độ) */
@@ -970,13 +969,13 @@ export type DummyBoxPromoTier = (typeof DUMMY_BOX_PROMO_TIERS)[number];
 /** Mức thấp nhất (500k) — dùng gợi ý điều kiện trên modal */
 export const DUMMY_BOX_TIER_MIN_AMOUNT = DUMMY_BOX_PROMO_TIERS[DUMMY_BOX_PROMO_TIERS.length - 1].minAmount;
 
-/** CTKM ONTOP Local/Import — 01/09–30/09/2026, pool riêng: ≥3tr / ≥5tr theo tổng basePrice sau CK tháng → 2.46% / 2.96% */
-export const CHC2606_ONTOP_SUSPENDED = false;
+/** CTKM ONTOP Local/Import — tạm ngưng (đổi CHC2606_ONTOP_SUSPENDED = false để bật lại). Pool: ≥3tr / ≥5tr sau CK tháng → 2.46% / 2.96% */
+export const CHC2606_ONTOP_SUSPENDED = true;
 export const CHC2606_ONTOP_START_MS = new Date('2026-09-01T00:00:00+07:00').getTime();
 export const CHC2606_ONTOP_END_MS = new Date('2026-09-30T23:59:59+07:00').getTime();
 export const CHC2606_ONTOP_LOCAL_PRODUCT_IDS: readonly number[] = [1, 28, 26, 7, 6, 8, 10, 2, 3, 4];
 export const CHC2606_ONTOP_IMPORT_PRODUCT_IDS: readonly number[] = [
-  30, 12, 13, 20, 19, 18, 27, 31, 14, 22, 23, 24, 25,
+  30, 12, 13, 20, 27, 31, 14, 22, 23, 24, 25,
 ];
 /** Ngưỡng tối thiểu để bật tick (≥3tr sau CK tháng → 2.46%) */
 export const CHC2606_ONTOP_THRESHOLD = 3_000_000;

@@ -304,23 +304,36 @@ const Cart: React.FC<CartProps> = (props) => {
         (currentSalesRecord?.FinalStoreTypeQ2?.trim() || '') ||
         '—';
 
-    /** Sale T9 / target trưng bày / ĐẠT — hiển thị ở khối Loại PS */
+    /** Sale tháng hiện tại (Q4: T10/T11/T12) / target trưng bày / ĐẠT — khối Loại PS */
     const psDisplayMetrics = useMemo(() => {
-        /** Chỉ cột Sale T9 trên DANGKYTBQ2 — trống = 0 */
-        const saleT9 = psGate?.saleT9Vnd ?? 0;
+        const m = new Date().getMonth() + 1;
+        const monthLabel = m === 10 ? 'T10' : m === 11 ? 'T11' : 'T12';
+        const saleMonth =
+            m === 10
+                ? (psGate?.saleT10Vnd ?? 0)
+                : m === 11
+                  ? (psGate?.saleT11Vnd ?? 0)
+                  : (psGate?.saleT12Vnd ?? 0);
         const tier =
             psGate?.tierConfig ||
             findTierConfigByFinalStoreTypeQ2(currentSalesRecord?.FinalStoreTypeQ2 || '');
         const target = psGate?.targetTrungBay || tier?.minMonthlySales || 0;
         if (target <= 0) {
-            return { saleT9, target: 0, todo: null as number | null, status: null as 'dat' | 'chua' | null };
+            return {
+                monthLabel,
+                saleMonth,
+                target: 0,
+                todo: null as number | null,
+                status: null as 'dat' | 'chua' | null,
+            };
         }
-        const todo = target - saleT9;
+        const todo = target - saleMonth;
         return {
-            saleT9,
+            monthLabel,
+            saleMonth,
             target,
             todo,
-            status: (saleT9 >= target ? 'dat' : 'chua') as 'dat' | 'chua',
+            status: (saleMonth >= target ? 'dat' : 'chua') as 'dat' | 'chua',
         };
     }, [psGate, currentSalesRecord]);
     const psTotals = useMemo(() => {
@@ -331,7 +344,7 @@ const Cart: React.FC<CartProps> = (props) => {
         });
     }, [isPsOnInvoice25, psGate, items, psSuatSelected]);
 
-    /** Gắn Sale T7/T8/T9 từ DANGKYTBQ2 (psGate) — luôn ưu tiên nguồn PS khi có */
+    /** Gắn Sale T7–T12 từ DANGKYTBQ2 (psGate) — luôn ưu tiên nguồn PS khi có */
     const salesNoticeRecord = useMemo(() => {
         if (!currentSalesRecord) return null;
         if (!psGate) return currentSalesRecord;
@@ -340,6 +353,9 @@ const Cart: React.FC<CartProps> = (props) => {
             SaleT7: psGate.saleT7Vnd,
             SaleT8: psGate.saleT8Vnd,
             SaleT9: psGate.saleT9Vnd,
+            SaleT10: psGate.saleT10Vnd,
+            SaleT11: psGate.saleT11Vnd,
+            SaleT12: psGate.saleT12Vnd,
             PhiTbT7: psGate.phiTbT7Vnd,
             PhiTbT8: psGate.phiTbT8Vnd,
         };
@@ -885,10 +901,12 @@ const Cart: React.FC<CartProps> = (props) => {
                             </div>
                             <div className="grid grid-cols-1 gap-1.5 text-[10px]">
                                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-1.5">
-                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">Sale T9 đã đặt</span>
+                                    <span className="font-bold text-red-800/80 dark:text-red-200/90">
+                                        Sale {psDisplayMetrics.monthLabel} đã đặt
+                                    </span>
                                     <span className="font-black tabular-nums text-red-700 dark:text-red-200">
-                                        {psDisplayMetrics.saleT9 > 0
-                                            ? formatCurrency(Math.round(psDisplayMetrics.saleT9))
+                                        {psDisplayMetrics.saleMonth > 0
+                                            ? formatCurrency(Math.round(psDisplayMetrics.saleMonth))
                                             : '—'}
                                     </span>
                                 </div>

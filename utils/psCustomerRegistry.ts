@@ -23,8 +23,12 @@ export interface PsCustomerGate {
   saleT7Vnd: number;
   /** Sale T8 từ sheet DANGKYTBQ2 (VNĐ) */
   saleT8Vnd: number;
-  /** Sale T9 từ sheet DANGKYTBQ2 (VNĐ) — tháng hiện tại trên Cart; trống = 0 */
+  /** Sale T9 từ sheet DANGKYTBQ2 (VNĐ) */
   saleT9Vnd: number;
+  /** Sale T10/T11/T12 từ sheet DANGKYTBQ2 (VNĐ) — Q4 */
+  saleT10Vnd: number;
+  saleT11Vnd: number;
+  saleT12Vnd: number;
   /** Phí trưng bày T7/T8 từ sheet DANGKYTBQ2 (VNĐ) */
   phiTbT7Vnd: number;
   phiTbT8Vnd: number;
@@ -48,8 +52,14 @@ function registerGate(
   const suatRemaining = getPsSuatRemaining(tier, suatPsDaDung);
   /** Còn suất PS → được tick SPECIAL_PS0526 (không chặn riêng theo cột Gói PS 25% = YES) */
   const canShowCk25 = inPsList && suatRemaining > 0;
-  const { SaleT7: saleT7Vnd, SaleT8: saleT8Vnd, SaleT9: saleT9Vnd } =
-    resolveSaleMonthVndFromTbq2Row(row);
+  const {
+    SaleT7: saleT7Vnd,
+    SaleT8: saleT8Vnd,
+    SaleT9: saleT9Vnd,
+    SaleT10: saleT10Vnd,
+    SaleT11: saleT11Vnd,
+    SaleT12: saleT12Vnd,
+  } = resolveSaleMonthVndFromTbq2Row(row);
   const { PhiTbT7: phiTbT7Vnd, PhiTbT8: phiTbT8Vnd } = resolvePhiTbVndFromTbq2Row(row);
 
   map.set(k, {
@@ -66,6 +76,9 @@ function registerGate(
     saleT7Vnd,
     saleT8Vnd,
     saleT9Vnd,
+    saleT10Vnd,
+    saleT11Vnd,
+    saleT12Vnd,
     phiTbT7Vnd,
     phiTbT8Vnd,
     targetTrungBay: tier.minMonthlySales,

@@ -47,8 +47,8 @@ function doGet(e) {
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  // Chờ tối đa 30s — không có lock thì từ chối (tránh 2 request cùng getLastRow → ghi đè)
-  if (!lock.tryLock(30000)) {
+  // Chờ tối đa 15s — không có lock thì từ chối (tránh 2 request cùng getLastRow → ghi đè)
+  if (!lock.tryLock(15000)) {
     return ContentService.createTextOutput(
       JSON.stringify({
         status: "error",

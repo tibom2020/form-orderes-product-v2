@@ -82,7 +82,10 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                                 <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.monthlyTargetVnd)}</span>
                             </div>
                         )}
-                        <div><span className="text-slate-500 dark:text-slate-400">+ Doanh số đã đặt:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.doanhSoDaDat)}</span></div>
+                        <div>
+                            <span className="text-slate-500 dark:text-slate-400">+ Doanh số đã đặt (T10):</span>{' '}
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.doanhSoDaDat)}</span>
+                        </div>
                         <div>
                             <span className="text-slate-500 dark:text-slate-400">+ Todo TB:</span>{' '}
                             <span className={`font-bold ${data.isCheckPassed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -92,7 +95,7 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                     </div>
                     <div className="h-1.5" />
 
-                    <div className="font-bold text-slate-600 dark:text-slate-300">🎯 DOANH SỐ TRƯNG BÀY Q3:</div>
+                    <div className="font-bold text-slate-600 dark:text-slate-300">🎯 DOANH SỐ TRƯNG BÀY Q4:</div>
                     <div className="pl-2 space-y-0.5">
                         <div>
                             <span className="text-slate-500 dark:text-slate-400">+ Trạng thái:</span>{' '}
@@ -110,6 +113,22 @@ export const CustomerSalesNoticeContent: React.FC<CustomerSalesNoticeContentProp
                             <span className="text-slate-500 dark:text-slate-400">+ Doanh số đã đặt:</span>{' '}
                             <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.totalQuarterDS)}</span>
                         </div>
+                        {data.showQ4MonthSales && (
+                            <>
+                                <div>
+                                    <span className="text-slate-500 dark:text-slate-400">+ Doanh số T10:</span>{' '}
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.saleT10)}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 dark:text-slate-400">+ Doanh số T11:</span>{' '}
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.saleT11)}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 dark:text-slate-400">+ Doanh số T12:</span>{' '}
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(data.saleT12)}</span>
+                                </div>
+                            </>
+                        )}
                         {data.showQuarterMonthSales && (
                             <>
                                 <div>

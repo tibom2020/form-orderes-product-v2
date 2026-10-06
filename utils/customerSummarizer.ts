@@ -215,9 +215,14 @@ const resolveMonthlyTbTargetVnd = (
 const computeMonthlyTbFields = (r: Record<string, unknown>, doanhSoDaDat: number) => {
     const checkStatus = safeStr(r, 'Check');
     const todoTotal = safeNum(r, 'Todo', 'Todo TB');
+    const finalStoreTypeQ2 = safeStr(r, 'FinalStoreTypeQ2', 'Final Store Type Q2', 'FinalStoreType Q2');
     const finalStoreType = safeStr(r, 'FinalStoreType', 'Final Store Type');
     const targetMonthlyFromSheet = safeNum(r, 'TargetMonthly', 'TARGET THÁNG', 'Target Monthly');
-    const { target, mode } = resolveMonthlyTbTargetVnd(finalStoreType, targetMonthlyFromSheet);
+    // Ưu tiên tier ĐK Q2 (PS) khi có — khớp target bảng PS / Sale T10
+    const { target, mode } = resolveMonthlyTbTargetVnd(
+        finalStoreTypeQ2 || finalStoreType,
+        targetMonthlyFromSheet
+    );
 
     if (target > 0) {
         const passed = doanhSoDaDat >= target;
@@ -271,7 +276,8 @@ export const buildCustomerSalesNoticePayload = (
     const expectedBonusImport = importTier ? actualImport * (importTier.percent / 100) : 0;
     const expectedBonusLocal = localTier ? actualLocal * (localTier.percent / 100) : 0;
 
-    const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
+    const doanhSoDaDat =
+        r.SaleT10 != null ? safeNum(r, 'SaleT10') : safeNum(r, 'Sale', 'Sale T1');
 
     const codeGiga = safeStr(r, 'CustomerCode', 'Customer Code', 'Code');
     const codeBM = safeStr(r, 'CodeBuyMed', 'Code BM', 'BM');
@@ -301,6 +307,10 @@ export const buildCustomerSalesNoticePayload = (
     const saleT7 = safeNum(r, 'SaleT7');
     const saleT8 = safeNum(r, 'SaleT8');
     const saleT9 = safeNum(r, 'SaleT9');
+    const showQ4MonthSales = r.SaleT10 != null || r.SaleT11 != null || r.SaleT12 != null;
+    const saleT10 = safeNum(r, 'SaleT10');
+    const saleT11 = safeNum(r, 'SaleT11');
+    const saleT12 = safeNum(r, 'SaleT12');
     const showPhiTb = r.PhiTbT7 != null || r.PhiTbT8 != null;
     const phiTbT7 = safeNum(r, 'PhiTbT7');
     const phiTbT8 = safeNum(r, 'PhiTbT8');
@@ -330,13 +340,18 @@ export const buildCustomerSalesNoticePayload = (
         if (monthlyTargetVnd > 0) {
             message += `${monthlyTargetLineLabel(monthlyTbMode)}: ${formatCurrency(monthlyTargetVnd)}\n`;
         }
-        message += `+ Doanh số đã đặt: ${formatCurrency(doanhSoDaDat)}\n`;
+        message += `+ Doanh số đã đặt (T10): ${formatCurrency(doanhSoDaDat)}\n`;
         message += `+ Todo TB: ${signedTodo > 0 ? '+' : ''}${formatCurrency(signedTodo)}\n`;
 
-        message += `\n🎯 DOANH SỐ TRƯNG BÀY Q3:\n`;
+        message += `\n🎯 DOANH SỐ TRƯNG BÀY Q4:\n`;
         message += `+ TRẠNG THÁI: ${quarterStatusLabel}\n`;
         message += `+ MỤC TIÊU QUÝ: ${quarterTarget > 0 ? formatCurrency(quarterTarget) : 'THAM GIA TB QUÝ'}\n`;
         message += `+ Doanh số đã đặt: ${formatCurrency(totalQuarterDS)}\n`;
+        if (showQ4MonthSales) {
+            message += `+ Doanh số T10: ${formatCurrency(saleT10)}\n`;
+            message += `+ Doanh số T11: ${formatCurrency(saleT11)}\n`;
+            message += `+ Doanh số T12: ${formatCurrency(saleT12)}\n`;
+        }
         if (showQuarterMonthSales) {
             message += `+ Doanh số T7: ${formatCurrency(saleT7)}\n`;
             message += `+ Doanh số T8: ${formatCurrency(saleT8)}\n`;
@@ -398,11 +413,16 @@ export interface CustomerSalesDisplayData {
     isCheckPassed: boolean;
     /** false khi không có Loại TB và không có ĐK TB Q2 — ẩn block trưng bày tháng & quý */
     showTrungBayTbSections: boolean;
-    /** Có doanh số T7/T8/T9 từ sheet DANGKYTBQ2 (tab PS 2026) */
+    /** Có doanh số T7–T9 (Q3) từ sheet DANGKYTBQ2 */
     showQuarterMonthSales: boolean;
     saleT7: number;
     saleT8: number;
     saleT9: number;
+    /** Có doanh số T10–T12 (Q4) từ sheet DANGKYTBQ2 */
+    showQ4MonthSales: boolean;
+    saleT10: number;
+    saleT11: number;
+    saleT12: number;
     showPhiTb: boolean;
     phiTbT7: number;
     phiTbT8: number;
@@ -426,7 +446,8 @@ export const getCustomerSalesDisplayData = (
     const expectedBonusLocal = localTier ? actualLocal * (localTier.percent / 100) : 0;
     const todoTotal = safeNum(r, 'Todo', 'Todo TB');
     const checkStatus = safeStr(r, 'Check');
-    const doanhSoDaDat = safeNum(r, 'Sale', 'Sale T1');
+    const doanhSoDaDat =
+        r.SaleT10 != null ? safeNum(r, 'SaleT10') : safeNum(r, 'Sale', 'Sale T1');
     const {
         monthlyTargetVnd,
         monthlyTbMode,
@@ -452,6 +473,10 @@ export const getCustomerSalesDisplayData = (
     const saleT7 = safeNum(r, 'SaleT7');
     const saleT8 = safeNum(r, 'SaleT8');
     const saleT9 = safeNum(r, 'SaleT9');
+    const showQ4MonthSales = r.SaleT10 != null || r.SaleT11 != null || r.SaleT12 != null;
+    const saleT10 = safeNum(r, 'SaleT10');
+    const saleT11 = safeNum(r, 'SaleT11');
+    const saleT12 = safeNum(r, 'SaleT12');
     const showPhiTb = r.PhiTbT7 != null || r.PhiTbT8 != null;
     const phiTbT7 = safeNum(r, 'PhiTbT7');
     const phiTbT8 = safeNum(r, 'PhiTbT8');
@@ -491,6 +516,10 @@ export const getCustomerSalesDisplayData = (
         saleT7,
         saleT8,
         saleT9,
+        showQ4MonthSales,
+        saleT10,
+        saleT11,
+        saleT12,
         showPhiTb,
         phiTbT7,
         phiTbT8,

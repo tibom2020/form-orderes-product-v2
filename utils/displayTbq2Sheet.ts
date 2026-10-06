@@ -30,12 +30,17 @@ export interface DangKyTbq2RowView {
   saleT8: string;
   /** Doanh số tháng 9 theo sheet DANGKYTBQ2 */
   saleT9: string;
+  /** Doanh số tháng 10/11/12 theo sheet DANGKYTBQ2 */
+  saleT10: string;
+  saleT11: string;
+  saleT12: string;
   /** Phí trưng bày tháng 7 / 8 — cột sheet DANGKYTBQ2 */
   phiTbT7: string;
   phiTbT8: string;
   saleT5: string;
   saleT6: string;
   saleQ3: string;
+  saleQ4: string;
   /** Cột sheet Gói PS 25% — YES/NO (gạt tay trên DANGKYTBQ2) */
   goiPs25: string;
   /** Số suất PS 25% đã dùng (cột sheet — cập nhật khi gửi đơn) */
@@ -163,6 +168,9 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
     saleT7: pickCell(row, ['Sale T7', 'sale T7', 'SaleT7', 'T7 Sale', 'Sale T4', 'SaleT4', 'T4 Sale']),
     saleT8: pickCell(row, ['Sale T8', 'sale T8', 'SaleT8', 'T8 Sale']),
     saleT9: pickCell(row, ['Sale T9', 'sale T9', 'SaleT9', 'T9 Sale']),
+    saleT10: pickCell(row, ['Sale T10', 'sale T10', 'SaleT10', 'T10 Sale']),
+    saleT11: pickCell(row, ['Sale T11', 'sale T11', 'SaleT11', 'T11 Sale']),
+    saleT12: pickCell(row, ['Sale T12', 'sale T12', 'SaleT12', 'T12 Sale']),
     phiTbT7: pickCell(row, ['Phi TB T7']),
     phiTbT8: pickCell(row, ['Phi TB T8']),
     saleT5: pickCell(row, ['Sale T5', 'SaleT5', 'T5 Sale']),
@@ -179,6 +187,7 @@ export function normalizeDangKyTbq2Row(row: Record<string, unknown>): DangKyTbq2
       'Q2Sale',
       'Q2_Sale',
     ]),
+    saleQ4: pickCell(row, ['Sale Q4', 'SaleQ4', 'Q4 Sale', 'Q4Sale', 'Q4_Sale']),
     goiPs25: pickCell(row, GOI_PS25_HEADER_ALIASES),
     suatPsDaDung: parseSuatPsDaDung(pickCell(row, SUAT_PS_DA_DUNG_HEADER_ALIASES)),
     note: pickCell(row, ['Note', 'Ghi chú', 'Ghi chu', 'Item', 'Mặt hàng', 'Nhóm SP', 'Ngành']),
@@ -268,16 +277,22 @@ function sheetAmountToVnd(raw: string): number {
   return n != null && Number.isFinite(n) ? n : 0;
 }
 
-/** Parse Sale T7/T8/T9 từ dòng DANGKYTBQ2 (ô trống = 0) */
+/** Parse Sale T7–T12 từ dòng DANGKYTBQ2 (ô trống = 0) */
 export function resolveSaleMonthVndFromTbq2Row(row: DangKyTbq2RowView): {
   SaleT7: number;
   SaleT8: number;
   SaleT9: number;
+  SaleT10: number;
+  SaleT11: number;
+  SaleT12: number;
 } {
   return {
     SaleT7: sheetAmountToVnd(row.saleT7),
     SaleT8: sheetAmountToVnd(row.saleT8),
     SaleT9: sheetAmountToVnd(row.saleT9),
+    SaleT10: sheetAmountToVnd(row.saleT10),
+    SaleT11: sheetAmountToVnd(row.saleT11),
+    SaleT12: sheetAmountToVnd(row.saleT12),
   };
 }
 
@@ -296,13 +311,16 @@ export type Tbq2SalesMonthByCode = {
   SaleT7: number;
   SaleT8: number;
   SaleT9: number;
+  SaleT10: number;
+  SaleT11: number;
+  SaleT12: number;
   PhiTbT7: number;
   PhiTbT8: number;
   FinalStoreTypeQ2: string;
 };
 
 /**
- * Map CustomerCode / Code BM → Sale T7/T8/T9 + Phi TB T7/T8 + FinalStoreTypeQ2 từ DANGKYTBQ2
+ * Map CustomerCode / Code BM → Sale T7–T12 + Phi TB T7/T8 + FinalStoreTypeQ2 từ DANGKYTBQ2
  * (dùng gắn vào SalesRecord cho modal Cart / notice).
  */
 export function buildTbq2SalesMonthByCodeMap(

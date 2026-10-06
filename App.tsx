@@ -342,6 +342,9 @@ const App: React.FC = () => {
               SaleT7: month.SaleT7,
               SaleT8: month.SaleT8,
               SaleT9: month.SaleT9,
+              SaleT10: month.SaleT10,
+              SaleT11: month.SaleT11,
+              SaleT12: month.SaleT12,
               PhiTbT7: month.PhiTbT7,
               PhiTbT8: month.PhiTbT8,
             };
@@ -622,6 +625,9 @@ const App: React.FC = () => {
             SaleT7: month.SaleT7,
             SaleT8: month.SaleT8,
             SaleT9: month.SaleT9,
+            SaleT10: month.SaleT10,
+            SaleT11: month.SaleT11,
+            SaleT12: month.SaleT12,
             PhiTbT7: month.PhiTbT7,
             PhiTbT8: month.PhiTbT8,
           };

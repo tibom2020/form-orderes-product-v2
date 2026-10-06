@@ -407,10 +407,10 @@ function buildRepTierRegistrationRows(rows: DangKyTbq2RowView[]): RepTierStatRow
     .sort((a, b) => b.total - a.total || a.repLabel.localeCompare(b.repLabel, 'vi'));
 }
 
-function sumSaleQ3VndFromRows(rows: DangKyTbq2RowView[]): number {
+function sumSaleQ4VndFromRows(rows: DangKyTbq2RowView[]): number {
   let sum = 0;
   for (const r of rows) {
-    const n = parseSheetSalesAmount(r.saleQ3);
+    const n = parseSheetSalesAmount(r.saleQ4);
     if (n != null && Number.isFinite(n)) sum += n;
   }
   return sum;
@@ -446,6 +446,36 @@ function displaySaleT9Cell(row: DangKyTbq2RowView): string {
   return '—';
 }
 
+function displaySaleT10Cell(row: DangKyTbq2RowView): string {
+  if (row.saleT10.trim()) return formatSheetSaleQ1Display(row.saleT10);
+  return '—';
+}
+
+function displaySaleT11Cell(row: DangKyTbq2RowView): string {
+  if (row.saleT11.trim()) return formatSheetSaleQ1Display(row.saleT11);
+  return '—';
+}
+
+function displaySaleT12Cell(row: DangKyTbq2RowView): string {
+  if (row.saleT12.trim()) return formatSheetSaleQ1Display(row.saleT12);
+  return '—';
+}
+
+function resolveSaleT10Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT10);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
+function resolveSaleT11Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT11);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
+function resolveSaleT12Vnd(row: DangKyTbq2RowView): number {
+  const fromSheet = parseSheetSalesAmount(row.saleT12);
+  return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
+}
+
 function displayPhiTbT7Cell(row: DangKyTbq2RowView): string {
   if (row.phiTbT7.trim()) return formatSheetSaleQ1Display(row.phiTbT7);
   return '—';
@@ -472,13 +502,27 @@ function resolveSaleT9Vnd(row: DangKyTbq2RowView): number {
   return fromSheet != null && Number.isFinite(fromSheet) ? fromSheet : 0;
 }
 
-/** Todo tháng: ĐẠT nếu Sale T9 ≥ target tháng theo FinalStoreTypeQ2 */
+/** Todo tháng Q3: ĐẠT nếu Sale T9 ≥ target tháng theo FinalStoreTypeQ2 */
 function todoT9Status(
   row: DangKyTbq2RowView
 ): { reached: boolean; target: number; actual: number } | null {
   const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
   if (!cfg || cfg.minMonthlySales <= 0) return null;
   const actual = resolveSaleT9Vnd(row);
+  return {
+    target: cfg.minMonthlySales,
+    actual,
+    reached: actual >= cfg.minMonthlySales,
+  };
+}
+
+/** Todo tháng Q4: ĐẠT nếu Sale T10 ≥ target tháng theo FinalStoreTypeQ2 */
+function todoT10Status(
+  row: DangKyTbq2RowView
+): { reached: boolean; target: number; actual: number } | null {
+  const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+  if (!cfg || cfg.minMonthlySales <= 0) return null;
+  const actual = resolveSaleT10Vnd(row);
   return {
     target: cfg.minMonthlySales,
     actual,
@@ -498,6 +542,21 @@ function todoQ3Status(
     target: targetQ3,
     actual: Number.isFinite(actual) ? actual : 0,
     reached: (Number.isFinite(actual) ? actual : 0) >= targetQ3,
+  };
+}
+
+/** Target Q4 = 3 × target tháng; Todo Q4: ĐẠT nếu Sale Q4 ≥ target Q4 */
+function todoQ4Status(
+  row: DangKyTbq2RowView
+): { reached: boolean; target: number; actual: number } | null {
+  const cfg = findTierConfigByFinalStoreTypeQ2(row.finalStoreTypeQ2);
+  if (!cfg || cfg.minMonthlySales <= 0) return null;
+  const targetQ4 = cfg.minMonthlySales * 3;
+  const actual = parseSheetSalesAmount(row.saleQ4) ?? 0;
+  return {
+    target: targetQ4,
+    actual: Number.isFinite(actual) ? actual : 0,
+    reached: (Number.isFinite(actual) ? actual : 0) >= targetQ4,
   };
 }
 
@@ -574,6 +633,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const [refreshing, setRefreshing] = useState(false);
   /** Cột POSM (Frame OTC … Countertop) — mặc định ẩn, bật khi cần */
   const [showPosmColumns, setShowPosmColumns] = useState(false);
+  /** Cột Sale T7–T9 / Todo / Sale Q3 / Todo Q3 — mặc định ẩn, bật khi cần */
+  const [showQ3SalesColumns, setShowQ3SalesColumns] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [imagePreviewModal, setImagePreviewModal] = useState<{
@@ -630,33 +691,41 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return m;
   }, [rebates]);
 
-  const saleQ3SummaryCard = useMemo(() => {
-    const total = sumSaleQ3VndFromRows(myRows);
+  const saleQ4SummaryCard = useMemo(() => {
+    const total = sumSaleQ4VndFromRows(myRows);
     if (isAdmin) {
       return {
         total,
-        title: 'TỔNG SALE Q3 (TẤT CẢ NV)',
-        caption: 'Cộng cột Sale Q3 · DANGKYTBQ2',
+        title: 'TỔNG SALE Q4 (TẤT CẢ NV)',
+        caption: 'Cộng cột Sale Q4 · DANGKYTBQ2',
       };
     }
     return {
       total,
-      title: 'TỔNG SALE Q3 (REP)',
-      caption: 'Cộng cột Sale Q3 · phạm vi Rep bạn',
+      title: 'TỔNG SALE Q4 (REP)',
+      caption: 'Cộng cột Sale Q4 · phạm vi Rep bạn',
     };
   }, [myRows, isAdmin]);
 
-  /** Tháng hiện tại theo dõi doanh số (T9/T8/T7/…) */
-  const currentMonthKey = useMemo<'saleT9' | 'saleT8' | 'saleT7' | 'saleT5' | 'saleT6'>(() => {
+  /** Tháng hiện tại theo dõi doanh số (Q4: T10/T11/T12; Q3: T7–T9) */
+  const currentMonthKey = useMemo<
+    'saleT12' | 'saleT11' | 'saleT10' | 'saleT9' | 'saleT8' | 'saleT7' | 'saleT5' | 'saleT6'
+  >(() => {
     const m = new Date().getMonth() + 1;
+    if (m === 12) return 'saleT12';
+    if (m === 11) return 'saleT11';
+    if (m === 10) return 'saleT10';
     if (m === 9) return 'saleT9';
     if (m === 8) return 'saleT8';
     if (m === 7) return 'saleT7';
     if (m === 5) return 'saleT5';
     if (m === 6) return 'saleT6';
-    return 'saleT9';
+    return 'saleT12';
   }, []);
   const currentMonthLabel = useMemo(() => {
+    if (currentMonthKey === 'saleT12') return 'T12';
+    if (currentMonthKey === 'saleT11') return 'T11';
+    if (currentMonthKey === 'saleT10') return 'T10';
     if (currentMonthKey === 'saleT9') return 'T9';
     if (currentMonthKey === 'saleT8') return 'T8';
     if (currentMonthKey === 'saleT7') return 'T7';
@@ -667,26 +736,32 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
   const statsByTier = useMemo(() => {
     const m: Record<
       string,
-      { count: number; saleQ3Sum: number; achievedMonth: number; ps25DaDat: number; ps25ChuaDat: number }
+      { count: number; saleQ4Sum: number; achievedMonth: number; ps25DaDat: number; ps25ChuaDat: number }
     > = {};
     STORE_TIER_CONFIGS.forEach(t => {
-      m[t.label] = { count: 0, saleQ3Sum: 0, achievedMonth: 0, ps25DaDat: 0, ps25ChuaDat: 0 };
+      m[t.label] = { count: 0, saleQ4Sum: 0, achievedMonth: 0, ps25DaDat: 0, ps25ChuaDat: 0 };
     });
     myRows.forEach(r => {
       if (!isRegisteredRow(r)) return;
       const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
       if (!cfg) return;
       m[cfg.label].count += 1;
-      const n = parseSheetSalesAmount(r.saleQ3);
-      if (n != null && Number.isFinite(n)) m[cfg.label].saleQ3Sum += n;
+      const n = parseSheetSalesAmount(r.saleQ4);
+      if (n != null && Number.isFinite(n)) m[cfg.label].saleQ4Sum += n;
       const monthVal =
-        currentMonthKey === 'saleT9'
-          ? resolveSaleT9Vnd(r)
-          : currentMonthKey === 'saleT8'
-            ? resolveSaleT8Vnd(r)
-            : currentMonthKey === 'saleT7'
-              ? resolveSaleT7Vnd(r)
-              : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+        currentMonthKey === 'saleT12'
+          ? resolveSaleT12Vnd(r)
+          : currentMonthKey === 'saleT11'
+            ? resolveSaleT11Vnd(r)
+            : currentMonthKey === 'saleT10'
+              ? resolveSaleT10Vnd(r)
+              : currentMonthKey === 'saleT9'
+                ? resolveSaleT9Vnd(r)
+                : currentMonthKey === 'saleT8'
+                  ? resolveSaleT8Vnd(r)
+                  : currentMonthKey === 'saleT7'
+                    ? resolveSaleT7Vnd(r)
+                    : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
       if (Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales) {
         m[cfg.label].achievedMonth += 1;
       }
@@ -801,13 +876,19 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
         const cfg = findTierConfigByFinalStoreTypeQ2(r.finalStoreTypeQ2);
         if (!cfg) return false;
         const monthVal =
-          currentMonthKey === 'saleT9'
-            ? resolveSaleT9Vnd(r)
-            : currentMonthKey === 'saleT8'
-              ? resolveSaleT8Vnd(r)
-              : currentMonthKey === 'saleT7'
-                ? resolveSaleT7Vnd(r)
-                : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
+          currentMonthKey === 'saleT12'
+            ? resolveSaleT12Vnd(r)
+            : currentMonthKey === 'saleT11'
+              ? resolveSaleT11Vnd(r)
+              : currentMonthKey === 'saleT10'
+                ? resolveSaleT10Vnd(r)
+                : currentMonthKey === 'saleT9'
+                  ? resolveSaleT9Vnd(r)
+                  : currentMonthKey === 'saleT8'
+                    ? resolveSaleT8Vnd(r)
+                    : currentMonthKey === 'saleT7'
+                      ? resolveSaleT7Vnd(r)
+                      : parseSheetSalesAmount(r[currentMonthKey]) ?? 0;
         const achieved = Number.isFinite(monthVal) && monthVal >= cfg.minMonthlySales;
         return monthAchievementFilter === 'achieved' ? achieved : !achieved;
       });
@@ -973,9 +1054,12 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedSalesRecord]);
 
-  /** CustomerCode … Sale T9 + Todo + Sale Q3 + Todo Q3 + Phi TB T7/T8; ± Rep; ± 5 cột POSM */
+  /** Base gồm Q4 (T10–T12 + Todo + Sale Q4 + Todo Q4) + Phi TB; ± Q3; ± Rep; ± POSM; ± PS */
   const tableColSpan =
-    (hideRepColumn ? 17 : 18) + (showPosmColumns ? 5 : 0) + (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
+    (hideRepColumn ? 17 : 18) +
+    (showQ3SalesColumns ? 6 : 0) +
+    (showPosmColumns ? 5 : 0) +
+    (SHOW_PS_TABLE_COLUMNS ? 8 : 0);
 
   const tierIncentiveRedCell =
     'text-right font-bold tabular-nums text-red-600 dark:text-red-400';
@@ -992,6 +1076,22 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
           CT Trưng Bày 2026{isAdmin ? ' · Admin' : ''}
         </h1>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowQ3SalesColumns(v => !v)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold border transition-all active:scale-[0.98] ${
+              showQ3SalesColumns
+                ? 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300 dark:bg-fuchsia-950/50 dark:text-fuchsia-100 dark:border-fuchsia-700'
+                : 'bg-white dark:bg-slate-800 text-[#003629] dark:text-[#8abda9] border-[#c0c9c3]/50 dark:border-slate-600 hover:bg-[#edeeed] dark:hover:bg-slate-700'
+            }`}
+            title={
+              showQ3SalesColumns
+                ? 'Ẩn cột Sale T7, T8, T9, Todo, Sale Q3, Todo Q3'
+                : 'Hiện cột Sale T7, T8, T9, Todo, Sale Q3, Todo Q3'
+            }
+          >
+            {showQ3SalesColumns ? 'Ẩn cột Sale Q3' : 'Hiện cột Sale Q3'}
+          </button>
           <button
             type="button"
             onClick={() => setShowPosmColumns(v => !v)}
@@ -1084,22 +1184,22 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
 
             <section className="-mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 xl:-mx-10 xl:px-10 min-w-0">
               <p className="text-[10px] text-[#404945] dark:text-slate-500 mb-2 md:hidden">
-                Vuốt ngang để xem tổng Sale Q3 và các tier.
+                Vuốt ngang để xem tổng Sale Q4 và các tier.
               </p>
               <div className="tbq2-scroll-x flex flex-nowrap gap-3 sm:gap-4 pb-2 -mb-1 items-stretch w-full min-w-0">
               <div className="flex-shrink-0 w-[min(100%,18rem)] max-w-[20rem] p-3 sm:p-4 rounded-xl bg-[#003629] text-white relative overflow-hidden border border-white/10 shadow-lg">
                 <div className="relative z-10 min-w-0">
                   <div className="mb-2 min-w-0">
                     <p className="text-[9px] font-bold tracking-widest opacity-80 leading-tight">
-                      {saleQ3SummaryCard.title}
+                      {saleQ4SummaryCard.title}
                     </p>
                     <p className="text-[8px] font-semibold opacity-70 mt-0.5 tabular-nums leading-tight">
-                      {saleQ3SummaryCard.caption}
+                      {saleQ4SummaryCard.caption}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1 min-w-0">
                     <span className="font-extrabold text-[11px] sm:text-xs tabular-nums tracking-tight leading-snug break-words min-w-0 flex-1">
-                      {formatVndDong(saleQ3SummaryCard.total)}
+                      {formatVndDong(saleQ4SummaryCard.total)}
                     </span>
                     <span className="text-[9px] font-semibold bg-white/10 px-1.5 py-0.5 rounded-full border border-white/10 shrink-0">
                       VNĐ
@@ -1114,7 +1214,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                   const s =
                     statsByTier[t.label] || {
                       count: 0,
-                      saleQ3Sum: 0,
+                      saleQ4Sum: 0,
                       achievedMonth: 0,
                       ps25DaDat: 0,
                       ps25ChuaDat: 0,
@@ -1164,7 +1264,7 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                       <div className="mt-2">
                         <span className="font-extrabold text-2xl block">{String(s.count).padStart(2, '0')}</span>
                         <span className="text-[10px] opacity-70 font-medium tabular-nums leading-tight block">
-                          Tổng Sale Q3: {formatVndDong(s.saleQ3Sum)}
+                          Tổng Sale Q4: {formatVndDong(s.saleQ4Sum)}
                         </span>
                         <span className="text-[11px] opacity-90 font-bold tabular-nums leading-tight block mt-0.5">
                           Gói PS 25%: {s.ps25DaDat}/{s.ps25DaDat + s.ps25ChuaDat}
@@ -1458,6 +1558,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                         >
                           Rebate ALL
                         </th>
+                        {showQ3SalesColumns && (
+                          <>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-red-100/90 dark:bg-red-950/45 border-r border-red-200/60 dark:border-red-900/45 text-red-950 dark:text-red-100"
                           title="Cột Sale T7 trên DANGKYTBQ2"
@@ -1490,6 +1592,41 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                           title="ĐẠT nếu Sale Q3 ≥ target Q3 (= 3 × target tháng theo FinalStoreTypeQ2)"
                         >
                           Todo Q3
+                        </th>
+                          </>
+                        )}
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-sky-100/90 dark:bg-sky-950/45 border-r border-sky-200/60 dark:border-sky-900/45 text-sky-950 dark:text-sky-100"
+                          title="Cột Sale T10 trên DANGKYTBQ2"
+                        >
+                          Sale T10
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-indigo-100/90 dark:bg-indigo-950/45 border-r border-indigo-200/60 dark:border-indigo-900/45 text-indigo-950 dark:text-indigo-100"
+                          title="Cột Sale T11 trên DANGKYTBQ2"
+                        >
+                          Sale T11
+                        </th>
+                        <th
+                          className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-blue-100/90 dark:bg-blue-950/45 border-r border-blue-200/60 dark:border-blue-900/45 text-blue-950 dark:text-blue-100"
+                          title="Cột Sale T12 trên DANGKYTBQ2; trống = 0"
+                        >
+                          Sale T12
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[5.5rem] bg-violet-50/90 dark:bg-violet-950/30 border-r border-violet-200/50 dark:border-violet-900/35 leading-tight"
+                          title="ĐẠT nếu Sale T10 ≥ target tháng theo FinalStoreTypeQ2"
+                        >
+                          Todo
+                        </th>
+                        <th className="py-3 px-2 text-right tabular-nums min-w-[5.5rem] bg-emerald-50/90 dark:bg-emerald-950/35 border-r border-emerald-200/50 dark:border-emerald-900/35">
+                          Sale Q4
+                        </th>
+                        <th
+                          className="py-3 px-2 text-center min-w-[5.5rem] bg-lime-50/90 dark:bg-lime-950/30 border-r border-lime-200/50 dark:border-lime-900/35 leading-tight"
+                          title="ĐẠT nếu Sale Q4 ≥ target Q4 (= 3 × target tháng theo FinalStoreTypeQ2)"
+                        >
+                          Todo Q4
                         </th>
                         <th
                           className="py-3 px-2 text-right tabular-nums min-w-[6rem] bg-teal-100/90 dark:bg-teal-950/45 border-r border-teal-200/60 dark:border-teal-900/45 text-teal-950 dark:text-teal-100"
@@ -1532,6 +1669,9 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   SaleT7: resolveSaleT7Vnd(row),
                                   SaleT8: resolveSaleT8Vnd(row),
                                   SaleT9: resolveSaleT9Vnd(row),
+                                  SaleT10: resolveSaleT10Vnd(row),
+                                  SaleT11: resolveSaleT11Vnd(row),
+                                  SaleT12: resolveSaleT12Vnd(row),
                                   PhiTbT7: resolvePhiTbT7Vnd(row),
                                   PhiTbT8: resolvePhiTbT8Vnd(row),
                                 };
@@ -1701,6 +1841,8 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                   </>
                                 );
                               })()}
+                              {showQ3SalesColumns && (
+                                <>
                               <td
                                 className={`${base} text-right font-semibold tabular-nums ${tc.saleT7} ${tc.saleT7Hover} text-red-900 dark:text-red-100`}
                                 title="Từ sheet DANGKYTBQ2"
@@ -1772,6 +1914,85 @@ const StoreProgramRegistrationTab: React.FC<StoreProgramRegistrationTabProps> = 
                                       todo.reached
                                         ? `Đã đạt target Q3 ${formatCurrency(todo.target)} (= 3× tháng · Sale Q3)`
                                         : `Còn thiếu ${formatCurrency(thieu)} (target Q3 ${formatCurrency(todo.target)} = 3× tháng · Sale Q3)`
+                                    }
+                                  >
+                                    {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                                  </td>
+                                );
+                              })()}
+                                </>
+                              )}
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-sky-50/80 dark:bg-sky-950/28 text-sky-900 dark:text-sky-100`}
+                                title="Từ sheet DANGKYTBQ2"
+                              >
+                                {displaySaleT10Cell(row)}
+                              </td>
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-indigo-50/80 dark:bg-indigo-950/28 text-indigo-900 dark:text-indigo-100`}
+                                title="Từ sheet DANGKYTBQ2"
+                              >
+                                {displaySaleT11Cell(row)}
+                              </td>
+                              <td
+                                className={`${base} text-right font-semibold tabular-nums bg-blue-50/80 dark:bg-blue-950/28 text-blue-900 dark:text-blue-100`}
+                                title="Từ sheet DANGKYTBQ2; trống = 0"
+                              >
+                                {displaySaleT12Cell(row)}
+                              </td>
+                              {(() => {
+                                const todo = todoT10Status(row);
+                                if (!todo) {
+                                  return (
+                                    <td className="py-2.5 px-2 text-[10px] text-center bg-violet-50/40 dark:bg-violet-950/20 text-slate-400 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
+                                      —
+                                    </td>
+                                  );
+                                }
+                                const thieu = Math.max(todo.target - todo.actual, 0);
+                                return (
+                                  <td
+                                    className={`py-2.5 px-2 text-[10px] text-center font-black border-r border-[#c0c9c3]/15 dark:border-slate-600/35 ${
+                                      todo.reached
+                                        ? 'bg-emerald-100/70 dark:bg-emerald-900/35 text-emerald-800 dark:text-emerald-200'
+                                        : 'bg-rose-100/70 dark:bg-rose-900/35 text-rose-800 dark:text-rose-200'
+                                    }`}
+                                    title={
+                                      todo.reached
+                                        ? `Đã đạt target ${formatCurrency(todo.target)} (Sale T10)`
+                                        : `Còn thiếu ${formatCurrency(thieu)} (target ${formatCurrency(todo.target)} · Sale T10)`
+                                    }
+                                  >
+                                    {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                                  </td>
+                                );
+                              })()}
+                              <td
+                                className={`${base} text-right tabular-nums bg-emerald-50/70 dark:bg-emerald-950/28 ${tc.saleTn} ${tc.saleTnHover}`}
+                              >
+                                {formatSheetSaleQ1Display(row.saleQ4)}
+                              </td>
+                              {(() => {
+                                const todo = todoQ4Status(row);
+                                if (!todo) {
+                                  return (
+                                    <td className="py-2.5 px-2 text-[10px] text-center bg-lime-50/40 dark:bg-lime-950/20 text-slate-400 border-r border-[#c0c9c3]/15 dark:border-slate-600/35">
+                                      —
+                                    </td>
+                                  );
+                                }
+                                const thieu = Math.max(todo.target - todo.actual, 0);
+                                return (
+                                  <td
+                                    className={`py-2.5 px-2 text-[10px] text-center font-black border-r border-[#c0c9c3]/15 dark:border-slate-600/35 ${
+                                      todo.reached
+                                        ? 'bg-emerald-100/70 dark:bg-emerald-900/35 text-emerald-800 dark:text-emerald-200'
+                                        : 'bg-lime-100/70 dark:bg-lime-900/35 text-lime-900 dark:text-lime-100'
+                                    }`}
+                                    title={
+                                      todo.reached
+                                        ? `Đã đạt target Q4 ${formatCurrency(todo.target)} (= 3× tháng · Sale Q4)`
+                                        : `Còn thiếu ${formatCurrency(thieu)} (target Q4 ${formatCurrency(todo.target)} = 3× tháng · Sale Q4)`
                                     }
                                   >
                                     {todo.reached ? 'ĐẠT' : 'CHƯA ĐẠT'}

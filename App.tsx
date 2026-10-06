@@ -1458,7 +1458,7 @@ const App: React.FC = () => {
       setSuccessMessage('Đã gửi đơn thành công!');
       setTimeout(() => setSuccessMessage(null), 3200);
     } else {
-      alert("Có lỗi xảy ra khi gửi đơn!");
+      alert(result.message || 'Có lỗi xảy ra khi gửi đơn! Vui lòng thử lại.');
     }
   };
 

@@ -69,19 +69,44 @@ export const postOrderToGoogleSheet = async (
   payload: OrderPayload
 ): Promise<{ status: string; message?: string }> => {
   try {
-    await fetch(url, {
+    const base = webAppScriptUrlBase(url);
+    const response = await fetch(base, {
       method: 'POST',
-      mode: 'no-cors',
+      mode: 'cors',
       cache: 'no-cache',
       headers: {
         'Content-Type': 'text/plain',
       },
       body: JSON.stringify(payload),
     });
-    return { status: 'success' };
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { status?: string; ok?: boolean; message?: string };
+      if (parsed.status === 'success' || parsed.ok === true) {
+        return { status: 'success' };
+      }
+      return {
+        status: 'error',
+        message:
+          String(parsed.message || '').trim() ||
+          'Gửi đơn thất bại. Vui lòng thử lại.',
+      };
+    } catch {
+      // Một số môi trường GAS trả HTML/opaque — coi như đã gửi (giữ hành vi cũ) nếu HTTP ok
+      if (response.ok && text && !text.trimStart().toLowerCase().startsWith('<!doctype')) {
+        return { status: 'success' };
+      }
+      return {
+        status: 'error',
+        message: 'Không đọc được phản hồi từ server. Kiểm tra kết nối hoặc gửi lại đơn.',
+      };
+    }
   } catch (error) {
     console.error('Error posting to Google Sheet:', error);
-    return { status: 'error', message: `Không thể gửi đơn hàng. Vui lòng kiểm tra kết nối mạng.` };
+    return {
+      status: 'error',
+      message: 'Không thể gửi đơn hàng. Vui lòng kiểm tra kết nối mạng và thử lại.',
+    };
   }
 };
 

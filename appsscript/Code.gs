@@ -47,7 +47,15 @@ function doGet(e) {
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(5000);
+  // Chờ tối đa 30s — không có lock thì từ chối (tránh 2 request cùng getLastRow → ghi đè)
+  if (!lock.tryLock(30000)) {
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Hệ thống đang bận ghi dữ liệu. Vui lòng gửi lại đơn sau vài giây.",
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
 
   try {
     var output = ContentService.createTextOutput();
@@ -121,7 +129,11 @@ function doPost(e) {
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   } finally {
-    lock.releaseLock();
+    try {
+      lock.releaseLock();
+    } catch (releaseErr) {
+      // ignore
+    }
   }
 }
 
@@ -348,8 +360,11 @@ function handleOrder(data, ss, output) {
   }
 
   if (rowsToAdd.length > 0) {
-    var lastRow = sheetOrder.getLastRow();
-    sheetOrder.getRange(lastRow + 1, 1, rowsToAdd.length, rowsToAdd[0].length).setValues(rowsToAdd);
+    // appendRow từng dòng (trong LockService) — tránh getLastRow+setValues bị 2 đơn ghi đè cùng vùng
+    for (var r = 0; r < rowsToAdd.length; r++) {
+      sheetOrder.appendRow(rowsToAdd[r]);
+    }
+    SpreadsheetApp.flush();
 
     if (data.isOnTopLiXi) {
       updateLiXiOntopStats(ss, data.employeeName, data.customerCode, data.customerName, data.totalSales || 0);

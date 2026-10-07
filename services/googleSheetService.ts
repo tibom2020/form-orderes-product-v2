@@ -62,6 +62,8 @@ interface OrderPayload {
   psTierLabel?: string;
   /** Đơn có SP Acemuc → upsert sheet ACEMUC_SCHEME1 */
   registerAcemucScheme1?: boolean;
+  /** Idempotency — tránh ghi 2 dòng khi retry / gửi lại cùng đơn */
+  clientOrderId?: string;
 }
 
 export const postOrderToGoogleSheet = async (

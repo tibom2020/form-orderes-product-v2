@@ -147,6 +147,8 @@ const App: React.FC = () => {
   const [showDummyBoxReminderOnMount, setShowDummyBoxReminderOnMount] = useState(false);
   const [showSaleKhPsReportOnMount, setShowSaleKhPsReportOnMount] = useState(false);
   const hasShownLoginReminder = useRef(false);
+  /** Chặn double-click trước khi React kịp set isLoading */
+  const submitInFlightRef = useRef(false);
   /** Tab PS 2026: mount một lần, ẩn khi đổi tab — giữ dữ liệu sheet đã tải */
   const [storePsTabMounted, setStorePsTabMounted] = useState(false);
 
@@ -1381,7 +1383,7 @@ const App: React.FC = () => {
   };
 
   const handleSubmitOrder = async () => {
-    if (!customerCode || cart.length === 0 || isLoading) return;
+    if (!customerCode || cart.length === 0 || isLoading || submitInFlightRef.current) return;
     if (isPsOnInvoice25 && psGate?.tierConfig) {
       const psTotals = calcPsOrderTotals(cart, psGate.tierConfig, {
         usedSuatFromSheet: psGate.suatPsDaDung,
@@ -1398,7 +1400,12 @@ const App: React.FC = () => {
         return;
       }
     }
+    submitInFlightRef.current = true;
     setIsLoading(true);
+    const clientOrderId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const orderObj = createOrderObject();
 
     // Tạo tóm tắt thông tin khách hàng
@@ -1409,25 +1416,30 @@ const App: React.FC = () => {
 
     const customerSummary = generateCustomerSummary(currentSalesRecord);
 
-    const result = await postOrderToGoogleSheet(GOOGLE_SCRIPT_URL, {
-      employeeName: loggedInEmployee!.name,
-      employeeCode: loggedInEmployee!.code,
-      ...orderObj,
-      appliedRebates: selectedRebateIds,
-      customerSummary: customerSummary,
-      invoiceLines: buildOrderInvoiceLines(orderObj),
-      registerAcemucScheme1: orderObj.items.some((i) => ACEMUC_GROUP_IDS.includes(i.id)),
-      ...(orderObj.isPsOnInvoice25
-        ? {
-            isPsOnInvoice25: true,
-            psSuatApplied: orderObj.psSuatApplied ?? 0,
-            psSuatMax: psGate?.tierConfig ? getPsSuatMaxForTier(psGate.tierConfig) : 1,
-            psTierLabel: orderObj.psTierLabel,
-          }
-        : {}),
-    });
-    setIsLoading(false);
-
+    let result: { status: string; message?: string };
+    try {
+      result = await postOrderToGoogleSheet(GOOGLE_SCRIPT_URL, {
+        employeeName: loggedInEmployee!.name,
+        employeeCode: loggedInEmployee!.code,
+        clientOrderId,
+        ...orderObj,
+        appliedRebates: selectedRebateIds,
+        customerSummary: customerSummary,
+        invoiceLines: buildOrderInvoiceLines(orderObj),
+        registerAcemucScheme1: orderObj.items.some((i) => ACEMUC_GROUP_IDS.includes(i.id)),
+        ...(orderObj.isPsOnInvoice25
+          ? {
+              isPsOnInvoice25: true,
+              psSuatApplied: orderObj.psSuatApplied ?? 0,
+              psSuatMax: psGate?.tierConfig ? getPsSuatMaxForTier(psGate.tierConfig) : 1,
+              psTierLabel: orderObj.psTierLabel,
+            }
+          : {}),
+      });
+    } finally {
+      submitInFlightRef.current = false;
+      setIsLoading(false);
+    }
 
     if (result.status === 'success') {
       const newSent: Order = { ...orderObj, id: Date.now().toString(), createdAt: Date.now(), status: 'sent' };

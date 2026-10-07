@@ -48,7 +48,7 @@ function doGet(e) {
 function doPost(e) {
   var lock = LockService.getScriptLock();
   // Chờ tối đa 15s — không có lock thì từ chối (tránh 2 request cùng getLastRow → ghi đè)
-  if (!lock.tryLock(15000)) {
+  if (!lock.tryLock(8000)) {
     return ContentService.createTextOutput(
       JSON.stringify({
         status: "error",
@@ -330,7 +330,96 @@ function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates, customerCod
   return out.join("\n");
 }
 
+/** Cửa sổ coi hai lần gửi là trùng (ms) — tránh user bấm Gửi lại / retry sau lỗi mạng giả */
+var ORDER_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
+
+function orderFingerprint_(data) {
+  var items = data.items || [];
+  var parts = items
+    .map(function (it) {
+      return String(Number(it.id) || 0) + "x" + String(Number(it.quantity) || 0) + "@" + String(Number(it.price) || 0);
+    })
+    .sort()
+    .join("|");
+  return [
+    String(data.employeeCode || "").trim(),
+    String(data.customerCode || "").trim(),
+    parts,
+    String(data.note || "").trim(),
+  ].join("::");
+}
+
+function loadOrderDedupeMap_() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty("ORDER_DEDUPE") || "{}";
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveOrderDedupeMap_(map) {
+  var now = Date.now();
+  var windowMs = ORDER_DEDUPE_WINDOW_MS;
+  var keys = Object.keys(map);
+  for (var i = 0; i < keys.length; i++) {
+    if (now - Number(map[keys[i]] || 0) > windowMs * 2) {
+      delete map[keys[i]];
+    }
+  }
+  while (Object.keys(map).length > 250) {
+    var oldestKey = keys[0];
+    var oldestTs = Number(map[oldestKey]) || now;
+    for (var j = 1; j < keys.length; j++) {
+      var ts = Number(map[keys[j]]) || now;
+      if (ts < oldestTs) {
+        oldestTs = ts;
+        oldestKey = keys[j];
+      }
+    }
+    delete map[oldestKey];
+    keys = Object.keys(map);
+  }
+  PropertiesService.getScriptProperties().setProperty("ORDER_DEDUPE", JSON.stringify(map));
+}
+
+function isDuplicateOrderSubmission_(data) {
+  var map = loadOrderDedupeMap_();
+  var now = Date.now();
+  var windowMs = ORDER_DEDUPE_WINDOW_MS;
+
+  var clientId = String(data.clientOrderId || "").trim();
+  if (clientId) {
+    var idKey = "id:" + clientId;
+    if (map[idKey] && now - Number(map[idKey]) < windowMs) return true;
+  }
+
+  var fpKey = "fp:" + orderFingerprint_(data);
+  if (map[fpKey] && now - Number(map[fpKey]) < windowMs) return true;
+  return false;
+}
+
+function recordOrderSubmission_(data) {
+  var map = loadOrderDedupeMap_();
+  var now = Date.now();
+  var clientId = String(data.clientOrderId || "").trim();
+  if (clientId) map["id:" + clientId] = now;
+  map["fp:" + orderFingerprint_(data)] = now;
+  saveOrderDedupeMap_(map);
+}
+
 function handleOrder(data, ss, output) {
+  if (isDuplicateOrderSubmission_(data)) {
+    return output.setContent(
+      JSON.stringify({
+        status: "success",
+        duplicate: true,
+        message: "Đơn trùng nội dung đã được ghi trong 15 phút gần đây — không ghi thêm dòng.",
+      })
+    );
+  }
+
   var sheetOrder = ss.getSheetByName("Orders");
   if (!sheetOrder) {
     sheetOrder = ss.insertSheet("Orders");
@@ -360,10 +449,9 @@ function handleOrder(data, ss, output) {
   }
 
   if (rowsToAdd.length > 0) {
-    // appendRow từng dòng (trong LockService) — tránh getLastRow+setValues bị 2 đơn ghi đè cùng vùng
-    for (var r = 0; r < rowsToAdd.length; r++) {
-      sheetOrder.appendRow(rowsToAdd[r]);
-    }
+    // Ghi một lần (đã có ScriptLock) — nhanh hơn appendRow từng dòng
+    var startRow = sheetOrder.getLastRow() + 1;
+    sheetOrder.getRange(startRow, 1, startRow + rowsToAdd.length - 1, rowsToAdd[0].length).setValues(rowsToAdd);
     SpreadsheetApp.flush();
 
     if (data.isOnTopLiXi) {
@@ -483,10 +571,73 @@ function handleOrder(data, ss, output) {
       upsertAcemucScheme1Row_(ss, data);
     }
 
-    sendTelegramNotification(data);
+    recordOrderSubmission_(data);
+    // Telegram/N8N chạy sau qua trigger — không chặn phản hồi Web App (tránh xe tải 20–30s)
+    enqueueOrderTelegram_(data);
   }
 
   return output.setContent(JSON.stringify({ status: "success" }));
+}
+
+/** Hàng đợi Telegram — xử lý ngoài luồng doPost để app nhận success nhanh */
+function enqueueOrderTelegram_(data) {
+  var botToken = String(BOT_TOKEN || "").trim();
+  if (!botToken) return;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var raw = props.getProperty("ORDER_TELEGRAM_QUEUE") || "[]";
+    var queue = JSON.parse(raw);
+    queue.push(data);
+    if (queue.length > 25) queue = queue.slice(-25);
+    props.setProperty("ORDER_TELEGRAM_QUEUE", JSON.stringify(queue));
+    ensureOrderTelegramTrigger_();
+  } catch (e) {
+    Logger.log("enqueueOrderTelegram_ fallback sync: " + e);
+    sendTelegramNotification(data);
+  }
+}
+
+function ensureOrderTelegramTrigger_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty("ORDER_TELEGRAM_TRIGGER_ARMED") === "1") return;
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "flushOrderTelegramQueue") {
+      props.setProperty("ORDER_TELEGRAM_TRIGGER_ARMED", "1");
+      return;
+    }
+  }
+  ScriptApp.newTrigger("flushOrderTelegramQueue").timeBased().after(1500).create();
+  props.setProperty("ORDER_TELEGRAM_TRIGGER_ARMED", "1");
+}
+
+function flushOrderTelegramQueue() {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty("ORDER_TELEGRAM_TRIGGER_ARMED");
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var t = 0; t < triggers.length; t++) {
+    if (triggers[t].getHandlerFunction() === "flushOrderTelegramQueue") {
+      ScriptApp.deleteTrigger(triggers[t]);
+    }
+  }
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) return;
+  try {
+    var raw = props.getProperty("ORDER_TELEGRAM_QUEUE") || "[]";
+    props.deleteProperty("ORDER_TELEGRAM_QUEUE");
+    var queue = JSON.parse(raw);
+    for (var i = 0; i < queue.length; i++) {
+      try {
+        sendTelegramNotification(queue[i]);
+      } catch (err) {
+        Logger.log("flushOrderTelegramQueue: " + err);
+      }
+    }
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (ignore) {}
+  }
 }
 
 /**
@@ -593,14 +744,30 @@ function upsertAcemucScheme1Row_(ss, data) {
   var code = String(data.customerCode || "").trim();
   if (!code) return;
   var orderSale = calcAcemucSaleFromItems_(data.items);
-  var totalSale = recalcAcemucSaleFromOrdersSheet_(ss, code);
-  if (totalSale <= 0) totalSale = orderSale;
+  var totalSale = orderSale;
+  var nowStr = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM");
+  var saleColIdx = hdr.indexOf("SaleAcemuc");
+  var tsColIdx = hdr.indexOf("Timestamp");
   var rowIndex = -1;
   for (var r = 1; r < values.length; r++) {
     if (String(values[r][codeCol]).trim() === code) {
       rowIndex = r + 1;
       break;
     }
+  }
+  if (rowIndex >= 0 && saleColIdx >= 0) {
+    var prevSale = Number(values[rowIndex - 1][saleColIdx]) || 0;
+    var prevTs = tsColIdx >= 0 ? values[rowIndex - 1][tsColIdx] : null;
+    var prevDate = prevTs instanceof Date ? prevTs : new Date(prevTs);
+    var prevYm = isNaN(prevDate.getTime()) ? "" : Utilities.formatDate(prevDate, "GMT+7", "yyyy-MM");
+    if (prevYm === nowStr) {
+      totalSale = prevSale + orderSale;
+    } else {
+      totalSale = recalcAcemucSaleFromOrdersSheet_(ss, code);
+    }
+  } else {
+    totalSale = recalcAcemucSaleFromOrdersSheet_(ss, code);
+    if (totalSale <= 0) totalSale = orderSale;
   }
   var now = new Date();
   var name = String(data.customerName || "");
@@ -1070,8 +1237,12 @@ function sendAdminNewsNotification(data) {
   } catch (e) { Logger.log("Lỗi sendAdminNewsNotification: " + e.toString()); }
 }
 
+/** Thông báo đơn mới — chỉ Telegram (không gọi N8N, tránh chậm/treo UrlFetchApp). */
 function sendTelegramNotification(data) {
   try {
+    var botToken = String(BOT_TOKEN || "").trim();
+    if (!botToken) return;
+
     var items = data.items || [];
     var invoiceLines = data.invoiceLines;
     var totalAmount = 0;
@@ -1122,21 +1293,11 @@ function sendTelegramNotification(data) {
       message += "--------------------------------\n" + data.customerSummary + "\n";
     }
     message += "--------------------------------\n" + "💕 Cảm ơn <b>" + clean(data.employeeName) + "</b> đã lên đơn nhé! 💕";
-    UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
-      method: "post", contentType: "application/json",
+    UrlFetchApp.fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
+      method: "post",
+      contentType: "application/json",
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
-      muteHttpExceptions: true
-    });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({
-        event_type: "new_order",
-        data: data,
-        total_amount: displayTotal,
-        invoice_lines: invoiceLines || null,
-        full_message: message
-      }),
-      muteHttpExceptions: true
+      muteHttpExceptions: true,
     });
   } catch (e) { Logger.log("Lỗi sendTelegramNotification: " + e.toString()); }
 }

@@ -330,6 +330,9 @@ function enrichOrderNoteWithRebateAmounts_(ss, note, appliedRebates, customerCod
   return out.join("\n");
 }
 
+/** Bật/tắt chặn gửi trùng đơn (clientOrderId + fingerprint). Hiện tắt theo yêu cầu vận hành. */
+var ORDER_DEDUPE_ENABLED = false;
+
 /** Cửa sổ coi hai lần gửi là trùng (ms) — tránh user bấm Gửi lại / retry sau lỗi mạng giả */
 var ORDER_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 
@@ -410,7 +413,7 @@ function recordOrderSubmission_(data) {
 }
 
 function handleOrder(data, ss, output) {
-  if (isDuplicateOrderSubmission_(data)) {
+  if (ORDER_DEDUPE_ENABLED && isDuplicateOrderSubmission_(data)) {
     return output.setContent(
       JSON.stringify({
         status: "success",
@@ -449,9 +452,10 @@ function handleOrder(data, ss, output) {
   }
 
   if (rowsToAdd.length > 0) {
-    // Ghi một lần (đã có ScriptLock) — nhanh hơn appendRow từng dòng
+    // Ghi một lần (đã có ScriptLock). getRange(row,col,numRows,numCols) — không phải lastRow!
     var startRow = sheetOrder.getLastRow() + 1;
-    sheetOrder.getRange(startRow, 1, startRow + rowsToAdd.length - 1, rowsToAdd[0].length).setValues(rowsToAdd);
+    var numCols = rowsToAdd[0].length;
+    sheetOrder.getRange(startRow, 1, rowsToAdd.length, numCols).setValues(rowsToAdd);
     SpreadsheetApp.flush();
 
     if (data.isOnTopLiXi) {
@@ -571,8 +575,8 @@ function handleOrder(data, ss, output) {
       upsertAcemucScheme1Row_(ss, data);
     }
 
-    recordOrderSubmission_(data);
-    // Telegram/N8N chạy sau qua trigger — không chặn phản hồi Web App (tránh xe tải 20–30s)
+    if (ORDER_DEDUPE_ENABLED) recordOrderSubmission_(data);
+    // Telegram chạy sau qua trigger — không chặn phản hồi Web App
     enqueueOrderTelegram_(data);
   }
 

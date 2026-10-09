@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon, EyeSlashIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
-import { getMaxDiscountPercent, isGigaMonthlyPromoSuspended } from '../utils/calculations';
-import { REBATE_TIERS } from './dashboard/DashboardUtils';
+import { isGigaMonthlyPromoSuspended } from '../utils/calculations';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 
 interface ProductCardProps {
@@ -62,8 +61,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                 const threshold = unit === 'k' ? thresholdRaw * 1000 : thresholdRaw;
                 const percent = m[3];
 
-                // Tính toán giá sau giảm cho mỗi mức để hiển thị trực quan cho nhân viên
-                const discountedPricePerUnit = (product.basePrice ?? product.price) * (1 - parseFloat(percent) / 100);
+                // Giá HĐ (CK+VAT) — cùng công thức tab Bảng giá: price × (1 − % CK), không dùng basePrice thuần
+                const discountedPricePerUnit =
+                    product.price * (1 - parseFloat(percent) / 100);
 
                 return {
                     thresholdRaw,
@@ -83,7 +83,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                 unit: 'h',
                 threshold: 1,
                 percent: singleMatch[1],
-                discountedPricePerUnit: (product.basePrice ?? product.price) * (1 - parseFloat(singleMatch[1]) / 100)
+                discountedPricePerUnit:
+                    product.price * (1 - parseFloat(singleMatch[1]) / 100)
             }];
         }
 
@@ -91,14 +92,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
     }, [product.promotion, product.price, promoSuspended]);
 
     // (đã gỡ) Rule 21h ck thêm 4.76%
-
-    // Giá cuối tháng ở mức 5% (Lv5) - đã bao gồm CK + VAT
-    const LEVEL_5_INDEX = 4;
-    const giaCuoiThang = useMemo(() => {
-        const maxCk = promoSuspended ? null : getMaxDiscountPercent(product.promotion);
-        const giaHD = Math.round((hideMonthlyPromo ? (product.basePrice ?? product.price) : product.price) * (1 - (maxCk ?? 0) / 100));
-        return Math.round(giaHD * (1 - REBATE_TIERS[LEVEL_5_INDEX].percent / 100));
-    }, [product.price, product.basePrice, product.promotion, promoSuspended, hideMonthlyPromo]);
 
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200 group relative">
@@ -148,11 +141,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                             {product.type}
                         </span>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {!hideMonthlyPromo && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase ${product.type === 'Import' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'}`}>
-                                Giá cuối Tháng: {formatCurrency(giaCuoiThang)}
-                            </span>
-                            )}
                             {product.originalPrice && (
                                 <span className="text-[10px] text-slate-400 line-through">
                                     {formatCurrency(product.originalPrice)}

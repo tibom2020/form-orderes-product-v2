@@ -27,11 +27,12 @@ import {
 } from '../utils/chc2606OntopPromo';
 import {
     computeCartGroupTotals,
-    computeMaxPayableFees,
+    computeDualMaxPayableFees,
     computeAppliedRebates,
     MAX_PRODUCT_DISCOUNT_RATIO,
     MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
 } from '../utils/orderDiscountCaps';
+import { REBATE_FEE_EXCLUDED_PRODUCT_IDS } from '../constants';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 import {
     DUMMY_BOX_DISCOUNT,
@@ -669,17 +670,28 @@ const Cart: React.FC<CartProps> = (props) => {
     const importRebates = rebates.filter(r => r.Group === 'IMPORT');
     const allGroupRebates = rebates.filter(r => r.Group === 'ALL');
 
-    const maxPayableFees = useMemo(
-        () =>
-            computeMaxPayableFees(items, { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal }, {
-                psDiscountGross: isPsOnInvoice25 ? psDiscountGross : 0,
-                maxDiscountRatio: isPsOnInvoice25
-                    ? MAX_PRODUCT_DISCOUNT_RATIO
-                    : MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
-                excludeMonthlyFromCap: isPsOnInvoice25,
-            }),
-        [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal, isPsOnInvoice25, psDiscountGross]
+    const feeCapOptions = useMemo(
+        () => ({
+            psDiscountGross: isPsOnInvoice25 ? psDiscountGross : 0,
+            maxDiscountRatio: isPsOnInvoice25
+                ? MAX_PRODUCT_DISCOUNT_RATIO
+                : MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
+            excludeMonthlyFromCap: isPsOnInvoice25,
+        }),
+        [isPsOnInvoice25, psDiscountGross]
     );
+
+    const maxPayableFeesDual = useMemo(
+        () =>
+            computeDualMaxPayableFees(
+                items,
+                { telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal },
+                feeCapOptions
+            ),
+        [items, telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal, feeCapOptions]
+    );
+
+    const maxPayableFees = maxPayableFeesDual.standard;
 
     const feeCapByItemId = useMemo(() => {
         const m = new Map<number, (typeof maxPayableFees.lines)[0]>();
@@ -696,10 +708,19 @@ const Cart: React.FC<CartProps> = (props) => {
         selectedLocalRebateTotal,
         selectedImportRebateTotal,
         selectedAllRebateTotal,
+        selectedAllStandardRebateTotal,
+        selectedAllAllowlistRebateTotal,
         totalMaxPayableFeeAll,
+        totalMaxPayableFeeAllAllowlist,
     } = useMemo(
-        () => computeAppliedRebates(rebates, selectedRebateIds, maxPayableFees),
-        [rebates, selectedRebateIds, maxPayableFees]
+        () =>
+            computeAppliedRebates(
+                rebates,
+                selectedRebateIds,
+                maxPayableFeesDual.standard,
+                maxPayableFeesDual.allAllowlist
+            ),
+        [rebates, selectedRebateIds, maxPayableFeesDual]
     );
 
     const rebateAllocByItemId = useMemo(() => {
@@ -733,12 +754,26 @@ const Cart: React.FC<CartProps> = (props) => {
     ]);
 
     // --- Submit Validation ---
-    const localProductCount = items.filter(i => i.type === 'Local').length;
-    const importProductCount = items.filter(i => i.type === 'Import').length;
+    const feeExcludedSet = useMemo(
+        () => new Set<number>(REBATE_FEE_EXCLUDED_PRODUCT_IDS),
+        []
+    );
+    const hasEligibleLocalProduct = items.some(
+        i => i.type === 'Local' && !feeExcludedSet.has(i.id)
+    );
+    const hasEligibleImportProduct = items.some(
+        i => i.type === 'Import' && !feeExcludedSet.has(i.id)
+    );
+    const hasMagneOrPhospha = items.some(i => feeExcludedSet.has(i.id));
 
     const localOver = selectedLocalRebateTotal > totalMaxPayableFeeLocal && totalMaxPayableFeeLocal > 0;
     const importOver = selectedImportRebateTotal > totalMaxPayableFeeImport && totalMaxPayableFeeImport > 0;
-    const allOver = selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0;
+    const allOverStandard =
+        selectedAllStandardRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0;
+    const allOverAllowlist =
+        selectedAllAllowlistRebateTotal > totalMaxPayableFeeAllAllowlist &&
+        totalMaxPayableFeeAllAllowlist > 0;
+    const allOver = allOverStandard || allOverAllowlist;
     const hasLocalMaxNote = note.includes('Trả tối đa phí Local');
     const hasImportMaxNote = note.includes('Trả tối đa phí Import');
     const hasAllMaxNote = note.includes('Trả tối đa phí ALL');
@@ -746,11 +781,16 @@ const Cart: React.FC<CartProps> = (props) => {
     const feeOverNeedsNote =
         !rebatePaymentLocked &&
         ((localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote) || (allOver && !hasAllMaxNote));
+    const onlyAllowlistAllSelected =
+        selectedAllAllowlistRebateTotal > 0 && selectedAllStandardRebateTotal === 0;
     const rebateWithoutProducts =
         !rebatePaymentLocked &&
-        ((selectedLocalRebateTotal > 0 && localProductCount < 1) ||
-            (selectedImportRebateTotal > 0 && importProductCount < 1) ||
-            (selectedAllRebateTotal > 0 && localProductCount + importProductCount < 1));
+        ((selectedLocalRebateTotal > 0 && !hasEligibleLocalProduct) ||
+            (selectedImportRebateTotal > 0 && !hasEligibleImportProduct) ||
+            (selectedAllRebateTotal > 0 &&
+                !hasEligibleLocalProduct &&
+                !hasEligibleImportProduct &&
+                !(onlyAllowlistAllSelected && hasMagneOrPhospha)));
     const psSubmitBlocked =
         isPsOnInvoice25 &&
         psTotals != null &&
@@ -1564,14 +1604,17 @@ const Cart: React.FC<CartProps> = (props) => {
                             )}
                             {rebateWithoutProducts && (
                                 <>
-                                    {selectedLocalRebateTotal > 0 && localProductCount < 1 && (
-                                        <p>• Chọn trả phí Local nhưng đơn không có sản phẩm Local. Cần ít nhất 1 sản phẩm Local.</p>
+                                    {selectedLocalRebateTotal > 0 && !hasEligibleLocalProduct && (
+                                        <p>• Chọn trả phí Local nhưng đơn không có sản phẩm Local (Magne không tính). Cần ít nhất 1 SP Local khác.</p>
                                     )}
-                                    {selectedImportRebateTotal > 0 && importProductCount < 1 && (
-                                        <p>• Chọn trả phí Import nhưng đơn không có sản phẩm Import. Cần ít nhất 1 sản phẩm Import.</p>
+                                    {selectedImportRebateTotal > 0 && !hasEligibleImportProduct && (
+                                        <p>• Chọn trả phí Import nhưng đơn không có sản phẩm Import (Phospha không tính). Cần ít nhất 1 SP Import khác.</p>
                                     )}
-                                    {selectedAllRebateTotal > 0 && localProductCount + importProductCount < 1 && (
-                                        <p>• Chọn trả phí ALL nhưng đơn chưa có sản phẩm. Cần ít nhất 1 sản phẩm Local hoặc Import.</p>
+                                    {selectedAllRebateTotal > 0 &&
+                                        !hasEligibleLocalProduct &&
+                                        !hasEligibleImportProduct &&
+                                        !(onlyAllowlistAllSelected && hasMagneOrPhospha) && (
+                                        <p>• Chọn trả phí ALL nhưng đơn chưa có SP đủ điều kiện. Cần SP Local/Import (hoặc chỉ Magne/Phospha với CHC202609-ACE / OST1 / CHC202607-ESS).</p>
                                     )}
                                 </>
                             )}

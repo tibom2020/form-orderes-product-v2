@@ -2,6 +2,8 @@ import {
     ACEMUC_GROUP_IDS,
     ACEMUC_PROMO_SUSPENDED,
     CALCIPLUS_PROMO_DISCOUNT_PERCENT,
+    GIGA_MONTHLY_CTKM_3SP_PRODUCT_IDS,
+    GIGA_MONTHLY_CTKM_3SP_START_MS,
     PACK_476_PRODUCT_IDS,
     TELFAST_PRODUCT_IDS,
     TELFAST_PROMO_SUSPENDED,
@@ -37,6 +39,13 @@ export const getDiscountPercent = (
 ): number => {
     if (!promotion) return 0;
     if (productId != null && isGigaMonthlyPromoSuspended(productId)) return 0;
+    if (
+        productId != null &&
+        GIGA_MONTHLY_CTKM_3SP_PRODUCT_IDS.includes(productId) &&
+        Date.now() < GIGA_MONTHLY_CTKM_3SP_START_MS
+    ) {
+        return 0;
+    }
 
     // Kiểm tra xem đây là KM theo giá trị đơn hàng (k) hay số lượng (h)
     // Sửa lỗi: Cần regex chặt chẽ hơn để tránh khớp nhầm "ck" (chiết khấu)

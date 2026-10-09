@@ -70,7 +70,7 @@ import {
 } from './utils/psOnInvoicePromo';
 import {
   computeCartGroupTotals,
-  computeMaxPayableFees,
+  computeDualMaxPayableFees,
   computeAppliedRebates,
   MAX_PRODUCT_DISCOUNT_RATIO,
   MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
@@ -1154,13 +1154,14 @@ const App: React.FC = () => {
           })
         : null;
 
-    const maxPayableFees = computeMaxPayableFees(cart, groupTotals, {
+    const feeCapOpts = {
       psDiscountGross: psTotalsForOrder?.discountGross ?? 0,
       maxDiscountRatio: psTotalsForOrder
         ? MAX_PRODUCT_DISCOUNT_RATIO
         : MAX_PRODUCT_DISCOUNT_RATIO_STANDARD,
       excludeMonthlyFromCap: !!psTotalsForOrder,
-    });
+    };
+    const maxPayableFeesDual = computeDualMaxPayableFees(cart, groupTotals, feeCapOpts);
 
     const {
       rebateDiscountLocalApplied,
@@ -1168,7 +1169,8 @@ const App: React.FC = () => {
     } = computeAppliedRebates(
       currentCustomerRebates,
       selectedRebateIds,
-      maxPayableFees
+      maxPayableFeesDual.standard,
+      maxPayableFeesDual.allAllowlist
     );
 
     const {

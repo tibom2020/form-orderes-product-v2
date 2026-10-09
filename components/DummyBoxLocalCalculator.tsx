@@ -69,7 +69,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
             const basePrice = p.basePrice ?? p.price;
             const isTelfast = TELFAST_GROUP_IDS.includes(p.id);
             const compareValue = isTelfast ? telfastGroupTotal : undefined;
-            const ckPercent = getDiscountPercent(p.promotion, qty, compareValue);
+            const ckPercent = getDiscountPercent(p.promotion, qty, compareValue, p.id);
             const giaSau = basePrice * (1 - ckPercent);
             const vatPercent = getVatPercent(p);
             return {
@@ -79,7 +79,7 @@ const DummyBoxLocalCalculator: React.FC<DummyBoxLocalCalculatorProps> = ({ onClo
                 basePrice,
                 ckPercent: ckPercent * 100,
                 giaSau,
-                vatPercent  // 0.08 hoặc 0.05 (decimal) - dùng cho công thức (1 + vatPercent)
+                vatPercent,
             };
         });
     }, [quantities, telfastGroupTotal, visibleProducts]);

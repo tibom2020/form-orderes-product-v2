@@ -17,7 +17,8 @@ import {
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
 } from '../constants';
-import { getDiscountPercent } from './calculations';
+import { getGigaUnitPriceAfterMonthlyCk } from './calculations';
+import { getProductVatRate } from './cartVatTotals';
 import type { CartGroupTotals } from './orderDiscountCaps';
 
 export function isChc2606OntopPromoActive(nowMs: number = Date.now()): boolean {
@@ -37,7 +38,6 @@ function getOntopLineBaseExVat(item: CartItem): number {
 }
 
 function getOntopLineExVatAfterMonthly(item: CartItem, groupTotals: CartGroupTotals): number {
-  const unitBase = item.basePrice ?? item.price;
   const isTelfast = TELFAST_GROUP_IDS.includes(item.id);
   const isOstelin = OSTELIN_GROUP_IDS.includes(item.id);
   const isAcemuc = ACEMUC_GROUP_IDS.includes(item.id);
@@ -48,8 +48,15 @@ function getOntopLineExVatAfterMonthly(item: CartItem, groupTotals: CartGroupTot
       : isAcemuc
         ? groupTotals.acemucGroupBaseTotal
         : undefined;
-  const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue, item.id);
-  return unitBase * item.quantity * (1 - discountPercent);
+  const vatRate = getProductVatRate(item.id, item.type);
+  const unitVatAfterCk = getGigaUnitPriceAfterMonthlyCk(
+    item.price,
+    item.promotion,
+    item.quantity,
+    compareValue,
+    item.id
+  );
+  return (unitVatAfterCk / (1 + vatRate)) * item.quantity;
 }
 
 export function getChc2606OntopPoolTotals(

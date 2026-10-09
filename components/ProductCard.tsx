@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Product } from '../types';
 import { PlusIcon, CubeIcon, EyeSlashIcon } from './icons';
 import { formatCurrency } from '../utils/formatters';
-import { isGigaMonthlyPromoSuspended } from '../utils/calculations';
+import { getGigaUnitPriceAfterMonthlyCk, isGigaMonthlyPromoSuspended } from '../utils/calculations';
 import { isBmProduct, getBmTiers } from '../constants/bmProducts';
 
 interface ProductCardProps {
@@ -61,9 +61,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                 const threshold = unit === 'k' ? thresholdRaw * 1000 : thresholdRaw;
                 const percent = m[3];
 
-                // Giá HĐ (CK+VAT) — cùng công thức tab Bảng giá: price × (1 − % CK), không dùng basePrice thuần
-                const discountedPricePerUnit =
-                    product.price * (1 - parseFloat(percent) / 100);
+                const qtyForTier = unit === 'h' ? thresholdRaw : 1;
+                const compareForTier = unit === 'k' ? threshold : undefined;
+                const discountedPricePerUnit = getGigaUnitPriceAfterMonthlyCk(
+                    product.price,
+                    product.promotion,
+                    qtyForTier,
+                    compareForTier,
+                    product.id
+                );
 
                 return {
                     thresholdRaw,
@@ -83,8 +89,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, hideMon
                 unit: 'h',
                 threshold: 1,
                 percent: singleMatch[1],
-                discountedPricePerUnit:
-                    product.price * (1 - parseFloat(singleMatch[1]) / 100)
+                discountedPricePerUnit: getGigaUnitPriceAfterMonthlyCk(
+                    product.price,
+                    product.promotion,
+                    1,
+                    undefined,
+                    product.id
+                )
             }];
         }
 

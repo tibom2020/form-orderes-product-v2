@@ -40,16 +40,18 @@ export function getDummyBoxEligibilityTotals(items: CartItem[]): {
         .reduce((sum, item) => {
             const isTelfast = TELFAST_GROUP_IDS.includes(item.id);
             const compareValue = isTelfast ? telfastLocalConditionTotal : undefined;
-            const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue);
-            const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
+            const discountPercent = getDiscountPercent(item.promotion, item.quantity, compareValue, item.id);
+            const lineAfterDiscount =
+                (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
             return sum + lineAfterDiscount;
         }, 0);
 
     const importTotalAfterDiscount = items
         .filter((item) => DUMMY_BOX_IMPORT_CALC_IDS.includes(item.id))
         .reduce((sum, item) => {
-            const discountPercent = getDiscountPercent(item.promotion, item.quantity, undefined);
-            const lineAfterDiscount = (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
+            const discountPercent = getDiscountPercent(item.promotion, item.quantity, undefined, item.id);
+            const lineAfterDiscount =
+                (item.basePrice ?? item.price) * item.quantity * (1 - discountPercent);
             return sum + lineAfterDiscount;
         }, 0);
 

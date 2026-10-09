@@ -59,7 +59,7 @@ const DummyBoxImportCalculator: React.FC<DummyBoxImportCalculatorProps> = () => 
         return visibleProducts.map((p, idx) => {
             const qty = quantities[p.id] ?? 0;
             const basePrice = p.basePrice ?? p.price;
-            const ckPercent = getDiscountPercent(p.promotion, qty, undefined);
+            const ckPercent = getDiscountPercent(p.promotion, qty, undefined, p.id);
             const giaSau = basePrice * (1 - ckPercent);
             const vatPercent = getVatPercent(p);
             return {

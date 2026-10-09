@@ -7,7 +7,7 @@ import {
   OSTELIN_GROUP_IDS,
   TELFAST_GROUP_IDS,
 } from '../constants';
-import { getDiscountPercent } from './calculations';
+import { getGigaUnitPriceAfterMonthlyCk } from './calculations';
 import type { CartGroupTotals } from './orderDiscountCaps';
 import { getPsCartUnitPrice } from './psOnInvoicePromo';
 import type { PsOrderTotals } from './psOnInvoicePromo';
@@ -58,15 +58,21 @@ function getLineCompareValue(
   return unitBase * item.quantity;
 }
 
-/** Thành tiền (-VAT) sau CK tháng/combo trên basePrice */
+/** Thành tiền (-VAT) sau CK tháng: price×(1−CK%) rồi chia (1+VAT) */
 export function getCartLineExVatAfterDiscount(
   item: CartItem,
   groupTotals: CartGroupTotals
 ): number {
-  const unitBase = item.basePrice ?? item.price;
   const compareValue = getLineCompareValue(item, groupTotals);
-  const discount = getDiscountPercent(item.promotion, item.quantity, compareValue, item.id);
-  return unitBase * item.quantity * (1 - discount);
+  const vatRate = getProductVatRate(item.id, item.type);
+  const unitVatAfterCk = getGigaUnitPriceAfterMonthlyCk(
+    item.price,
+    item.promotion,
+    item.quantity,
+    compareValue,
+    item.id
+  );
+  return (unitVatAfterCk / (1 + vatRate)) * item.quantity;
 }
 
 export interface CartVatTotalsInput {

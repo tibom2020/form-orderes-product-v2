@@ -92,6 +92,21 @@ export const getDiscountPercent = (
     return 0;
 };
 
+/**
+ * Giá 1 hộp sau CK tháng Giga trên hóa đơn (CK+VAT): price × (1 − % CK).
+ * Dùng thống nhất ProductCard, Bảng giá, giỏ hàng (rồi tách —VAT nếu cần).
+ */
+export function getGigaUnitPriceAfterMonthlyCk(
+    price: number,
+    promotion: string | undefined,
+    quantity: number,
+    compareValue?: number,
+    productId?: number
+): number {
+    const discount = getDiscountPercent(promotion, quantity, compareValue, productId);
+    return price * (1 - discount);
+}
+
 export const calculateLineTotal = (
     price: number,
     quantity: number,
@@ -99,8 +114,7 @@ export const calculateLineTotal = (
     groupValue?: number,
     productId?: number
 ): number => {
-    const discount = getDiscountPercent(promotion, quantity, groupValue, productId);
-    return price * quantity * (1 - discount);
+    return getGigaUnitPriceAfterMonthlyCk(price, promotion, quantity, groupValue, productId) * quantity;
 };
 
 /**

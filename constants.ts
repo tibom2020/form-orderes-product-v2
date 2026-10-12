@@ -948,14 +948,12 @@ export const ACEMUC_SCHEME1_MIN_SALE = 500_000;
 /** Tạm ngưng CK tháng Telfast (HD + BD + 30MG) — đổi false để bật lại */
 export const TELFAST_PROMO_SUSPENDED = false;
 
-// CTKM OPELLA 3/2026: DummyBox Local — đơn từ 1.000.000 (sau CK) nhóm SP bên + ít nhất 01 CORBIERE CALCIUM PLUS 3SUPX10 10ML → giảm 150k
-export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 6, 7, 26] as const; // Corbiere Calcium Plus, Telfast HD/BD, Calcium Corbiere Extra 5ml
-export const DUMMY_BOX_LOCAL_REQUIRED_PRODUCT_ID = 1; // CORBIERE CALCIUM PLUS 3SUPX10 10ML
+// CTKM DummyBox Local — tổng sau CK (basePrice) nhóm SP trong calculator ≥ 1tr → giảm 150k (không bắt buộc SP cụ thể)
+export const DUMMY_BOX_LOCAL_PRODUCT_IDS = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10, 5] as const;
 export const DUMMY_BOX_LOCAL_MIN_AMOUNT = 1_000_000;
 
-// CTKM OPELLA 3/2026: DummyBox Import — đơn từ 1.000.000 (sau CK) nhóm bên + ít nhất 01 PHARMATON VITALITY → giảm 150k
-export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [20, 27, 31, 12, 30] as const; // Fizzi, Vitality, Vỉ + Enterogermina (GUT 4B, 2B/20)
-export const DUMMY_BOX_IMPORT_REQUIRED_PRODUCT_ID = 27; // PHARMATON VITALITY 40MG TAB BT30 M24 VN
+// CTKM DummyBox Import — tổng sau CK nhóm SP trong calculator ≥ 1tr → giảm 150k (không bắt buộc SP cụ thể)
+export const DUMMY_BOX_IMPORT_PRODUCT_IDS = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 20, 21] as const;
 
 /** Mục tiêu số KH đã mua gói DummyBox / Rep — 2 mức (báo cáo tiến độ) */
 export const DUMMYBOX_TARGET_1 = 35;

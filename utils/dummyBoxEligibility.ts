@@ -10,9 +10,9 @@ import {
 import { getDiscountPercent } from './calculations';
 
 /** Khớp `Cart.tsx` — DummyBoxLocalCalculator */
-const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
+const DUMMY_BOX_LOCAL_CALC_IDS: readonly number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10, 5];
 /** Khớp `Cart.tsx` — DummyBoxImportCalculator */
-const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 20];
+const DUMMY_BOX_IMPORT_CALC_IDS: readonly number[] = [30, 12, 13, 14, 22, 23, 24, 25, 27, 31, 20, 21];
 
 /** Chọn mức DummyBox cao nhất đủ điều kiện theo tổng sau CK (modal tính toán) */
 export function resolveDummyBoxPromoTier(totalAfterDiscount: number): DummyBoxPromoTier | null {

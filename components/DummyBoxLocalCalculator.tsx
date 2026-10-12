@@ -11,7 +11,7 @@ import { resolveDummyBoxPromoTier } from '../utils/dummyBoxEligibility';
 import { PlusIcon, MinusIcon } from './icons';
 
 // Sản phẩm hiển thị trong calculator gói Local (bao gồm các sản phẩm bổ sung)
-const LOCAL_ORDER: number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10];
+const LOCAL_ORDER: number[] = [1, 26, 28, 2, 3, 4, 6, 7, 8, 10, 5];
 const CALC_PRODUCTS = LOCAL_ORDER
     .map(id => PRODUCTS.find(p => p.id === id))
     .filter((p): p is Product => Boolean(p));
@@ -28,6 +28,7 @@ const VAT_BY_PRODUCT_ID: Record<number, number> = {
     8: 0.05,   // TELFAST 30MG - 5%
     10: 0.05,  // BISOLVON KIDS 60ML - 5%
     26: 0.05,  // CALCIUM CORBIERE EXTRA 5ML - 5%
+    5: 0.05,   // MAGNE-B6 Tab B/50 - 5%
 };
 const getVatPercent = (p: Product): number => VAT_BY_PRODUCT_ID[p.id] ?? 0.05;
 

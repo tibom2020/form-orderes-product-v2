@@ -957,17 +957,17 @@ const LandingPage: React.FC<LandingPageProps> = ({
                         <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                             <h3 className="text-sm font-black text-green-800 dark:text-green-300 uppercase mb-2">DummyBox Local (-150k)</h3>
                             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
-                                <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK) của nhóm SP bên dưới).</li>
-                                <li>Sản phẩm tính điều kiện: <strong>Corbiere Calcium Plus</strong>, <strong>Telfast HD</strong>, <strong>Telfast BD</strong>, <strong>Calcium Corbiere Extra 5ml</strong>.</li>
-                                <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
+                                <li>Tổng sau CK tháng (basePrice × SL × (1 − % CK)) của nhóm SP Local trong modal tính ≥ 1.000.000 VND.</li>
+                                <li>Gồm Calci Plus/Extra, Acemuc, Telfast, Bisolvon Kids, <strong>Magne-B6</strong>, … (không bắt buộc mua riêng Calci Plus).</li>
+                                <li>Quà: giảm 150.000 VND trên đơn (KH trong DS DummyBoxRecord).</li>
                             </ul>
                         </div>
                         <div className="p-4 rounded-xl bg-opella-beige/50 dark:bg-opella-green/20 border border-opella-green/30 dark:border-opella-green/50">
                             <h3 className="text-sm font-black text-opella-green dark:text-opella-green uppercase mb-2">DummyBox Import (-150k)</h3>
                             <ul className="text-xs text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
-                                <li>Doanh số sau chiết khấu ≥ 1.000.000 VND (tổng basePrice × số lượng × (1 − % CK); riêng Pharmaton Energy dùng giá gốc, không áp CK 29.5%).</li>
-                                <li>Sản phẩm tính điều kiện: <strong>Pharmaton Energy</strong>, <strong>Essent</strong>, <strong>Vitality</strong>, <strong>Pharmaton Energy Fizzi</strong>, <strong>Enterogermina</strong> (GUT 2B, 4B, 2B/20).</li>
-                                <li>Quà: giảm 150.000 VND trực tiếp trên đơn.</li>
+                                <li>Tổng sau CK tháng (basePrice × SL × (1 − % CK)) của nhóm SP Import trong modal tính ≥ 1.000.000 VND.</li>
+                                <li>Gồm Entero, Ostelin, Pharmaton, Bisolvon, <strong>Phosphalugel</strong>, … (không bắt buộc mua riêng Vitality).</li>
+                                <li>Quà: giảm 150.000 VND trên đơn (KH trong DS DummyBoxRecord).</li>
                             </ul>
                         </div>
                     </div>

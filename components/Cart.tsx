@@ -458,16 +458,6 @@ const Cart: React.FC<CartProps> = (props) => {
         [telfastGroupTotal, ostelinGroupBaseTotal, acemucGroupBaseTotal]
     );
 
-    // Tạm tính (-VAT): basePrice sau CK dòng; PS = tổng basePrice
-    const totalAmount = useMemo(() => {
-        const { subtotalExVat } = computeCartVatTotals({
-            items,
-            groupTotals: cartGroupTotals,
-            psTotals: psTotals ?? undefined,
-        });
-        return subtotalExVat;
-    }, [items, cartGroupTotals, psTotals]);
-
     const totalSales = items.reduce((sum, item) => sum + (item.basePrice ?? 0) * item.quantity, 0);
     const onTopLiXiDiscount = isPsOnInvoice25 ? 0 : isOnTopLiXi ? 250000 : 0;
 
@@ -1211,18 +1201,10 @@ const Cart: React.FC<CartProps> = (props) => {
 
             <div className="p-2.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] mt-auto">
                 <div className="space-y-0.5 mb-2.5">
-                    {/* Tạm tính & Doanh số - Gộp dòng */}
-                    <div className="flex justify-between items-baseline mb-1 pb-1 border-b border-slate-100 dark:border-slate-700">
-                        <div className="flex items-baseline space-x-2">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Tạm tính:</span>
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(totalAmount)}</span>
-                            <span className="text-[8px] text-slate-400 uppercase font-normal">(ko VAT)</span>
-                        </div>
-                        <div className="flex items-baseline space-x-1.5">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Doanh số:</span>
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(totalSales)}</span>
-                            <span className="text-[8px] text-slate-400 uppercase font-normal">(ko VAT)</span>
-                        </div>
+                    <div className="flex justify-end items-baseline mb-1 pb-1 border-b border-slate-100 dark:border-slate-700 text-red-600 dark:text-red-400">
+                        <span className="text-[9px] font-bold uppercase">Doanh số:</span>
+                        <span className="text-xs font-bold ml-1.5">{formatCurrency(totalSales)}</span>
+                        <span className="text-[8px] uppercase font-normal opacity-90 ml-1">(ko VAT)</span>
                     </div>
 
                     {/* DS Nhóm đặc biệt - Thu nhỏ tối đa */}

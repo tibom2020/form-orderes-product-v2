@@ -690,6 +690,10 @@ const Cart: React.FC<CartProps> = (props) => {
     }, [maxPayableFees.lines]);
 
     const { totalMaxPayableFeeLocal, totalMaxPayableFeeImport } = maxPayableFees;
+    const allowlistLocalMax = maxPayableFeesDual.allAllowlist.totalMaxPayableFeeLocal;
+    const allowlistImportMax = maxPayableFeesDual.allAllowlist.totalMaxPayableFeeImport;
+    const hasMagneInCart = items.some(i => i.id === 5);
+    const hasPhosphaInCart = items.some(i => i.id === 21);
 
     const {
         rebateDiscount,
@@ -771,16 +775,26 @@ const Cart: React.FC<CartProps> = (props) => {
     const feeOverNeedsNote =
         !rebatePaymentLocked &&
         ((localOver && !hasLocalMaxNote) || (importOver && !hasImportMaxNote) || (allOver && !hasAllMaxNote));
-    const onlyAllowlistAllSelected =
-        selectedAllAllowlistRebateTotal > 0 && selectedAllStandardRebateTotal === 0;
+    const allowlistAllWithMagnePhospha =
+        selectedAllAllowlistRebateTotal > 0 && hasMagneOrPhospha;
+    /** Cap ALL hiển thị / so vượt trần: allowlist dùng pool full giỏ (có Magne/Phospha). */
+    const allMaxCapForDisplay =
+        selectedAllAllowlistRebateTotal > 0 && selectedAllStandardRebateTotal === 0
+            ? totalMaxPayableFeeAllAllowlist
+            : selectedAllStandardRebateTotal > 0 && selectedAllAllowlistRebateTotal === 0
+              ? totalMaxPayableFeeAll
+              : totalMaxPayableFeeAll + totalMaxPayableFeeAllAllowlist;
     const rebateWithoutProducts =
         !rebatePaymentLocked &&
         ((selectedLocalRebateTotal > 0 && !hasEligibleLocalProduct) ||
             (selectedImportRebateTotal > 0 && !hasEligibleImportProduct) ||
-            (selectedAllRebateTotal > 0 &&
+            (selectedAllStandardRebateTotal > 0 &&
+                !hasEligibleLocalProduct &&
+                !hasEligibleImportProduct) ||
+            (selectedAllAllowlistRebateTotal > 0 &&
                 !hasEligibleLocalProduct &&
                 !hasEligibleImportProduct &&
-                !(onlyAllowlistAllSelected && hasMagneOrPhospha)));
+                !hasMagneOrPhospha));
     const psSubmitBlocked =
         isPsOnInvoice25 &&
         psTotals != null &&
@@ -1489,6 +1503,11 @@ const Cart: React.FC<CartProps> = (props) => {
                                 />
                                 <label htmlFor="note-local-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí Local</label>
                             </div>
+                            {totalMaxPayableFeeLocal === 0 && allowlistLocalMax > 0 && hasMagneInCart && (
+                                <p className="text-[8px] text-violet-600 dark:text-violet-400 leading-tight mt-0.5">
+                                    Magne: trần trả phí qua ALL (ACE / OST1 / ESS) — tối đa {formatCurrency(allowlistLocalMax)} (pool ALL).
+                                </p>
+                            )}
                         </div>
                         {/* IMPORT */}
                         <div>
@@ -1516,6 +1535,11 @@ const Cart: React.FC<CartProps> = (props) => {
                                 />
                                 <label htmlFor="note-import-max" className={`text-[11px] font-bold text-slate-600 dark:text-slate-300 ${rebatePaymentLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>Trả tối đa phí Import</label>
                             </div>
+                            {totalMaxPayableFeeImport === 0 && allowlistImportMax > 0 && hasPhosphaInCart && (
+                                <p className="text-[8px] text-violet-600 dark:text-violet-400 leading-tight mt-0.5">
+                                    Phospha: trần trả phí qua ALL (ACE / OST1 / ESS) — tối đa {formatCurrency(allowlistImportMax)} (pool ALL).
+                                </p>
+                            )}
                         </div>
                         {/* ALL */}
                         {allGroupRebates.length > 0 && (
@@ -1523,12 +1547,12 @@ const Cart: React.FC<CartProps> = (props) => {
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-baseline space-x-1.5">
                                         <span className="text-[9px] font-bold text-slate-400 uppercase">Phí ALL Max (còn lại):</span>
-                                        <span className={`text-[10px] font-black ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-500 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}`}>{formatCurrency(totalMaxPayableFeeAll)}</span>
+                                        <span className={`text-[10px] font-black ${selectedAllRebateTotal > allMaxCapForDisplay && allMaxCapForDisplay > 0 ? 'text-red-500 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}`}>{formatCurrency(allMaxCapForDisplay)}</span>
                                     </div>
                                     {selectedAllRebateTotal > 0 && (
                                         <div className="flex items-baseline space-x-1.5">
-                                            <span className={`text-[9px] font-bold uppercase ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-500' : 'text-amber-500'}`}>Tổng Phí Cần Trả:</span>
-                                            <span className={`text-[10px] font-black ${selectedAllRebateTotal > totalMaxPayableFeeAll && totalMaxPayableFeeAll > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>-{formatCurrency(selectedAllRebateTotal)}</span>
+                                            <span className={`text-[9px] font-bold uppercase ${selectedAllRebateTotal > allMaxCapForDisplay && allMaxCapForDisplay > 0 ? 'text-red-500' : 'text-amber-500'}`}>Tổng Phí Cần Trả:</span>
+                                            <span className={`text-[10px] font-black ${selectedAllRebateTotal > allMaxCapForDisplay && allMaxCapForDisplay > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>-{formatCurrency(selectedAllRebateTotal)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1580,7 +1604,7 @@ const Cart: React.FC<CartProps> = (props) => {
                                         <p>• Phí Import cần trả <span className="font-bold">{formatCurrency(selectedImportRebateTotal)}</span> vượt Max <span className="font-bold">{formatCurrency(totalMaxPayableFeeImport)}</span>. Chọn &quot;Trả tối đa phí Import&quot; để xác nhận.</p>
                                     )}
                                     {allOver && !hasAllMaxNote && (
-                                        <p>• Phí ALL cần trả <span className="font-bold">{formatCurrency(selectedAllRebateTotal)}</span> vượt Max còn lại <span className="font-bold">{formatCurrency(totalMaxPayableFeeAll)}</span>. Chọn &quot;Trả tối đa phí ALL&quot; để xác nhận.</p>
+                                        <p>• Phí ALL cần trả <span className="font-bold">{formatCurrency(selectedAllRebateTotal)}</span> vượt Max còn lại <span className="font-bold">{formatCurrency(allMaxCapForDisplay)}</span>. Chọn &quot;Trả tối đa phí ALL&quot; để xác nhận.</p>
                                     )}
                                 </>
                             )}
@@ -1595,7 +1619,9 @@ const Cart: React.FC<CartProps> = (props) => {
                                     {selectedAllRebateTotal > 0 &&
                                         !hasEligibleLocalProduct &&
                                         !hasEligibleImportProduct &&
-                                        !(onlyAllowlistAllSelected && hasMagneOrPhospha) && (
+                                        !allowlistAllWithMagnePhospha &&
+                                        (selectedAllStandardRebateTotal > 0 ||
+                                            selectedAllAllowlistRebateTotal > 0) && (
                                         <p>• Chọn trả phí ALL nhưng đơn chưa có SP đủ điều kiện. Cần SP Local/Import (hoặc chỉ Magne/Phospha với CHC202609-ACE / OST1 / CHC202607-ESS).</p>
                                     )}
                                 </>

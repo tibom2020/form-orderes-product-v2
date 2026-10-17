@@ -5,7 +5,6 @@
 
 var BOT_TOKEN = "";
 var CHAT_ID = "-1004380939285"; 
-var N8N_WEBHOOK_URL = "";
 var GEMINI_API_KEY = "";
 var GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -54,6 +53,15 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var earlyData = null;
+  try { earlyData = JSON.parse(e.postData.contents); } catch (parseErr) { /* để nhánh dưới báo lỗi */ }
+
+  // Ảnh trưng bày (DummyBox / Acemuc): KHÔNG giữ lock chung suốt lúc tạo file Drive + gửi thông báo
+  // (vừa chậm, vừa chặn các request khác) — chỉ lock ngắn lúc ghi URL vào sheet.
+  if (earlyData && (earlyData.action === "uploadImage" || earlyData.action === "setImageUrl")) {
+    return handleMarketingImage_(earlyData);
+  }
+
   var lock = LockService.getScriptLock();
   // Chờ tối đa 15s — không có lock thì từ chối (tránh 2 request cùng getLastRow → ghi đè)
   if (!lock.tryLock(8000)) {
@@ -68,7 +76,7 @@ function doPost(e) {
   try {
     var output = ContentService.createTextOutput();
     output.setMimeType(ContentService.MimeType.JSON);
-    var data = JSON.parse(e.postData.contents);
+    var data = earlyData || JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // --- ACTION: ĐĂNG KÝ CT TRƯNG BÀY Q2 (DANGKYTBQ2 + REP_BUDGET_TBQ2) ---
@@ -175,56 +183,6 @@ function handleMarketing(data, ss, output) {
     return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy Mã KH: " + customerCode }));
   }
 
-  /** Ghi URL Drive có sẵn (không tạo file mới) — dùng đồng bộ DummyBoxRecord ↔ DummyBoxRecordBs */
-  if (data.action === "setImageUrl") {
-    var targetColSet = data.targetColumn || "UpHinh";
-    var colIdxSet = headers.indexOf(targetColSet);
-    if (colIdxSet === -1) {
-      return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy cột '" + targetColSet + "'" }));
-    }
-    var urlSet = String(data.imageUrl || "").trim();
-    if (!urlSet) {
-      return output.setContent(JSON.stringify({ status: "error", message: "Thiếu imageUrl" }));
-    }
-    sheet.getRange(rowIndex, colIdxSet + 1).setValue(urlSet);
-    var noteNameSet = (targetColSet === "UpHinh") ? "GhiChu1" : "GhiChu2";
-    var noteIdxSet = headers.indexOf(noteNameSet);
-    if (noteIdxSet !== -1 && data.note) {
-      sheet.getRange(rowIndex, noteIdxSet + 1).setValue(data.note);
-    }
-    return output.setContent(JSON.stringify({ status: "success", url: urlSet }));
-  }
-
-  if (data.action === "uploadImage") {
-    var targetColumn = data.targetColumn || "UpHinh";
-    var colIndex = headers.indexOf(targetColumn);
-    if (colIndex === -1) {
-      return output.setContent(JSON.stringify({ status: "error", message: "Không tìm thấy cột '" + targetColumn + "'" }));
-    }
-    var imageBase64 = data.image;
-    var contentType = data.mimeType || "image/jpeg";
-    var timestampStr = Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd_HHmmss");
-    var blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), contentType, customerCode + "_" + targetColumn + "_" + timestampStr + ".jpg");
-    // Acemuc Scheme 1 → folder riêng; DummyBox / marketing khác giữ folder cũ
-    var folderId =
-      String(data.sheetName || "") === "ACEMUC_SCHEME1"
-        ? "1EHfnlf9u052KaPJDx-ebc-vuX7wubTzk"
-        : "1bVA1vS04yQzpAMd5iA7EBgEgY4IgMUod";
-    var folder = DriveApp.getFolderById(folderId);
-    var file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var fileUrl = file.getUrl();
-    sheet.getRange(rowIndex, colIndex + 1).setValue(fileUrl);
-    var noteColName = (targetColumn === "UpHinh") ? "GhiChu1" : "GhiChu2";
-    var noteColIndex = headers.indexOf(noteColName);
-    if (noteColIndex !== -1 && data.note) {
-      sheet.getRange(rowIndex, noteColIndex + 1).setValue(data.note);
-    }
-    sendDummyBoxNotification(data, fileUrl);
-    sendZaloDummyBoxNotification_(data, fileUrl, imageBase64, contentType, blob.getName());
-    return output.setContent(JSON.stringify({ status: "success", url: fileUrl }));
-  }
-
   if (data.action === "registerPackage") {
     var colIndex = headers.indexOf(data.packageType);
     if (colIndex === -1) {
@@ -235,6 +193,101 @@ function handleMarketing(data, ss, output) {
   }
 
   return output.setContent(JSON.stringify({ status: "error", message: "Unknown marketing action" }));
+}
+
+/**
+ * uploadImage / setImageUrl — chạy NGOÀI lock chung của doPost:
+ * 1) tạo file Drive (chậm nhất) không cần lock;
+ * 2) lock ngắn để ghi URL vào sheet chính + sheet đối tác (mirrorSheetName) trong CÙNG 1 request;
+ * 3) nhả lock rồi mới gửi Telegram / Zalo song song (fetchAll).
+ */
+function handleMarketingImage_(data) {
+  var output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.JSON);
+  var reply = function (obj) { return output.setContent(JSON.stringify(obj)); };
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = data.sheetName || "DummyBoxRecord";
+    var customerCode = String(data.customerCode || "").trim();
+    var targetColumn = data.targetColumn || "UpHinh";
+    var file = null;
+    var fileUrl;
+
+    if (data.action === "uploadImage") {
+      if (!data.image) return reply({ status: "error", message: "Thiếu dữ liệu ảnh" });
+      var contentType = data.mimeType || "image/jpeg";
+      var timestampStr = Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd_HHmmss");
+      var blob = Utilities.newBlob(Utilities.base64Decode(data.image), contentType, customerCode + "_" + targetColumn + "_" + timestampStr + ".jpg");
+      // Acemuc Scheme 1 → folder riêng; DummyBox / marketing khác giữ folder cũ
+      var folderId =
+        String(sheetName) === "ACEMUC_SCHEME1"
+          ? "1EHfnlf9u052KaPJDx-ebc-vuX7wubTzk"
+          : "1bVA1vS04yQzpAMd5iA7EBgEgY4IgMUod";
+      file = DriveApp.getFolderById(folderId).createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    } else {
+      fileUrl = String(data.imageUrl || "").trim();
+      if (!fileUrl) return reply({ status: "error", message: "Thiếu imageUrl" });
+    }
+
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) {
+      if (file) file.setTrashed(true);
+      return reply({ status: "error", message: "Hệ thống đang bận ghi dữ liệu. Vui lòng thử lại sau vài giây." });
+    }
+    var result, mirrored = false;
+    try {
+      result = writeImageUrlToSheet_(ss, sheetName, customerCode, targetColumn, fileUrl, data.note);
+      if (result.ok && data.mirrorSheetName) {
+        var peer = writeImageUrlToSheet_(ss, data.mirrorSheetName, customerCode, targetColumn, fileUrl, data.note);
+        mirrored = peer.ok;
+        if (!peer.ok) Logger.log("Đồng bộ ảnh sang " + data.mirrorSheetName + " thất bại: " + peer.message);
+      }
+    } finally {
+      lock.releaseLock();
+    }
+
+    if (!result.ok) {
+      if (file) file.setTrashed(true);
+      return reply({ status: "error", message: result.message });
+    }
+
+    if (data.action === "uploadImage") {
+      sendDummyBoxNotificationsParallel_(data, fileUrl, data.image, data.mimeType || "image/jpeg", file.getName());
+    }
+    return reply({ status: "success", url: fileUrl, mirrored: mirrored });
+  } catch (err) {
+    return reply({ status: "error", message: err.toString() });
+  }
+}
+
+/** Ghi URL ảnh (+ ghi chú) vào dòng của KH. Chỉ đọc hàng tiêu đề + cột CustomerCode thay vì cả sheet. */
+function writeImageUrlToSheet_(ss, sheetName, customerCode, targetColumn, fileUrl, note) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { ok: false, message: "Không tìm thấy Sheet: " + sheetName };
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return { ok: false, message: "Không tìm thấy Mã KH: " + customerCode };
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  var codeIndex = headers.indexOf("CustomerCode");
+  if (codeIndex === -1) return { ok: false, message: "Không tìm thấy cột 'CustomerCode'" };
+  var colIndex = headers.indexOf(targetColumn);
+  if (colIndex === -1) return { ok: false, message: "Không tìm thấy cột '" + targetColumn + "'" };
+
+  var codes = sheet.getRange(2, codeIndex + 1, lastRow - 1, 1).getValues();
+  var rowIndex = -1;
+  for (var i = 0; i < codes.length; i++) {
+    if (String(codes[i][0]).trim() === customerCode) { rowIndex = i + 2; break; }
+  }
+  if (rowIndex === -1) return { ok: false, message: "Không tìm thấy Mã KH: " + customerCode };
+
+  sheet.getRange(rowIndex, colIndex + 1).setValue(fileUrl);
+  var noteIndex = headers.indexOf(targetColumn === "UpHinh" ? "GhiChu1" : "GhiChu2");
+  if (noteIndex !== -1 && note) sheet.getRange(rowIndex, noteIndex + 1).setValue(note);
+  return { ok: true };
 }
 
 /**
@@ -1023,15 +1076,6 @@ function sendEconsentNotification(data) {
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
       muteHttpExceptions: true
     });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({
-        event_type: "econsent_submit",
-        data: data,
-        full_message: message
-      }),
-      muteHttpExceptions: true
-    });
   } catch (e) { Logger.log("Lỗi sendEconsentNotification: " + e.toString()); }
 }
 
@@ -1245,11 +1289,6 @@ function sendAdminNewsNotification(data) {
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
       muteHttpExceptions: true
     });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "admin_news_update", data: data, full_message: message }),
-      muteHttpExceptions: true
-    });
   } catch (e) { Logger.log("Lỗi sendAdminNewsNotification: " + e.toString()); }
 }
 
@@ -1310,7 +1349,7 @@ function buildOrderMessage_(data) {
   } catch (e) { Logger.log("Lỗi buildOrderMessage_: " + e.toString()); return ""; }
 }
 
-/** Thông báo đơn mới — chỉ Telegram (không gọi N8N, tránh chậm/treo UrlFetchApp). */
+/** Thông báo đơn mới — chỉ Telegram. */
 function sendTelegramNotification(data) {
   try {
     var botToken = String(BOT_TOKEN || "").trim();
@@ -1350,28 +1389,6 @@ function buildDummyBoxMessage_(data, fileUrl) {
   message += "🔗 <a href='" + fileUrl + "'>XEM ẢNH TRƯNG BÀY</a>\n" +
     "--------------------------------\n\n" + "💪 <i>Tiếp tục phát huy nhé! 🚀</i>";
   return message;
-}
-
-function sendDummyBoxNotification(data, fileUrl) {
-  try {
-    var isAcemuc = String(data.sheetName || "") === "ACEMUC_SCHEME1";
-    var message = buildDummyBoxMessage_(data, fileUrl);
-    UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
-      muteHttpExceptions: true
-    });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({
-        event_type: isAcemuc ? "acemuc_scheme1_checkin" : "dummybox_checkin",
-        data: data,
-        image_url: fileUrl,
-        full_message: message
-      }),
-      muteHttpExceptions: true
-    });
-  } catch (e) { Logger.log("Lỗi sendDummyBoxNotification: " + e.toString()); }
 }
 
 // ===================== ZALO (bot tự host qua Cloudflare Tunnel) =====================
@@ -1425,14 +1442,36 @@ function sendZaloOrderNotification_(data) {
   } catch (e) { Logger.log("Lỗi sendZaloOrderNotification_: " + e.toString()); }
 }
 
-/** Zalo nhận ẢNH THẬT (Telegram chỉ nhận link Drive). */
-function sendZaloDummyBoxNotification_(data, fileUrl, imageBase64, mimeType, fileName) {
+/** Telegram + Zalo cho ảnh trưng bày, gửi SONG SONG (fetchAll) thay vì lần lượt từng cái. */
+function sendDummyBoxNotificationsParallel_(data, fileUrl, imageBase64, mimeType, fileName) {
   try {
-    if (!getZaloConfig_()) return;
-    var text = toZaloText_(buildDummyBoxMessage_(data, fileUrl));
-    var images = imageBase64 ? [{ base64: imageBase64, mimeType: mimeType || "image/jpeg", filename: fileName || "checkin.jpg" }] : [];
-    sendZaloNotification_(text, images);
-  } catch (e) { Logger.log("Lỗi sendZaloDummyBoxNotification_: " + e.toString()); }
+    var message = buildDummyBoxMessage_(data, fileUrl);
+    var requests = [];
+    if (BOT_TOKEN && CHAT_ID) {
+      requests.push({
+        url: "https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage",
+        method: "post", contentType: "application/json",
+        payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+        muteHttpExceptions: true
+      });
+    }
+    var zalo = getZaloConfig_();
+    if (zalo) {
+      var body = {
+        text: toZaloText_(message),
+        images: imageBase64 ? [{ base64: imageBase64, mimeType: mimeType || "image/jpeg", filename: fileName || "checkin.jpg" }] : []
+      };
+      if (zalo.groupId) body.groupId = zalo.groupId;
+      requests.push({
+        url: zalo.url + "/api/external/send",
+        method: "post", contentType: "application/json",
+        headers: { "X-API-Key": zalo.key },
+        payload: JSON.stringify(body),
+        muteHttpExceptions: true
+      });
+    }
+    if (requests.length) UrlFetchApp.fetchAll(requests);
+  } catch (e) { Logger.log("Lỗi sendDummyBoxNotificationsParallel_: " + e.toString()); }
 }
 
 /** Chạy tay trong trình soạn thảo Apps Script để thử kết nối Zalo (gửi 1 tin mẫu vào nhóm). */
@@ -1471,11 +1510,6 @@ function sendRebateCustomerNoticeNotification(data) {
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
       muteHttpExceptions: true
     });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "rebate_customer_notice", data: data, full_message: message }),
-      muteHttpExceptions: true
-    });
   } catch (e) { Logger.log("Lỗi sendRebateCustomerNoticeNotification: " + e.toString()); }
 }
 
@@ -1506,11 +1540,6 @@ function sendForecastNotification(data) {
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
       muteHttpExceptions: true
     });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "forecast_submit", data: Object.assign({}, data, { forecastedCount: forecastedCount, totalCount: totalCount, progress: progressStr }), full_message: message }),
-      muteHttpExceptions: true
-    });
   } catch (e) { Logger.log("Lỗi sendForecastNotification: " + e.toString()); }
 }
 
@@ -1530,15 +1559,10 @@ function sendCustomerSalesNotification(data) {
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
       muteHttpExceptions: true
     });
-    UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-      method: "post", contentType: "application/json",
-      payload: JSON.stringify({ event_type: "customer_sales_notice", data: data, full_message: message }),
-      muteHttpExceptions: true
-    });
   } catch (e) { Logger.log("Lỗi sendCustomerSalesNotification: " + e.toString()); }
 }
 
-/** Đăng ký CT trưng bày Q2 (DANGKYTBQ2) — Telegram + N8N giống luồng đơn hàng */
+/** Đăng ký CT trưng bày Q2 (DANGKYTBQ2) — Telegram giống luồng đơn hàng */
 function sendDisplayTBQ2RegistrationNotification(payload) {
   try {
     var now = new Date();
@@ -1578,41 +1602,6 @@ function sendDisplayTBQ2RegistrationNotification(payload) {
         method: "post",
         contentType: "application/json",
         payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
-        muteHttpExceptions: true
-      });
-    }
-    if (N8N_WEBHOOK_URL) {
-      var posmList = [];
-      try {
-        var fo2 = payload.posmFlagsJson ? JSON.parse(payload.posmFlagsJson) : {};
-        if (fo2 && typeof fo2 === "object") {
-          Object.keys(fo2).forEach(function (k) {
-            var v = fo2[k];
-            if (v === 1 || v === "1" || v === true) posmList.push(k);
-          });
-        }
-      } catch (e2) {}
-      UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify({
-          event_type: "display_tbq2_registration",
-          data: {
-            customer_code: payload.customerCode,
-            customer_name: payload.customerName,
-            sdt: payload.sdt || "",
-            rep_sheet: payload.sheetRep || "",
-            employee_name: payload.employeeName,
-            employee_code: payload.employeeCode || "",
-            final_store_type_q2: payload.storeTypeLabel,
-            store_tier_id: payload.storeTierId || "",
-            reward_vnd: Number(payload.rewardVnd) || 0,
-            posm_summary: payload.posmSummary || "",
-            posm_items: posmList,
-            timestamp_iso: now.toISOString()
-          },
-          full_message: message
-        }),
         muteHttpExceptions: true
       });
     }

@@ -515,9 +515,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 customerSummary = generateCustomerSummary(record);
             }
 
+            const codeTrim = String(selectedCustomer.CustomerCode).trim();
+            const shouldMirror = !!mirrorPeerSheetName && !!mirrorPeerHasCustomer?.(codeTrim);
+
             const response = await submitMarketingData(GOOGLE_SCRIPT_URL, {
                 action: 'uploadImage',
                 sheetName,
+                // Script ghi luôn URL sang sheet đối tác trong cùng request (khỏi gọi setImageUrl lần 2)
+                ...(shouldMirror ? { mirrorSheetName: mirrorPeerSheetName } : {}),
                 customerCode: selectedCustomer.CustomerCode,
                 image: base64,
                 mimeType: 'image/jpeg',
@@ -543,18 +548,21 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 // Update global state
                 onUpdateRecord(selectedCustomer.CustomerCode, updates);
 
-                const codeTrim = String(selectedCustomer.CustomerCode).trim();
-                if (mirrorPeerSheetName && mirrorPeerHasCustomer?.(codeTrim)) {
-                    const peerRes = await submitMarketingData(GOOGLE_SCRIPT_URL, {
-                        action: 'setImageUrl',
-                        sheetName: mirrorPeerSheetName,
-                        customerCode: codeTrim,
-                        targetColumn,
-                        imageUrl: response.url,
-                        ...(uploadNote.trim() ? { note: uploadNote.trim() } : {}),
-                    });
-                    if (peerRes.status !== 'success') {
-                        console.warn('Đồng bộ ảnh sang sheet đối tác thất bại:', peerRes.message);
+                if (shouldMirror && mirrorPeerSheetName) {
+                    // Script cũ (chưa deploy bản mới) không trả `mirrored` → gọi setImageUrl như trước, chạy nền
+                    if (!response.mirrored) {
+                        void submitMarketingData(GOOGLE_SCRIPT_URL, {
+                            action: 'setImageUrl',
+                            sheetName: mirrorPeerSheetName,
+                            customerCode: codeTrim,
+                            targetColumn,
+                            imageUrl: response.url,
+                            ...(uploadNote.trim() ? { note: uploadNote.trim() } : {}),
+                        }).then((peerRes) => {
+                            if (peerRes.status !== 'success') {
+                                console.warn('Đồng bộ ảnh sang sheet đối tác thất bại:', peerRes.message);
+                            }
+                        });
                     }
                     onPeerMirrorRecordUpdate?.(codeTrim, updates);
                 }

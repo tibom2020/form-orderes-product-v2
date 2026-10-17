@@ -5,7 +5,7 @@ Refactor `doPost` với logic CalciPlus (gói 21h ck 4.76%).
 ## Cách sử dụng
 
 1. Copy nội dung `Code.gs` vào project Apps Script hiện tại (thay thế hoặc merge với code cũ).
-2. Đảm bảo `BOT_TOKEN`, `CHAT_ID`, `N8N_WEBHOOK_URL` được cấu hình đúng.
+2. Đảm bảo `BOT_TOKEN`, `CHAT_ID` được cấu hình đúng (không còn dùng n8n).
 3. Tạo sheet **CALCIPLUS_GOI** (hoặc để script tự tạo khi có đơn đầu tiên có gói CalciPlus).
 4. Đảm bảo `doGet` hỗ trợ `?sheet=CALCIPLUS_GOI` để tab Theo dõi gói CalciPlus fetch được dữ liệu.
 

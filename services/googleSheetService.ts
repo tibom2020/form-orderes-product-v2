@@ -344,7 +344,7 @@ export const submitCancelDisplayTBQ2Registration = async (
 export const submitMarketingData = async (
   url: string,
   payload: any
-): Promise<{ status: string; message?: string; url?: string }> => {
+): Promise<{ status: string; message?: string; url?: string; mirrored?: boolean }> => {
   // uploadImage / setImageUrl: cần JSON (URL) → cors. registerPackage: no-cors.
   const needsJsonResponse = payload.action === 'uploadImage' || payload.action === 'setImageUrl';
   const mode = needsJsonResponse ? 'cors' : 'no-cors';

@@ -9,6 +9,14 @@ var N8N_WEBHOOK_URL = "";
 var GEMINI_API_KEY = "";
 var GEMINI_MODEL = "gemini-2.5-flash";
 
+// Bot Zalo (gửi thêm đơn hàng / ảnh trưng bày vào 1 nhóm Zalo qua Cloudflare Tunnel).
+// KHÔNG điền key vào file này (file được commit lên GitHub) — đặt trong Apps Script:
+// Cài đặt dự án → Thuộc tính tập lệnh: ZALO_API_URL, ZALO_API_KEY, (tuỳ chọn) ZALO_GROUP_ID.
+// Thiếu ZALO_API_URL hoặc ZALO_API_KEY thì tự tắt gửi Zalo, Telegram không bị ảnh hưởng.
+var ZALO_API_URL = "";
+var ZALO_API_KEY = "";
+var ZALO_GROUP_ID = "";
+
 var clean = function(text) { return text ? text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; };
 var formatCurrency = function(amount) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(amount) || 0)); };
 
@@ -213,6 +221,7 @@ function handleMarketing(data, ss, output) {
       sheet.getRange(rowIndex, noteColIndex + 1).setValue(data.note);
     }
     sendDummyBoxNotification(data, fileUrl);
+    sendZaloDummyBoxNotification_(data, fileUrl, imageBase64, contentType, blob.getName());
     return output.setContent(JSON.stringify({ status: "success", url: fileUrl }));
   }
 
@@ -586,7 +595,7 @@ function handleOrder(data, ss, output) {
 /** Hàng đợi Telegram — xử lý ngoài luồng doPost để app nhận success nhanh */
 function enqueueOrderTelegram_(data) {
   var botToken = String(BOT_TOKEN || "").trim();
-  if (!botToken) return;
+  if (!botToken && !getZaloConfig_()) return;
   try {
     var props = PropertiesService.getScriptProperties();
     var raw = props.getProperty("ORDER_TELEGRAM_QUEUE") || "[]";
@@ -598,6 +607,7 @@ function enqueueOrderTelegram_(data) {
   } catch (e) {
     Logger.log("enqueueOrderTelegram_ fallback sync: " + e);
     sendTelegramNotification(data);
+    sendZaloOrderNotification_(data);
   }
 }
 
@@ -636,6 +646,8 @@ function flushOrderTelegramQueue() {
       } catch (err) {
         Logger.log("flushOrderTelegramQueue: " + err);
       }
+      // Zalo gửi độc lập: lỗi Zalo không ảnh hưởng Telegram và ngược lại
+      sendZaloOrderNotification_(queue[i]);
     }
   } finally {
     try {
@@ -1241,12 +1253,9 @@ function sendAdminNewsNotification(data) {
   } catch (e) { Logger.log("Lỗi sendAdminNewsNotification: " + e.toString()); }
 }
 
-/** Thông báo đơn mới — chỉ Telegram (không gọi N8N, tránh chậm/treo UrlFetchApp). */
-function sendTelegramNotification(data) {
+/** Nội dung tin đơn mới (HTML kiểu Telegram) — dùng chung cho Telegram và Zalo. */
+function buildOrderMessage_(data) {
   try {
-    var botToken = String(BOT_TOKEN || "").trim();
-    if (!botToken) return;
-
     var items = data.items || [];
     var invoiceLines = data.invoiceLines;
     var totalAmount = 0;
@@ -1297,6 +1306,17 @@ function sendTelegramNotification(data) {
       message += "--------------------------------\n" + data.customerSummary + "\n";
     }
     message += "--------------------------------\n" + "💕 Cảm ơn <b>" + clean(data.employeeName) + "</b> đã lên đơn nhé! 💕";
+    return message;
+  } catch (e) { Logger.log("Lỗi buildOrderMessage_: " + e.toString()); return ""; }
+}
+
+/** Thông báo đơn mới — chỉ Telegram (không gọi N8N, tránh chậm/treo UrlFetchApp). */
+function sendTelegramNotification(data) {
+  try {
+    var botToken = String(BOT_TOKEN || "").trim();
+    if (!botToken) return;
+    var message = buildOrderMessage_(data);
+    if (!message) return;
     UrlFetchApp.fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
       method: "post",
       contentType: "application/json",
@@ -1306,30 +1326,36 @@ function sendTelegramNotification(data) {
   } catch (e) { Logger.log("Lỗi sendTelegramNotification: " + e.toString()); }
 }
 
+/** Nội dung tin check-in DummyBox / Acemuc (HTML kiểu Telegram) — dùng chung cho Telegram và Zalo. */
+function buildDummyBoxMessage_(data, fileUrl) {
+  var now = new Date();
+  var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm");
+  var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
+  var isAcemuc = String(data.sheetName || "") === "ACEMUC_SCHEME1";
+  var imgSlot = (data.targetColumn === "UpHinh")
+    ? (isAcemuc ? "Poster" : "Hình 1")
+    : (isAcemuc ? "Wobbler" : "Hình 2");
+  var title = isAcemuc
+    ? "📸 <b>CHECK-IN ACEMUC SCHEME 1</b>\n"
+    : "📸 <b>CHECK-IN DUMMYBOX THÀNH CÔNG</b>\n";
+  var message = title +
+    "--------------------------------\n" +
+    "⏰ <b>Thời gian:</b> " + timeStr + " " + dateStr + "\n" +
+    "🧑💼 <b>NV:</b> " + clean(data.employeeName) + "\n" +
+    "🏠 <b>KH:</b> " + clean(data.customerName) + "\n" +
+    "🔢 <b>Mã:</b> " + clean(data.customerCode) + "\n" +
+    "🖼 <b>Loại:</b> " + imgSlot + "\n";
+  if (data.note) { message += "📝 <b>Ghi chú:</b> " + clean(data.note) + "\n"; }
+  if (data.customerSummary) { message += "--------------------------------\n" + data.customerSummary + "\n"; }
+  message += "🔗 <a href='" + fileUrl + "'>XEM ẢNH TRƯNG BÀY</a>\n" +
+    "--------------------------------\n\n" + "💪 <i>Tiếp tục phát huy nhé! 🚀</i>";
+  return message;
+}
+
 function sendDummyBoxNotification(data, fileUrl) {
   try {
-    var now = new Date();
-    var timeStr = Utilities.formatDate(now, "GMT+7", "HH:mm");
-    var dateStr = Utilities.formatDate(now, "GMT+7", "dd/MM/yyyy");
-    var sheetNm = String(data.sheetName || "");
-    var isAcemuc = sheetNm === "ACEMUC_SCHEME1";
-    var imgSlot = (data.targetColumn === "UpHinh")
-      ? (isAcemuc ? "Poster" : "Hình 1")
-      : (isAcemuc ? "Wobbler" : "Hình 2");
-    var title = isAcemuc
-      ? "📸 <b>CHECK-IN ACEMUC SCHEME 1</b>\n"
-      : "📸 <b>CHECK-IN DUMMYBOX THÀNH CÔNG</b>\n";
-    var message = title +
-      "--------------------------------\n" +
-      "⏰ <b>Thời gian:</b> " + timeStr + " " + dateStr + "\n" +
-      "🧑💼 <b>NV:</b> " + clean(data.employeeName) + "\n" +
-      "🏠 <b>KH:</b> " + clean(data.customerName) + "\n" +
-      "🔢 <b>Mã:</b> " + clean(data.customerCode) + "\n" +
-      "🖼 <b>Loại:</b> " + imgSlot + "\n";
-    if (data.note) { message += "📝 <b>Ghi chú:</b> " + clean(data.note) + "\n"; }
-    if (data.customerSummary) { message += "--------------------------------\n" + data.customerSummary + "\n"; }
-    message += "🔗 <a href='" + fileUrl + "'>XEM ẢNH TRƯNG BÀY</a>\n" +
-      "--------------------------------\n\n" + "💪 <i>Tiếp tục phát huy nhé! 🚀</i>";
+    var isAcemuc = String(data.sheetName || "") === "ACEMUC_SCHEME1";
+    var message = buildDummyBoxMessage_(data, fileUrl);
     UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
       method: "post", contentType: "application/json",
       payload: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
@@ -1346,6 +1372,81 @@ function sendDummyBoxNotification(data, fileUrl) {
       muteHttpExceptions: true
     });
   } catch (e) { Logger.log("Lỗi sendDummyBoxNotification: " + e.toString()); }
+}
+
+// ===================== ZALO (bot tự host qua Cloudflare Tunnel) =====================
+
+/** Cấu hình Zalo: ưu tiên Thuộc tính tập lệnh, fallback biến ở đầu file. Trả null nếu chưa bật. */
+function getZaloConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  var url = String(props.getProperty("ZALO_API_URL") || ZALO_API_URL || "").trim().replace(/\/+$/, "");
+  var key = String(props.getProperty("ZALO_API_KEY") || ZALO_API_KEY || "").trim();
+  var groupId = String(props.getProperty("ZALO_GROUP_ID") || ZALO_GROUP_ID || "").trim();
+  if (!url || !key) return null;
+  return { url: url, key: key, groupId: groupId };
+}
+
+/** Chuyển HTML kiểu Telegram sang chữ thường cho Zalo (Zalo không hỗ trợ thẻ HTML). */
+function toZaloText_(html) {
+  return String(html || "")
+    .replace(/<a\s+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/a>/gi, "$2: $1")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(b|i|u|s|code|pre|strong|em)>/gi, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/** Gửi tin (kèm ảnh base64) sang bot Zalo. Bot trả 202 ngay rồi tự gửi nền, nên không làm chậm form. */
+function sendZaloNotification_(text, images) {
+  var cfg = getZaloConfig_();
+  if (!cfg) return;
+  try {
+    var body = { text: text, images: images || [] };
+    if (cfg.groupId) body.groupId = cfg.groupId;
+    var res = UrlFetchApp.fetch(cfg.url + "/api/external/send", {
+      method: "post",
+      contentType: "application/json",
+      headers: { "X-API-Key": cfg.key },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true
+    });
+    var code = res.getResponseCode();
+    if (code !== 202 && code !== 200) {
+      Logger.log("Zalo gửi thất bại [" + code + "]: " + String(res.getContentText()).slice(0, 300));
+    }
+  } catch (e) { Logger.log("Lỗi sendZaloNotification_: " + e.toString()); }
+}
+
+function sendZaloOrderNotification_(data) {
+  try {
+    if (!getZaloConfig_()) return;
+    var message = buildOrderMessage_(data);
+    if (message) sendZaloNotification_(toZaloText_(message));
+  } catch (e) { Logger.log("Lỗi sendZaloOrderNotification_: " + e.toString()); }
+}
+
+/** Zalo nhận ẢNH THẬT (Telegram chỉ nhận link Drive). */
+function sendZaloDummyBoxNotification_(data, fileUrl, imageBase64, mimeType, fileName) {
+  try {
+    if (!getZaloConfig_()) return;
+    var text = toZaloText_(buildDummyBoxMessage_(data, fileUrl));
+    var images = imageBase64 ? [{ base64: imageBase64, mimeType: mimeType || "image/jpeg", filename: fileName || "checkin.jpg" }] : [];
+    sendZaloNotification_(text, images);
+  } catch (e) { Logger.log("Lỗi sendZaloDummyBoxNotification_: " + e.toString()); }
+}
+
+/** Chạy tay trong trình soạn thảo Apps Script để thử kết nối Zalo (gửi 1 tin mẫu vào nhóm). */
+function testZalo() {
+  var cfg = getZaloConfig_();
+  if (!cfg) { Logger.log("Chưa cấu hình ZALO_API_URL / ZALO_API_KEY trong Thuộc tính tập lệnh."); return; }
+  var res = UrlFetchApp.fetch(cfg.url + "/api/external/send", {
+    method: "post",
+    contentType: "application/json",
+    headers: { "X-API-Key": cfg.key },
+    payload: JSON.stringify({ text: "✅ Test kết nối Form đặt hàng → Zalo lúc " + Utilities.formatDate(new Date(), "GMT+7", "HH:mm dd/MM/yyyy"), groupId: cfg.groupId || undefined }),
+    muteHttpExceptions: true
+  });
+  Logger.log("Zalo test: [" + res.getResponseCode() + "] " + res.getContentText());
 }
 
 function sendRebateCustomerNoticeNotification(data) {
